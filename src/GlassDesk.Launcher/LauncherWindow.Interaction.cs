@@ -114,7 +114,61 @@ public partial class LauncherWindow
                 AddMenu(menu, "移出分组", () => CommitEdit(layout => LauncherLayoutEditor.RemoveFromGroup(layout, id, group.Id, _view.Page, 0, _view.Capacity)));
             }
         }
+        AddMoveToPageMenus(menu, id);
         return menu;
+    }
+
+    /// <summary>Dragging can only turn one page at a time, so a direct page move must stay one click away.</summary>
+    private void AddMoveToPageMenus(ContextMenu menu, string slotId)
+    {
+        var pageCount = _view.PageCount;
+        if (pageCount <= 1) return;
+        // A handful of pages reads better inline; a long list collapses into a submenu.
+        if (pageCount <= 8)
+        {
+            for (var page = 0; page < pageCount; page++)
+            {
+                if (page == _view.Page) continue;
+                var target = page;
+                AddMenu(menu, $"移动到第 {target + 1} 页", () => MoveToPage(slotId, target));
+            }
+            return;
+        }
+        var submenu = new MenuItem { Header = "移动到页面" };
+        for (var page = 0; page < pageCount; page++)
+        {
+            if (page == _view.Page) continue;
+            var target = page;
+            var item = new MenuItem { Header = $"第 {target + 1} 页" };
+            item.Click += (_, _) => MoveToPage(slotId, target);
+            submenu.Items.Add(item);
+        }
+        menu.Items.Add(submenu);
+    }
+
+    private void MoveToPage(string slotId, int page)
+    {
+        if (_workspace is null || _view.IsSearching)
+        {
+            ShowNotice("搜索结果中不能整理应用；请先清空搜索。");
+            return;
+        }
+        var edit = _workspace.BeginEdit();
+        try
+        {
+            edit.Draft = LauncherLayoutEditor.Move(edit.Draft, slotId, page, 0, _view.Capacity);
+            if (_workspace.Commit(edit))
+            {
+                _notice = null;
+                ShowNotice($"已移动到第 {page + 1} 页", autoDismiss: true);
+            }
+            else ShowNotice("应用库或布局已变化，请重试整理操作。");
+        }
+        catch (Exception ex) when (ex is StorageException or InvalidOperationException or ArgumentException)
+        {
+            ShowNotice("整理未保存，原布局已恢复：" + ex.Message);
+        }
+        RenderTiles();
     }
 
     private static void AddMenu(ContextMenu menu, string title, Action action)

@@ -83,6 +83,7 @@ public partial class LauncherWindow
         source.Opacity = 0;
         source.IsHitTestVisible = false;
         TrashDropTarget.Visibility = Visibility.Visible;
+        ShowDragPageCues(0);
         EnsureIconDragFrames();
     }
 
@@ -385,6 +386,7 @@ public partial class LauncherWindow
         _pressedId = null;
         _pressedTile = null;
         TrashDropTarget.Visibility = Visibility.Collapsed;
+        HideDragPageCues();
         StopPageSlide();
         if (hadPreview) RenderIconPreview();
         else if (_dropCommitted) RenderTiles();

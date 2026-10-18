@@ -17,4 +17,19 @@ public sealed class LauncherEdgePagerTests
         Assert.False(pager.Tick(1, start.AddMilliseconds(701)));
         Assert.True(pager.Tick(1, start.AddMilliseconds(1301)));
     }
+
+    [Fact]
+    public void ContinuousDwell_TurnsFurtherPagesAtRepeatInterval()
+    {
+        var pager = new LauncherEdgePager(TimeSpan.FromMilliseconds(600), TimeSpan.FromMilliseconds(400));
+        var start = DateTimeOffset.Parse("2026-01-01T00:00:00Z");
+        Assert.False(pager.Tick(1, start));
+        Assert.True(pager.Tick(1, start.AddMilliseconds(600)));
+        Assert.False(pager.Tick(1, start.AddMilliseconds(999)));
+        Assert.True(pager.Tick(1, start.AddMilliseconds(1000)));
+        Assert.True(pager.Tick(1, start.AddMilliseconds(1400)));
+        pager.Tick(0, start.AddMilliseconds(1500));
+        Assert.False(pager.Tick(1, start.AddMilliseconds(1501)));
+        Assert.True(pager.Tick(1, start.AddMilliseconds(2101)));
+    }
 }

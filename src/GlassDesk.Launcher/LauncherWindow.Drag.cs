@@ -17,7 +17,7 @@ public partial class LauncherWindow
     private DispatcherTimer? _pressTimer;
     private Button? _pressedTile;
     private Point _grabPoint;
-    private readonly LauncherEdgePager _edgePager = new(TimeSpan.FromMilliseconds(600));
+    private readonly LauncherEdgePager _edgePager = new(TimeSpan.FromMilliseconds(600), TimeSpan.FromMilliseconds(400));
     private bool _dropCommitted;
     private Button? _dropTarget;
     private Brush? _dropTargetOriginalBorderBrush;
@@ -143,10 +143,30 @@ public partial class LauncherWindow
         var width = TileGrid.ActualWidth;
         var inGrid = _lastDragPoint.X >= 0 && _lastDragPoint.X <= width && _lastDragPoint.Y >= 0 && _lastDragPoint.Y < TileGrid.ActualHeight;
         var direction = !inGrid ? 0 : _lastDragPoint.X < 42 ? -1 : _lastDragPoint.X > width - 42 ? 1 : 0;
+        ShowDragPageCues(direction);
         if (_edgePager.Tick(direction, DateTimeOffset.UtcNow) && direction != 0)
         {
             NavigateDragPage(direction);
         }
+    }
+
+    /// <summary>Keeps the edge chevrons visible while dragging so the hot zone is discoverable, not hidden.</summary>
+    private void ShowDragPageCues(int activeDirection)
+    {
+        ApplyPageCue(DragPageCueLeft, _view.Page > 0, activeDirection == -1);
+        ApplyPageCue(DragPageCueRight, _view.Page < _view.PageCount - 1, activeDirection == 1);
+    }
+
+    private void HideDragPageCues()
+    {
+        DragPageCueLeft.Visibility = Visibility.Collapsed;
+        DragPageCueRight.Visibility = Visibility.Collapsed;
+    }
+
+    private static void ApplyPageCue(UIElement cue, bool available, bool hot)
+    {
+        cue.Visibility = available ? Visibility.Visible : Visibility.Collapsed;
+        cue.Opacity = hot ? .85 : .3;
     }
 
     private void OnExternalDragOver(object sender, DragEventArgs e)

@@ -132,6 +132,22 @@
               <UniformGrid.RenderTransform><TranslateTransform x:Name="IncomingPageMotion" /></UniformGrid.RenderTransform>
             </UniformGrid>
           </ScrollViewer>
+          <Border x:Name="DragPageCueLeft" Width="40" Height="40" CornerRadius="20"
+                  HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0"
+                  Background="#2EFFFFFF" BorderBrush="#4DFFFFFF" BorderThickness="1"
+                  Visibility="Collapsed" IsHitTestVisible="False">
+            <Path Width="7" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                  Data="M6,1 L1,6 L6,11" Stroke="#FFFFFFFF" StrokeThickness="1.8"
+                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+          </Border>
+          <Border x:Name="DragPageCueRight" Width="40" Height="40" CornerRadius="20"
+                  HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0"
+                  Background="#2EFFFFFF" BorderBrush="#4DFFFFFF" BorderThickness="1"
+                  Visibility="Collapsed" IsHitTestVisible="False">
+            <Path Width="7" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                  Data="M1,1 L6,6 L1,11" Stroke="#FFFFFFFF" StrokeThickness="1.8"
+                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+          </Border>
         </Grid>
         <controls:PhoneBorder x:Name="GroupPanel" Visibility="Collapsed" CornerRadius="28" Padding="16"
                 Background="#18FFFFFF"
