@@ -78,6 +78,40 @@ public static class WindowStyles
         }
     }
 
+    /// <summary>
+    /// 把窗口放到桌面之上、所有普通窗口之下（贴着桌面）。
+    /// 这样任何窗口都能盖住它，回到桌面时又能看到它。
+    /// </summary>
+    /// <remarks>
+    /// 不能直接把窗口压到 <c>HWND_BOTTOM</c>：点“显示桌面”时 Progman 会被抬到
+    /// 普通窗口之上，HWND_BOTTOM 会把 Dock 压到 Progman 下面。窗口虽然仍报告
+    /// “可见”，实际却被桌面盖住。这里把窗口插到 Progman 前一个窗口之后，
+    /// 也就是紧贴桌面上沿。
+    /// </remarks>
+    public static bool SendAboveDesktop(nint window)
+    {
+        var desktop = User32.GetShellWindow();
+        if (desktop == 0)
+        {
+            return false;
+        }
+
+        // GW_HWNDPREV = 3：Z 序中排在桌面窗口前面的那个窗口。
+        // 把目标窗口插在它后面，就正好落在“桌面之上、普通窗口之下”。
+        var aboveDesktop = User32.GetWindow(desktop, 3);
+        return Dpi32.SetWindowPos(
+            window, aboveDesktop, 0, 0, 0, 0, SwpNoSize | SwpNoMove | SwpNoActivate);
+    }
+
+    /// <summary>按窗口标题查找顶层窗口（用于找到采集载体）。</summary>
+    public static nint FindTopLevelWindow(string? title)
+    {
+        return FindWindowNative(null, title);
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "FindWindowW", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern nint FindWindowNative(string? className, string? windowName);
+
     /// <summary>窗口是否已带 <c>WS_EX_NOACTIVATE</c> 样式。</summary>
     public static bool IsNoActivate(nint window)
     {

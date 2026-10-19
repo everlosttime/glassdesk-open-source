@@ -62,6 +62,7 @@ internal sealed partial class AppHost
             if (_disposed || _shuttingDown || _performance is null || sequence != Volatile.Read(ref _foregroundObservationSequence)) return;
             if (observation.IsFullscreen is { } fullscreen)
                 _performance.ObserveForeground(fullscreen, observation.BelongsToCurrentProcess, DateTimeOffset.UtcNow);
+            if (FullscreenDetector.IsForegroundDesktop()) _dock?.RestoreDesktopLayer();
             ReconcilePerformance();
         }));
     }

@@ -318,6 +318,25 @@ public static class FullscreenDetector
         return new(coversMonitor || QueryShellStateCore().State == UserNotificationState.RunningD3dFullScreen, false);
     }
 
+    /// <summary>当前前台窗口是否就是桌面（Progman/WorkerW）。</summary>
+    public static bool IsForegroundDesktop()
+    {
+        var handle = User32.GetForegroundWindow();
+        if (handle == 0)
+        {
+            return false;
+        }
+
+        if (handle == User32.GetShellWindow() || handle == User32.GetDesktopWindow())
+        {
+            return true;
+        }
+
+        var className = User32.ReadClassName(handle);
+        return string.Equals(className, "Progman", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(className, "WorkerW", StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>
     /// 廉价查询的完整形态：给出前台窗口的判定结论（含「已排除」这一档）。
     /// </summary>

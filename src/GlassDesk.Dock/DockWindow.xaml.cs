@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using GlassDesk.AppServices;
@@ -114,6 +115,14 @@ public partial class DockWindow : GlassWindow
 
         // 常驻的内置入口不依赖宿主：构造完就该出现在磁贴行上。
         RefreshTiles();
+
+        // Show() may re-apply Topmost from XAML; restore the desktop layer after visibility changes.
+        IsVisibleChanged += (_, e) =>
+        {
+            if (e.NewValue is true)
+                Dispatcher.BeginInvoke(new Action(RestoreDesktopLayer),
+                    System.Windows.Threading.DispatcherPriority.Loaded);
+        };
     }
 
     /// <summary>
@@ -421,6 +430,17 @@ public partial class DockWindow : GlassWindow
 
     /// <summary>Raise the non-activating Dock above Launcher while it is a drag target.</summary>
     public void RaiseAboveLauncherDuringDrag() => _ = WindowStyles.BringToTopWithoutActivation(Handle);
+
+    /// <summary>
+    /// Put the Dock and the capture carrier back above the desktop and below normal windows.
+    /// </summary>
+    public void RestoreDesktopLayer()
+    {
+        Topmost = false;
+        WindowStyles.SendAboveDesktop(Handle);
+        var carrier = WindowStyles.FindTopLevelWindow("GlassDesk controlled shared desktop carrier");
+        if (carrier != 0) WindowStyles.SendAboveDesktop(carrier);
+    }
 
     /// <summary>Dock 使用栏自身的圆角半径，而不是启动台的。</summary>
     protected override double ResolveCornerRadius(AppearanceSettings appearance)
@@ -1522,11 +1542,74 @@ public partial class DockWindow : GlassWindow
     {
         base.OnSourceInitialized(e);
 
+        if (PresentationSource.FromVisual(this) is HwndSource source)
+        {
+            source.AddHook(OnDockWindowMessage);
+        }
+
+        var restoreTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(5),
+        };
+        restoreTimer.Tick += (_, _) =>
+        {
+            restoreTimer.Stop();
+            RestoreDesktopLayer();
+        };
+        restoreTimer.Start();
+
         RefreshDiagnostics();
 
         // 必须在句柄建立之后改扩展样式：点击本窗口时不得把前台让给别人。
         // 弹出物要取焦点时显式调 WindowActivation.TryBringToForeground。
         WindowStyles.MakeNoActivate(Handle);
+    }
+
+    private const int WmSysCommand = 0x0112;
+    private const int ScMinimize = 0xF020;
+    private const int WmSize = 0x0005;
+    private const int SizeMinimized = 1;
+
+    private nint OnDockWindowMessage(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
+    {
+        var minimizeRequested = message == WmSysCommand
+            && (int)((long)wParam & 0xFFF0) == ScMinimize;
+        var minimized = message == WmSize && (int)wParam == SizeMinimized;
+
+        if (minimizeRequested || minimized)
+        {
+            handled = true;
+            Dispatcher.BeginInvoke(new Action(RestoreDockAfterShowDesktop),
+                System.Windows.Threading.DispatcherPriority.Send);
+        }
+
+        return 0;
+    }
+
+    private void RestoreDockAfterShowDesktop()
+    {
+        if (_performanceSleeping || _performanceSleepRequested)
+        {
+            return;
+        }
+
+        if (WindowState == WindowState.Minimized)
+        {
+            WindowState = WindowState.Normal;
+        }
+
+        if (WindowControl.IsMinimized(Handle))
+        {
+            _ = WindowControl.Restore(Handle);
+        }
+
+        if (!IsVisible)
+        {
+            Show();
+        }
+
+        WindowStyles.MakeNoActivate(Handle);
+        RestoreDesktopLayer();
     }
 
     protected override void OnClosed(EventArgs e)
