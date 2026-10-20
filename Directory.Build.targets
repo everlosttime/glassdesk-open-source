@@ -1,0 +1,7 @@
+<Project>
+  <!-- Keep the SDK projection for newer optional APIs while accepting every Win11 build. -->
+  <PropertyGroup Condition="$([System.String]::Copy('$(TargetFramework)').Contains('-windows'))">
+    <SupportedOSPlatformVersion>10.0.22000.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion>10.0.22000.0</TargetPlatformMinVersion>
+  </PropertyGroup>
+</Project>

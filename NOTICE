@@ -1,0 +1,27 @@
+Required Notice: Copyright 2026 everlosttime and GlassDesk contributors
+Required Notice: Based on GlassDesk 1.4.0; retain the historical Apache and third-party notices.
+
+GlassDesk
+Copyright 2026 everlosttime and GlassDesk contributors
+
+Eligible original additions/modifications in this public snapshot use PolyForm Noncommercial 1.0.0. Historical Apache-2.0 portions retain their grants. See LICENSE and docs/LICENSING.md.
+Third-party components retain their own copyright and license terms.
+
+AndroidLiquidGlass
+Copyright 2025 Kyant
+Material parameters and shader concepts were adapted and rewritten for C#/WPF.
+Original repository: https://github.com/Kyant0/AndroidLiquidGlass
+Source commit: 65ab177e90e5c1d8c62e70cf7755841982da65f6
+License and change attribution: docs/third-party/android-liquid-glass/
+
+Unicode Unihan 17.0.0
+Copyright 1991-2026 Unicode, Inc.
+Derived offline kMandarin reading data uses Unicode License V3.
+License: docs/third-party/unicode-license-v3.txt
+
+Microsoft .NET / WPF
+Framework components use their upstream licenses.
+Redistribution notices: docs/third-party/dotnet-10.0.12/
+
+Names and icons of applications imported by users are not bundled source assets.
+This project license does not grant rights to third-party trademarks.

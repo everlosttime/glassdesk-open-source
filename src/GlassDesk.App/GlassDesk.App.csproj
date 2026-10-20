@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Application host: the only executable this product ships.
+
+    Owns single-instance arbitration, the tray icon, the data directory and the lifetime of
+    the Dock, launchpad and settings windows. Every other project is a library.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <RootNamespace>GlassDesk.App</RootNamespace>
+    <UseWPF>true</UseWPF>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>GlassDesk</AssemblyName>
+    <StartupObject>GlassDesk.App.Program</StartupObject>
+    <ApplicationIcon>Assets\GlassDesk.ico</ApplicationIcon>
+
+    <!-- 显示在文件属性对话框里，也用于外壳展示可执行文件。 -->
+    <AssemblyTitle>GlassDesk</AssemblyTitle>
+    <Description>Windows 桌面美化套件：玻璃程序坞、启动台与统一设置中心</Description>
+
+    <!--
+      清单里声明了 PerMonitorV2。这不是可选项：缺少它时进程是系统感知，
+      GetDpiForMonitor 会对所有显示器返回系统 DPI，按屏 DPI 查询全部失真。
+      详见 app.manifest 中的说明。
+    -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GlassDesk.AppServices\GlassDesk.AppServices.csproj" />
+    <ProjectReference Include="..\GlassDesk.Core\GlassDesk.Core.csproj" />
+    <ProjectReference Include="..\GlassDesk.Platform\GlassDesk.Platform.csproj" />
+    <ProjectReference Include="..\GlassDesk.UI\GlassDesk.UI.csproj" />
+    <ProjectReference Include="..\GlassDesk.Dock\GlassDesk.Dock.csproj" />
+    <ProjectReference Include="..\GlassDesk.Launcher\GlassDesk.Launcher.csproj" />
+    <ProjectReference Include="..\GlassDesk.Settings\GlassDesk.Settings.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets/GlassDeskBrand.png" />
+    <Content Include="../../LICENSE" Link="LICENSE.txt"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../NOTICE" Link="NOTICE.txt"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Assets/GlassDesk.ico" Link="GlassDesk.ico"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../packaging/update-source.json" Link="update-source.json"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../docs/third-party/android-liquid-glass/LICENSE"
+             Link="licenses/AndroidLiquidGlass-LICENSE.txt"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../docs/third-party/android-liquid-glass/NOTICE.md"
+             Link="licenses/AndroidLiquidGlass-NOTICE.md"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

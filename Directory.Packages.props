@@ -1,0 +1,27 @@
+<Project>
+
+  <!--
+    Central Package Management.
+
+    The shipping product (src/**) has ZERO third-party package references on purpose:
+    every capability is built on the .NET base class library (MIT) plus hand-written
+    Win32 P/Invoke declarations. That keeps the "independent, closable-source friendly"
+    licensing goal in section 1 of the plan achievable and keeps the dependency
+    provenance record short.
+
+    The packages below are TEST-ONLY. They are never part of a publish output, so their
+    licences do not affect the shipped product. See docs/依赖与来源记录.md.
+  -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Test-only. Versions resolved from the official NuGet feed index. -->
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
+  </ItemGroup>
+
+</Project>

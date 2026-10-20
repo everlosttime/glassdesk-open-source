@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    阶段 4 的独立桌面测试驱动。
+
+    与 tests/GlassDesk.UiAcceptance 的分工是驱动方式，不是覆盖范围：
+    那个跑进程内的 WPF 路由事件，这个用 Windows UI Automation 定位真实控件、
+    用 SendInput 注入真实鼠标键盘，因此能覆盖原生子对话框与跨进程拖拽——
+    这两类正是路由事件够不到的地方。
+
+    它刻意不引用任何 GlassDesk.* 项目。黑盒驱动只观察窗口、控件与数据文件：
+    一旦引用产品代码，「产品改了测试跟着改」就会把缺陷一起藏进去。
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- UIAutomationClient / UIAutomationTypes 与 PngBitmapEncoder 都随
+         WindowsDesktop 框架提供，不需要额外包。 -->
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>false</UseWindowsForms>
+    <RootNamespace>GlassDesk.DesktopAcceptance</RootNamespace>
+    <!-- PerMonitorV2 声明：UIA 的控件矩形与 SendInput 的坐标必须是同一个坐标空间。 -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+</Project>

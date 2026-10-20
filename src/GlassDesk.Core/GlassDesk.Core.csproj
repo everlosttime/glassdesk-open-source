@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Data services + shared contracts.
+
+    Deliberately targets plain net10.0: this assembly must stay free of WPF and Win32
+    so the app library, settings migration and atomic-save logic stay unit-testable
+    without a desktop session.
+
+    No third-party package references. See Directory.Packages.props.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GlassDesk.Core</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "productName": "GlassDesk",
+  "productVersion": "0.2.4",
+  "assemblyVersion": "0.2.2.0",
+  "fileVersion": "0.2.2.0",
+  "appId": "GlassDesk.Capture.e3f9f152",
+  "rid": "win-x64",
+  "status": "exact-acceptance-payload",
+  "packageBaseName": "GlassDesk-0.2.4-e3f9f152-win-x64",
+  "dotnetSdkVersion": "10.0.401",
+  "runtimeVersion": "10.0.12",
+  "innoVersion": "7.1.0",
+  "innoSetupInstallerFile": "innosetup-7.1.0-x64.exe",
+  "innoSetupInstallerSha256": "0362a383ed217d4c4239b5933866dd96d3eb2102737da92f80f6057a4b40df2f",
+  "innoSetupInstallerUrl": "https://github.com/jrsoftware/issrc/releases/download/is-7_1_0/innosetup-7.1.0-x64.exe",
+  "binaryVersion": "0.2.2-capture-acceptance.20261007",
+  "packagingScript": "build/package-capture-snapshot.ps1"
+}

@@ -1,0 +1,14 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Approved generated artwork shared by window and notification-area icons. -->
+  <DrawingImage x:Key="GlassDeskBrandMark">
+    <DrawingImage.Drawing>
+      <ImageDrawing Rect="0,0,256,256">
+        <ImageDrawing.ImageSource>
+          <BitmapImage UriSource="pack://application:,,,/GlassDesk;component/Assets/GlassDeskBrand.png" CacheOption="OnLoad" />
+        </ImageDrawing.ImageSource>
+      </ImageDrawing>
+    </DrawingImage.Drawing>
+  </DrawingImage>
+</ResourceDictionary>

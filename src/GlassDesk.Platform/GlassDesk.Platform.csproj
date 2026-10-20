@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    System services: window, display, DPI, fullscreen, hotkey and shell integration.
+
+    Targets net10.0-windows because these are Windows API calls. Deliberately does NOT
+    reference WPF, so the interop layer stays usable from any UI and can be exercised from
+    a console test host.
+
+    No third-party package references: the Win32 surface we need is declared by hand in
+    Interop/ rather than pulled from a helper library.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <RootNamespace>GlassDesk.Platform</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+</Project>

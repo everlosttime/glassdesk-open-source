@@ -1,0 +1,122 @@
+<controls:GlassWindow
+    x:Class="GlassDesk.Dock.DockWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:GlassDesk.UI.Controls;assembly=GlassDesk.UI"
+    Title="GlassDesk Dock"
+    AutomationProperties.Name="GlassDesk 程序坞"
+    ShowInTaskbar="False"
+    SizeToContent="WidthAndHeight"
+    WindowStartupLocation="Manual"
+    Topmost="True"
+    AllowDrop="True"
+    Drop="OnExternalDrop"
+    DragOver="OnExternalDragOver">
+
+  <controls:GlassWindow.Resources>
+    <Style x:Key="DockEntryButton" TargetType="Button">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </controls:GlassWindow.Resources>
+
+  <!--
+    图标行是真实的应用磁贴（D-07/D-08）。磁贴条（放大、滚动、命中）由
+    DockTileStrip 承担；这里的宿主只负责把它嵌进玻璃面板。
+  -->
+  <Border
+      Background="Transparent"
+      BorderThickness="0"
+      SnapsToDevicePixels="True">
+
+    <Grid ClipToBounds="True">
+      <!-- Glass remains in screen coordinates; the live shared silhouette slides over it. -->
+      <controls:LiquidGlassSurface x:Name="GlassSurface" />
+      <Grid x:Name="DockVisualRoot" ClipToBounds="True" RenderTransformOrigin="0,0">
+        <Grid.RenderTransform>
+          <TranslateTransform x:Name="DockSlideTransform" />
+        </Grid.RenderTransform>
+        <StackPanel x:Name="DockContentLayer" Orientation="Vertical" Margin="10,8">
+
+      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+        <Button x:Name="LauncherButton" Width="48" Height="64" Margin="0,0,8,0" Padding="0"
+                Style="{StaticResource DockEntryButton}"
+                Background="Transparent" BorderThickness="0"
+                ToolTip="启动台" AutomationProperties.Name="打开启动台"
+                MouseEnter="OnEntryMouseEnter" MouseLeave="OnEntryMouseLeave"
+                Click="OnLauncherButtonClick">
+          <controls:PhoneBorder x:Name="LaunchpadTile" Width="48" Height="48" CornerRadius="16"
+                     Background="Transparent" BorderThickness="0">
+            <controls:LaunchpadGlyph OutlineBrush="{Binding DockBuiltinIconBrush, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    IsFilled="{Binding LaunchpadIconFilled, RelativeSource={RelativeSource AncestorType=Window}}" />
+          </controls:PhoneBorder>
+        </Button>
+        <Button x:Name="ThisPcButton" Width="48" Height="64" Margin="0,0,8,0" Padding="0"
+                Style="{StaticResource DockEntryButton}"
+                Background="Transparent" BorderThickness="0"
+                ToolTip="此电脑" AutomationProperties.Name="打开此电脑"
+                MouseEnter="OnEntryMouseEnter" MouseLeave="OnEntryMouseLeave"
+                Click="OnThisPcButtonClick">
+          <Viewbox x:Name="ThisPcTile" Width="48" Height="48" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Canvas Width="48" Height="48">
+              <Path Data="M6,6 H42 Q45,6 45,9 V29 Q45,32 42,32 H6 Q3,32 3,29 V9 Q3,6 6,6 Z M24,32 V39 M15,40 H33"
+                    Fill="Transparent"
+                    Stroke="{Binding DockBuiltinIconBrush, RelativeSource={RelativeSource AncestorType=Window}}"
+                    StrokeThickness="3.5" StrokeLineJoin="Round"
+                    StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+            </Canvas>
+          </Viewbox>
+        </Button>
+        <Button x:Name="DesktopIconsButton" Width="48" Height="64" Margin="0,0,8,0" Padding="0"
+                Style="{StaticResource DockEntryButton}"
+                ToolTip="切换桌面图标显示" AutomationProperties.Name="切换桌面图标显示"
+                MouseEnter="OnEntryMouseEnter" MouseLeave="OnEntryMouseLeave"
+                Click="OnDesktopIconsButtonClick">
+          <Viewbox x:Name="DesktopIconsTile" Width="48" Height="48" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Canvas Width="48" Height="48">
+              <Path Data="M6,6 H42 Q45,6 45,9 V29 Q45,32 42,32 H6 Q3,32 3,29 V9 Q3,6 6,6 Z M24,32 V39 M15,40 H33"
+                    Fill="Transparent"
+                    Stroke="{Binding DockBuiltinIconBrush, RelativeSource={RelativeSource AncestorType=Window}}"
+                    StrokeThickness="3.5" StrokeLineJoin="Round"
+                    StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+              <Path Fill="{Binding DockBuiltinIconBrush, RelativeSource={RelativeSource AncestorType=Window}}"
+                    Data="M11,10.25 H15 Q16.75,10.25 16.75,12 V16 Q16.75,17.75 15,17.75 H11 Q9.25,17.75 9.25,16 V12 Q9.25,10.25 11,10.25 Z
+                          M11,20.25 H15 Q16.75,20.25 16.75,22 V26 Q16.75,27.75 15,27.75 H11 Q9.25,27.75 9.25,26 V22 Q9.25,20.25 11,20.25 Z" />
+              <Path Data="M23,15 H37 M32,10 L37,15 L32,20 M37,24 H23 M28,19 L23,24 L28,29"
+                    Fill="Transparent"
+                    Stroke="{Binding DockBuiltinIconBrush, RelativeSource={RelativeSource AncestorType=Window}}"
+                    StrokeThickness="3.5" StrokeLineJoin="Round"
+                    StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+            </Canvas>
+          </Viewbox>
+        </Button>
+        <ContentControl x:Name="TileStripHost"
+                        AutomationProperties.Name="固定的应用"
+                        Focusable="False" />
+      </StackPanel>
+
+      <TextBlock
+          x:Name="StatusText"
+          Margin="2,8,2,0"
+          HorizontalAlignment="Center"
+          FontSize="11"
+          Visibility="Collapsed"
+          Foreground="{Binding SecondaryForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+
+        </StackPanel>
+      </Grid>
+    </Grid>
+  </Border>
+
+</controls:GlassWindow>

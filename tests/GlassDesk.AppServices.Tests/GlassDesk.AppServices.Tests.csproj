@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Tests for the application services: shortcut resolution, icon extraction and caching,
+    import, and keeping the library honest about targets that have gone away.
+
+    Separate from GlassDesk.Core.Tests because these are Windows operations: they target
+    net10.0-windows and drive real COM and real shell APIs rather than fakes. That is
+    deliberate — the defects worth catching here (a mis-declared struct, a vtable slot
+    off by one, an icon that comes back all transparent) only exist against the real
+    thing, and a fake would have cheerfully passed every one of them.
+
+    Package versions are pinned centrally in Directory.Packages.props.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <RootNamespace>GlassDesk.AppServices.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\GlassDesk.AppServices\GlassDesk.AppServices.csproj" />
+    <ProjectReference Include="..\..\src\GlassDesk.App\GlassDesk.App.csproj" />
+    <ProjectReference Include="..\..\src\GlassDesk.Core\GlassDesk.Core.csproj" />
+    <ProjectReference Include="..\GlassDesk.InstanceProbe\GlassDesk.InstanceProbe.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

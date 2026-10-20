@@ -1,0 +1,19 @@
+<Project>
+
+  <!--
+    A nested Directory.Build.props shadows the one above it rather than inheriting,
+    so the root file has to be imported explicitly.
+  -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..'))" />
+
+  <!--
+    Product code is held to a stricter bar than the test projects: a brand-new
+    codebase has no legacy warnings to grandfather, so every warning is an error.
+  -->
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+</Project>

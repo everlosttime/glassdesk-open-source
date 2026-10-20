@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GlassDesk.App/GlassDesk.App.csproj" />
+    <Project Path="src/GlassDesk.AppServices/GlassDesk.AppServices.csproj" />
+    <Project Path="src/GlassDesk.Core/GlassDesk.Core.csproj" />
+    <Project Path="src/GlassDesk.Dock/GlassDesk.Dock.csproj" />
+    <Project Path="src/GlassDesk.Launcher/GlassDesk.Launcher.csproj" />
+    <Project Path="src/GlassDesk.Platform/GlassDesk.Platform.csproj" />
+    <Project Path="src/GlassDesk.Settings/GlassDesk.Settings.csproj" />
+    <Project Path="src/GlassDesk.UI/GlassDesk.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GlassDesk.Core.Tests/GlassDesk.Core.Tests.csproj" />
+    <Project Path="tests/GlassDesk.AppServices.Tests/GlassDesk.AppServices.Tests.csproj" />
+    <Project Path="tests/GlassDesk.InstanceProbe/GlassDesk.InstanceProbe.csproj" />
+    <Project Path="tests/GlassDesk.Dock.Tests/GlassDesk.Dock.Tests.csproj" />
+    <Project Path="tests/GlassDesk.UiAcceptance/GlassDesk.UiAcceptance.csproj" />
+    <Project Path="tests/GlassDesk.LauncherAcceptance/GlassDesk.LauncherAcceptance.csproj" />
+    <Project Path="tests/GlassDesk.InteractionAcceptance/GlassDesk.InteractionAcceptance.csproj" />
+    <Project Path="tests/GlassDesk.DesktopAcceptance/GlassDesk.DesktopAcceptance.csproj" />
+  </Folder>
+</Solution>

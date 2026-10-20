@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Application services: import, icon caching, launching, and keeping the library
+    honest about targets that have gone away.
+
+    This is the layer the plan calls "应用服务" and it is where the interfaces declared in
+    GlassDesk.Core/Contracts are actually implemented. It targets net10.0-windows because
+    importing and launching are Win32 operations, but it deliberately does NOT reference
+    WPF: the Dock and the launchpad will both call into it, and neither of them should be
+    able to make it depend on their window types.
+
+    No third-party package references. See Directory.Packages.props.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <RootNamespace>GlassDesk.AppServices</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GlassDesk.Core\GlassDesk.Core.csproj" />
+    <ProjectReference Include="..\GlassDesk.Platform\GlassDesk.Platform.csproj" />
+    <EmbeddedResource Include="Resources\unihan-mandarin-17.txt" />
+  </ItemGroup>
+
+</Project>

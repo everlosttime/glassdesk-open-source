@@ -1,0 +1,30 @@
+<Project>
+
+  <!--
+    Common build settings for every project in the GlassDesk solution.
+
+    Target framework rules:
+      * src/GlassDesk.Core            -> net10.0          (no UI, no Windows APIs, unit-testable)
+      * src/GlassDesk.System          -> net10.0-windows  (Win32 interop)
+      * everything else under src/    -> net10.0-windows  (WPF)
+      * src/GlassDesk.App             -> WinExe, the only executable we ship
+  -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <Product>GlassDesk</Product>
+    <Company>GlassDesk</Company>
+    <!-- Product updates use this version; retain the delivered assembly identity. -->
+    <Version>1.4.0</Version>
+    <AssemblyVersion>0.2.2.0</AssemblyVersion>
+    <FileVersion>1.4.0.0</FileVersion>
+    <NeutralLanguage>zh-Hans</NeutralLanguage>
+
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <SatelliteResourceLanguages>en;zh-Hans</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+</Project>

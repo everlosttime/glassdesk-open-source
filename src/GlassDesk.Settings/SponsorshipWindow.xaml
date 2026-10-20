@@ -1,0 +1,48 @@
+<controls:GlassWindow x:Class="GlassDesk.Settings.SponsorshipWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:GlassDesk.UI.Controls;assembly=GlassDesk.UI"
+    Width="420" Height="560" ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+  <controls:GlassWindow.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/GlassDesk.UI;component/Theming/LiquidGlassTheme.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </controls:GlassWindow.Resources>
+  <Border Background="{Binding PanelBackgroundBrush, RelativeSource={RelativeSource AncestorType=Window}}"
+          CornerRadius="{Binding PanelCornerRadius, RelativeSource={RelativeSource AncestorType=Window}}">
+    <Grid Margin="24">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+      <Border Background="Transparent" Margin="-24,-24,-24,0" Padding="24,24,24,12"
+              MouseLeftButtonDown="OnDragArea">
+        <TextBlock x:Name="SponsorDialogHeading" FontSize="20" FontWeight="SemiBold" />
+      </Border>
+      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel>
+          <TextBlock x:Name="SponsorInstructions" Margin="0,0,0,12" TextWrapping="Wrap" />
+          <Border x:Name="SponsorCodeFrame" Width="260" Height="260" Padding="14" CornerRadius="14"
+                  HorizontalAlignment="Center" Background="White" BorderBrush="#FFD8DCE3" BorderThickness="1">
+            <Grid>
+              <Image x:Name="SponsorCodeImage" Stretch="Uniform" />
+              <TextBlock x:Name="SponsorCodeUnavailable" Foreground="#FF555B66" FontSize="14"
+                         TextAlignment="Center" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </Grid>
+          </Border>
+          <TextBlock Margin="0,12,0,0" TextWrapping="Wrap"
+                     Text="赞助金额由您决定：扫码后在手机端输入任意金额，付款结果以支付应用显示为准。" />
+          <TextBlock x:Name="SponsorshipFreeNotice" Margin="0,8,0,0" TextWrapping="Wrap"
+                     Foreground="{Binding SecondaryForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}"
+                     Text="软件免费，赞助完全自愿。不赞助也能使用全部功能。" />
+        </StackPanel>
+      </ScrollViewer>
+      <Button x:Name="CloseSponsorButton" Grid.Row="2" Content="关闭" Width="88" Height="32"
+              HorizontalAlignment="Right" Margin="0,16,0,0" IsCancel="True" Click="OnCloseClick"
+              AutomationProperties.Name="关闭赞助收款码窗口" />
+    </Grid>
+  </Border>
+</controls:GlassWindow>

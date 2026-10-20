@@ -1,0 +1,33 @@
+# Build output
+bin/
+obj/
+artifacts/
+publish/
+
+# This is an independent project: never let reference-product build output in.
+# (src/dock and src/launcher live OUTSIDE this repository root by design.)
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Test results
+TestResults/
+*.trx
+*.coverage
+coverage/
+
+# Local scratch
+tmp/
+*.log
+*.dpapi
+# Evidence logs are referenced by the delivery reports, so they must be committable.
+!docs/evidence/*.log
+!docs/evidence/**/*.log

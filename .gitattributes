@@ -1,0 +1,19 @@
+# 统一按 LF 存入与检出。
+#
+# 这不只是风格问题：本工程的编译产物受源码换行影响。`CommandLineOptions.HelpText`
+# 是 C# 原始字符串字面量，会原样保留源码换行，所以一旦某个文件在 CRLF 与 LF 之间
+# 被改写，程序集字节就会改变。锁定 LF 可以让「同一份源码 → 同一个产物」保持成立。
+* text=auto eol=lf
+
+# Preserve the vendors' CRLF bytes for the release builder's exact license comparisons.
+docs/third-party/dotnet-10.0.12/LICENSE.txt text eol=crlf
+docs/third-party/dotnet-10.0.12/ThirdPartyNotices.txt text eol=crlf
+docs/third-party/inno-setup-license.txt text eol=crlf
+
+# 二进制资源不做换行转换。
+*.png binary
+*.jpg binary
+*.ico binary
+*.exe binary
+*.dll binary
+*.zip binary

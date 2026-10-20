@@ -1,0 +1,16 @@
+{
+    "product":  "GlassDesk",
+    "version":  "1.4.0",
+    "variant":  "last-official-release-without-information-bar",
+    "originalTag":  "v1.4.0",
+    "originalCommit":  "129e46c0611bdce20e838cbea09b89f572975f94",
+    "originalRepository":  "https://github.com/everlosttime/glassdesk",
+    "exportMethod":  "Allowlisted complete src/tests plus required build/package/configuration and third-party notices. Product source/resources/tests match v1.4.0 byte-for-byte. New public documentation and scoped license metadata are authored for this export.",
+    "originalProductSourceModified":  false,
+    "privateDevelopmentHistoryIncluded":  false,
+    "license":  "Scoped: PolyForm-Noncommercial-1.0.0 for eligible original additions/modifications; existing Apache-2.0 and third-party grants retained",
+    "previousPublicBaseline":  "c825c9dad718f22900b24b255f73ddb4989d347d",
+    "licenseScopeDocument":  "docs/LICENSING.md",
+    "exportedFileManifest":  "docs/licensing/FILE-LICENSES.json",
+    "oldPublicReleaseDeletionRevokesPriorGrants":  false
+}

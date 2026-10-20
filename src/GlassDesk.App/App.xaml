@@ -1,0 +1,19 @@
+<Application
+    x:Class="GlassDesk.App.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    ShutdownMode="OnExplicitShutdown">
+  <!--
+    没有 StartupUri：宿主负责创建并持有每个窗口，产品常驻通知区域，
+    因此所有窗口都隐藏时进程依然存活。默认的 OnLastWindowClose
+    行为会在程序坞关闭的那一刻结束整个进程。
+  -->
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Assets/GlassDeskBrandMark.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/GlassDesk.UI;component/Theming/LiquidGlassTheme.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+</Application>

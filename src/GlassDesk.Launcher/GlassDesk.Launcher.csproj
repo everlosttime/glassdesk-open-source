@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Launchpad. Phase 1 ships the window shell only; the grid, paging, search and grouping
+    arrive in phase 5.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <RootNamespace>GlassDesk.Launcher</RootNamespace>
+    <UseWPF>true</UseWPF>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GlassDesk.Core\GlassDesk.Core.csproj" />
+    <ProjectReference Include="..\GlassDesk.UI\GlassDesk.UI.csproj" />
+    <ProjectReference Include="..\GlassDesk.AppServices\GlassDesk.AppServices.csproj" />
+  </ItemGroup>
+
+</Project>

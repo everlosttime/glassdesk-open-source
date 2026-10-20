@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Settings centre. Phase 1 ships a placeholder; the eight pages arrive across phases 2-6.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <RootNamespace>GlassDesk.Settings</RootNamespace>
+    <UseWPF>true</UseWPF>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>GlassDesk.Settings</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GlassDesk.Core\GlassDesk.Core.csproj" />
+    <ProjectReference Include="..\GlassDesk.UI\GlassDesk.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Sponsorship\*.png;Assets\Sponsorship\*.jpg"
+                      LogicalName="GlassDesk.Settings.Sponsorship.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

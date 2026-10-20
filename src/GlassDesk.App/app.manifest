@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <assemblyIdentity version="1.0.0.0" name="GlassDesk.app" type="win32" />
+
+  <!--
+    显式声明 PerMonitorV2。这一点不能省。
+
+    没有声明时进程是「系统感知」，后果不只是窗口跨屏不重新缩放——更隐蔽的是
+    GetDpiForMonitor 会对**每一台**显示器返回系统 DPI。在混合 DPI 环境里，
+    这意味着所有按屏 DPI 查询都在说谎，而按屏 DPI 是「物理像素 ↔ DIP」换算的唯一依据。
+
+    实测：未声明时副屏（1920×3072 @100%）被报成 150%，与真实值不符。
+
+    dpiAware 与 dpiAwareness 两个都要写：前者供旧系统读取，后者是 Windows 10 起
+    识别 V2 的正式位置。
+  -->
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+      <longPathAware xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</longPathAware>
+    </windowsSettings>
+  </application>
+
+  <!--
+    声明的 Windows 版本。缺少这些条目时，系统会让版本查询接口返回经过兼容性
+    改写的旧版本号；而本产品的多处能力判断依赖真实构建号
+    （见 WindowsCapabilities 的 RtlGetVersion 说明）。
+  -->
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Windows 10 / 11 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
+      <!-- Windows 8.1 -->
+      <supportedOS Id="{1f676c76-80e1-4239-95bb-83d0f6d0da78}" />
+      <!-- Windows 8 -->
+      <supportedOS Id="{4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}" />
+    </application>
+  </compatibility>
+
+  <!--
+    以普通用户权限运行。本产品不需要管理员权限，也不应该索取——
+    需要提权的桌面美化工具会给自己和用户都添麻烦。
+  -->
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
+    <security>
+      <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+
+</assembly>

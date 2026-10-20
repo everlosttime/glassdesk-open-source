@@ -1,0 +1,216 @@
+<controls:GlassWindow
+    x:Class="GlassDesk.Launcher.LauncherWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:GlassDesk.UI.Controls;assembly=GlassDesk.UI"
+    Title="GlassDesk 启动台"
+    AutomationProperties.Name="GlassDesk 启动台"
+    ShowInTaskbar="False"
+    WindowStartupLocation="Manual"
+    Topmost="True"
+    AllowDrop="True"
+    Drop="OnExternalDrop"
+    DragLeave="OnLauncherDragLeave"
+    DragOver="OnExternalDragOver">
+  <controls:GlassWindow.Resources>
+    <Style x:Key="FolderActionButton" TargetType="Button">
+      <Setter Property="Background" Value="#14FFFFFF" />
+      <Setter Property="Foreground" Value="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+      <Setter Property="BorderBrush" Value="#32FFFFFF" />
+      <Setter Property="Padding" Value="12,6" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <controls:PhoneBorder CornerRadius="16" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
+              <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </controls:PhoneBorder>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#2CFFFFFF" /></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter Property="Opacity" Value=".7" /></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="LauncherPageArrow" TargetType="Button">
+      <Setter Property="Foreground" Value="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+      <Setter Property="Width" Value="36" />
+      <Setter Property="Height" Value="36" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Opacity" Value=".72" />
+      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Grid Background="Transparent">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <Trigger Property="IsMouseOver" Value="True"><Setter Property="Opacity" Value="1" /></Trigger>
+        <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Opacity" Value="1" /></Trigger>
+        <Trigger Property="IsPressed" Value="True"><Setter Property="Opacity" Value=".55" /></Trigger>
+        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value=".25" /></Trigger>
+      </Style.Triggers>
+    </Style>
+    <Style x:Key="LauncherAppTile" TargetType="Button">
+      <Setter Property="Foreground" Value="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="IsTabStop" Value="False" />
+      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <controls:PhoneBorder x:Name="TileChrome" CornerRadius="22" Background="{TemplateBinding Background}"
+                       BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </controls:PhoneBorder>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TileChrome" Property="Background" Value="#10FFFFFF" /></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="TileChrome" Property="Background" Value="#18FFFFFF" /></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </controls:GlassWindow.Resources>
+  <Border x:Name="ContainerTransformClipRoot" Background="Transparent"
+          BorderThickness="0"
+          SnapsToDevicePixels="True">
+    <Grid>
+    <!-- Background is sampled offscreen; Glass is painted before native Content. -->
+    <controls:LiquidGlassSurface x:Name="GlassSurface" UseLauncherTransparency="True" />
+    <Grid x:Name="LauncherPanelRoot" HorizontalAlignment="Left" VerticalAlignment="Top">
+    <Grid x:Name="LauncherContent" Margin="40,28,40,24" RenderTransformOrigin=".5,.5">
+      <Grid.RenderTransform>
+        <ScaleTransform x:Name="ContentScaleTransform" ScaleX="1" ScaleY="1" />
+      </Grid.RenderTransform>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+      <DockPanel x:Name="SearchHeader" Grid.Row="0" LastChildFill="True" Margin="0,0,0,20" MaxWidth="600">
+        <Button DockPanel.Dock="Right" Content="添加" AutomationProperties.Name="添加应用"
+                Click="OnAddClick" Height="36" MinWidth="72" Padding="16,0" Margin="8,0,0,0"
+                Background="#12FFFFFF"
+                BorderBrush="{Binding PanelBorderBrush, RelativeSource={RelativeSource AncestorType=Window}}"
+                BorderThickness="1"
+                Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}">
+          <Button.Template>
+            <ControlTemplate TargetType="Button">
+              <controls:PhoneBorder x:Name="CapsuleChrome" Background="{TemplateBinding Background}"
+                      BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                      CornerRadius="18" SnapsToDevicePixels="True">
+                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                  Margin="{TemplateBinding Padding}" RecognizesAccessKey="True" />
+              </controls:PhoneBorder>
+              <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                  <Setter TargetName="CapsuleChrome" Property="Background" Value="#24FFFFFF" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                  <Setter TargetName="CapsuleChrome" Property="Opacity" Value="0.72" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                  <Setter TargetName="CapsuleChrome" Property="Opacity" Value="0.45" />
+                </Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Button.Template>
+        </Button>
+        <controls:PhoneBorder Height="36" CornerRadius="18" Padding="11,0" Background="#0CFFFFFF"
+                BorderBrush="{Binding PanelBorderBrush, RelativeSource={RelativeSource AncestorType=Window}}"
+                BorderThickness="1" SnapsToDevicePixels="True">
+          <TextBox x:Name="SearchBox" Height="32" FontSize="15" VerticalContentAlignment="Center"
+                   Background="Transparent" BorderThickness="0" Padding="0"
+                   AutomationProperties.Name="搜索应用" ToolTip="搜索中文、英文、拼音或别名"
+                   TextChanged="OnSearchChanged" />
+        </controls:PhoneBorder>
+      </DockPanel>
+      <Grid Grid.Row="1">
+        <Grid x:Name="PageViewport" ClipToBounds="True">
+          <ScrollViewer x:Name="OutgoingPageScroll" Visibility="Collapsed" IsHitTestVisible="False" IsEnabled="False"
+                        HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
+            <UniformGrid x:Name="OutgoingPageGrid" MaxWidth="1120" HorizontalAlignment="Center">
+              <UniformGrid.RenderTransform><TranslateTransform x:Name="OutgoingPageMotion" /></UniformGrid.RenderTransform>
+            </UniformGrid>
+          </ScrollViewer>
+          <ScrollViewer x:Name="PageScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
+            <UniformGrid x:Name="TileGrid" MaxWidth="1120" HorizontalAlignment="Center">
+              <UniformGrid.RenderTransform><TranslateTransform x:Name="IncomingPageMotion" /></UniformGrid.RenderTransform>
+            </UniformGrid>
+          </ScrollViewer>
+        </Grid>
+        <Grid x:Name="GroupPanel" Visibility="Collapsed">
+          <Border x:Name="FolderDismissArea" Background="#18000000" MouseLeftButtonDown="OnFolderOutsideDown" />
+          <Canvas x:Name="FolderCanvas">
+            <Path x:Name="FolderShadow" IsHitTestVisible="False" Fill="#13000000" Stroke="#0B000000" StrokeThickness="14" />
+            <Grid x:Name="FolderCard" ClipToBounds="True">
+              <controls:SharedGlassLens x:Name="FolderGlass" Radius="44" />
+              <DockPanel x:Name="GroupContent" Margin="18">
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource FolderActionButton}" Content="关闭" AutomationProperties.Name="关闭分组" Click="OnCloseGroup" />
+                  <Button DockPanel.Dock="Right" Style="{StaticResource FolderActionButton}" Content="改名" AutomationProperties.Name="重命名文件夹" Click="OnRenameOpenFolder" Margin="0,0,8,0" />
+                  <TextBlock x:Name="GroupTitle" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+                <TextBlock x:Name="FolderHint" DockPanel.Dock="Bottom" Text="长按拖动以整理 · 拖出面板可移回启动台" FontSize="11" Opacity=".55" Margin="4,12,0,0" />
+                <ScrollViewer x:Name="GroupScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
+                  <UniformGrid x:Name="GroupItems" Columns="4" />
+                </ScrollViewer>
+              </DockPanel>
+            </Grid>
+          </Canvas>
+        </Grid>
+        <controls:PhoneBorder x:Name="TrashDropTarget" Width="76" Height="58"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,12"
+                Visibility="Collapsed" AllowDrop="True"
+                CornerRadius="22" Background="#22EF4444" BorderBrush="#88EF4444"
+                BorderThickness="1" ToolTip="拖到这里可从启动台移除"
+                DragOver="OnTrashDragOver" Drop="OnTrashDrop">
+          <Viewbox Width="28" Height="28">
+            <Canvas Width="28" Height="28">
+              <Path Stroke="#EF4444" StrokeThickness="2" StrokeStartLineCap="Round"
+                    StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                    Data="M 5,7 L 6.2,21.5 C 6.3,22.5 7,23 8,23 H 20 C 21,23 21.7,22.5 21.8,21.5 L 23,7 M 3,5 H 25 M 10,5 V 3 C 10,2 11,1.5 12,1.5 H 16 C 17,1.5 18,2 18,3 V 5 M 10,10 V 20 M 18,10 V 20" />
+            </Canvas>
+          </Viewbox>
+        </controls:PhoneBorder>
+      </Grid>
+      <StackPanel x:Name="PageControls" Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,18,0,0">
+        <Button x:Name="PreviousPage" Style="{StaticResource LauncherPageArrow}" AutomationProperties.Name="上一页" Click="OnPreviousPage">
+          <Path Width="7" Height="12" Stretch="Uniform" Data="M6,1 L1,6 L6,11"
+                Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+        </Button>
+        <TextBlock x:Name="PageText" Margin="16,0" MinWidth="70" TextAlignment="Center" VerticalAlignment="Center" />
+        <Button x:Name="NextPage" Style="{StaticResource LauncherPageArrow}" AutomationProperties.Name="下一页" Click="OnNextPage">
+          <Path Width="7" Height="12" Stretch="Uniform" Data="M1,1 L6,6 L1,11"
+                Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+        </Button>
+      </StackPanel>
+      <TextBlock x:Name="StatusText" Grid.Row="3" Margin="0,9,0,0" HorizontalAlignment="Center"
+                 FontSize="11" TextWrapping="Wrap" Visibility="Collapsed" AutomationProperties.Name="启动台状态" />
+    </Grid>
+    </Grid>
+      <controls:LaunchpadGlyph x:Name="CollapsedGlyph" IsHitTestVisible="False"
+            OutlineBrush="{Binding DockBuiltinIconBrush, RelativeSource={RelativeSource AncestorType=Window}}"
+            IsFilled="{Binding LaunchpadIconFilled, RelativeSource={RelativeSource AncestorType=Window}}"
+            HorizontalAlignment="Left" VerticalAlignment="Top" Width="48" Height="48" Opacity="0" />
+      <Canvas x:Name="DragOverlay" IsHitTestVisible="False" />
+    </Grid>
+  </Border>
+</controls:GlassWindow>
