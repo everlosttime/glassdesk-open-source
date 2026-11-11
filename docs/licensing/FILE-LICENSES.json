@@ -99,8 +99,8 @@
     {
       "path": "README.md",
       "sourceGitBlob": null,
-      "publicGitBlob": "f9967efef42877c0a0d652348be9147e1439d543",
-      "sha256": "7e4a8c6eea597942bfd48bccba73302ac436a1d39105b324de905a016b6db1ee",
+      "publicGitBlob": "014f632fcf08f3b5112d36a1a6d4d08dcd6a65fc",
+      "sha256": "f2629b4161c559dd566328df0be7d32014112168e9a4b0c9e25f8f7c2672154b",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
@@ -918,8 +918,8 @@
     {
       "path": "docs/Release-notes-v1.6.0-public.md",
       "sourceGitBlob": null,
-      "publicGitBlob": "3fc0fb4c05913ae7fa66f47a9f63f1a09896f0fd",
-      "sha256": "4e53d547655987aa57346981869055a61d359892d2b051f4323eb6dfeba70568",
+      "publicGitBlob": "9e58a954ea70b900f6c4442c22ba0facd75e5e5c",
+      "sha256": "8a4357ae120f7db5b0e3e45e3d1ec64a63b50d6997a342b218bffc347caaa943",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"

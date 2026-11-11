@@ -11,7 +11,7 @@
 - 包含全部 src / native / tests / tools / build / packaging 源码，以及 components-src 电量桥接源码、third_party 固定依赖与对应来源归档。产品源码直接从 1.6.0 提交导出，未删减信息栏或其他功能。
 - 来源及逐文件哈希见 [SOURCE-PROVENANCE.json](SOURCE-PROVENANCE.json) 和 [逐文件记录](docs/licensing/FILE-LICENSES.json)。公开仓库保留自身历史，不导入私有 Git 开发历史、个人 Data、日志或验收截图。
 
-本次只同步源码，暂不发布 1.6.0 正式 Release，也不触发客户端更新通知。此前 1.4.0 Release 仍是历史源码快照；当前 1.6.0 源码从仓库 main 下载。
+[1.6.0 完整功能源码 Release](https://github.com/everlosttime/glassdesk-open-source/releases/tag/v1.6.0) 提供带固定依赖与逐文件来源记录的源码包；此前 1.4.0 Release 保留为历史快照。软件安装包与客户端更新通知见 [1.6.0 软件发布页](https://github.com/everlosttime/glassdesk-updates/releases/tag/v1.6.0)。
 
 ## 许可
 

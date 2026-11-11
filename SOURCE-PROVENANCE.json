@@ -28,6 +28,8 @@
   "license": "Scoped: PolyForm-Noncommercial-1.0.0 for eligible original additions/modifications; existing Apache-2.0 and third-party grants retained",
   "licenseScopeDocument": "docs/LICENSING.md",
   "exportedFileManifest": "docs/licensing/FILE-LICENSES.json",
-  "releasePublished": false,
-  "adaptationReason": "Only two historical acceptance project TargetFramework values aligned to the existing Windows product SDK target. Product implementation unchanged."
+  "releasePublished": true,
+  "adaptationReason": "Only two historical acceptance project TargetFramework values aligned to the existing Windows product SDK target. Product implementation unchanged.",
+  "sourceRelease": "https://github.com/everlosttime/glassdesk-open-source/releases/tag/v1.6.0",
+  "softwareRelease": "https://github.com/everlosttime/glassdesk-updates/releases/tag/v1.6.0"
 }
