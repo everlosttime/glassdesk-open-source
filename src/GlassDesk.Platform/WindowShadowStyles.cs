@@ -45,6 +45,9 @@ public static class WindowShadowStyles
     /// Coordinates are physical pixels; the shared display service settles DPI transitions first.
     /// </summary>
     public static bool PositionBehind(nint shadow, nint owner, PixelRect bounds)
+        => PositionBehind(shadow, owner, bounds, false);
+
+    public static bool PositionBehind(nint shadow, nint owner, PixelRect bounds, bool preserveDesktopOrder)
     {
         if (shadow == 0 || owner == 0 || shadow == owner) return false;
         if (!DisplayService.MoveWindowToPixelRect(shadow, bounds)) return false;
@@ -60,6 +63,7 @@ public static class WindowShadowStyles
 
         // Do not establish Win32 ownership: owned windows are forced ABOVE their owner,
         // whereas translucent glass needs an unowned shadow BELOW its surface.
+        if (preserveDesktopOrder) return true;
         return Dpi32.SetWindowPos(shadow, owner, 0, 0, 0, 0,
             NoMoveOrSize | NoActivate | NoOwnerZOrder);
     }

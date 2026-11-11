@@ -14,7 +14,8 @@ namespace GlassDesk.AppServices;
 /// 这覆盖打包应用（窗口身份来自归属进程的包身份）与 UWP（窗口身份挂在
 /// ApplicationFrameHost 的框架窗口上）。有效身份不同的窗口一律不算——
 /// 两个 UWP 应用共享同一个宿主进程，凭宿主进程路径强行匹配会把
-/// A 应用的窗口错认成 B 应用的。</item>
+/// A 应用的窗口错认成 B 应用的。窗口两侧身份均缺失时，允许可执行目标
+/// 与窗口进程完整路径精确匹配（例如从快捷方式导入身份的 QQ）。</item>
 /// <item>条目不带身份、目标是可执行文件 → 按进程映像路径匹配（阶段 3 已验证的路径）。</item>
 /// <item>两者都不适用 → 视为「没有已运行窗口」，点击老实启动。
 /// 退化行为如实写进交付报告：单实例应用自己会把已有窗口调到前面，
@@ -48,7 +49,7 @@ public static class WindowMatcher
 
         if (!string.IsNullOrWhiteSpace(aumid))
         {
-            return MatchByIdentity(snapshot, aumid);
+            return MatchByIdentity(snapshot, aumid, CanMatchByImage(entry) ? NormalizePath(entry.Target) : null);
         }
 
         if (CanMatchByImage(entry))
@@ -89,17 +90,14 @@ public static class WindowMatcher
             return entry.AppUserModelId;
         }
 
-        if (!entry.Target.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
         if (identityCache is not null && identityCache.TryGetValue(entry.Id, out var cached))
         {
             return cached;
         }
 
-        var resolved = WindowIdentity.TryGetShortcutAumid(entry.Target);
+        var resolved = entry.Target.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase)
+            ? ShortcutResolver.Resolve(entry.Target)?.Aumid
+            : LaunchTargetIdentity.ReadManagedShellLauncher(entry.Target);
 
         if (identityCache is not null)
         {
@@ -111,12 +109,12 @@ public static class WindowMatcher
 
     /// <summary>
     /// 按身份筛窗口。窗口有效身份与条目身份<strong>不一致</strong>时不算匹配，
-    /// 也不回退到映像路径——这正是「两侧都有身份但不一致，不得凭宿主进程
-    /// 路径强行匹配」这条规则的落点。
+    /// 也不回退到映像路径。仅窗口身份完全缺失时，才允许完整可执行路径匹配。
     /// </summary>
     private static List<WindowIdentityInfo> MatchByIdentity(
         IReadOnlyList<WindowIdentityInfo> windows,
-        string aumid)
+        string aumid,
+        string? imageFallback)
     {
         var matches = new List<WindowIdentityInfo>();
 
@@ -126,11 +124,14 @@ public static class WindowMatcher
             {
                 matches.Add(window);
             }
-
-            // 到这里的窗口身份是空或不同。身份不同的窗口即使映像路径碰巧等于
-            // 目标也不算——身份是应用自己声明的，声明对不上就不可信。
-            // 身份为空的窗口不在此列：经典 Win32 程序两侧都读不出身份，
-            // 它们的归属仍由映像路径判定（MatchWindows 的第二条路径）。
+            else if (string.IsNullOrWhiteSpace(window.EffectiveAumid) && imageFallback is not null
+                && string.Equals(window.ImagePath, imageFallback, StringComparison.OrdinalIgnoreCase))
+            {
+                // Imported Win32 shortcuts may declare an AUMID that their
+                // own windows never publish. Require the exact executable;
+                // never override a nonempty, conflicting window identity.
+                matches.Add(window);
+            }
         }
 
         return matches;

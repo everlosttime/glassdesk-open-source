@@ -23,6 +23,65 @@ public sealed class FastStartupRegistrationTests : IDisposable
 
     private StartupRegistration Create() => new(_key, _id, _id);
 
+    private static StartupChangeResult Adopt(StartupRegistration service, string executable)
+    {
+        var method=typeof(StartupRegistration).GetMethod("SetEnabledForCurrentInstallation");
+        Assert.NotNull(method);
+        return (StartupChangeResult)method.Invoke(service,[executable])!;
+    }
+
+    [Fact]
+    public void ExplicitAdoptionReplacesAStaleLegacyPathAndRemovesItsDuplicate()
+    {
+        var old=Path.Combine(_root,"Old",Path.GetFileName(_executable));
+        _key.SetValue(_id,$"\"{old}\" --autostart"); // Old drive/file no longer exists.
+        var service=Create();
+        Assert.Equal(StartupRegistrationState.OtherTarget,service.Query(_executable).State);
+        Assert.False(service.SetEnabled(_executable,true).Succeeded);
+        var result=Adopt(service,_executable);
+        Assert.True(result.Succeeded,result.Error);
+        Assert.Equal(StartupRegistrationState.Owned,service.Query(_executable).State);
+        Assert.Null(_key.GetValue(_id));
+        XNamespace ns="http://schemas.microsoft.com/windows/2004/02/mit/task";
+        Assert.Equal(_executable,ReadTask().Descendants(ns+"Command").Single().Value);
+    }
+
+    [Fact]
+    public void ExplicitAdoptionMovesAnOwnedTaskToTheCurrentInstallation()
+    {
+        var service=Create(); Assert.True(service.SetEnabled(_executable,true).Succeeded);
+        var current=Path.Combine(_root,"New",Path.GetFileName(_executable));
+        Directory.CreateDirectory(Path.GetDirectoryName(current)!);File.WriteAllText(current,"placeholder");
+        Assert.False(service.SetEnabled(current,true).Succeeded);
+        Assert.True(Adopt(service,current).Succeeded);
+        Assert.Equal(StartupRegistrationState.Owned,service.Query(current).State);
+        Assert.Equal(StartupRegistrationState.OtherTarget,service.Query(_executable).State);
+    }
+
+    [Fact]
+    public void ExplicitAdoptionDoesNotReplaceAnUnrelatedLegacyProgram()
+    {
+        var command="\"C:\\Windows\\System32\\notepad.exe\" --autostart";
+        _key.SetValue(_id,command);
+        Assert.False(Adopt(Create(),_executable).Succeeded);
+        Assert.Equal(command,_key.GetValue(_id));
+    }
+
+    [Fact]
+    public void ExplicitAdoptionRollsBackTaskWhenLegacyCleanupCannotWrite()
+    {
+        var service=Create(); Assert.True(service.SetEnabled(_executable,true).Succeeded);
+        var oldCommand=$"\"{_executable}\" --autostart"; _key.SetValue(_id,oldCommand);
+        var current=Path.Combine(_root,"New",Path.GetFileName(_executable));
+        Directory.CreateDirectory(Path.GetDirectoryName(current)!);File.WriteAllText(current,"placeholder");
+        using var readOnly=Registry.CurrentUser.OpenSubKey(@"Software\GlassDesk.Tests\"+_id,false)!;
+        var result=Adopt(new StartupRegistration(readOnly,_id,_id),current);
+        Assert.False(result.Succeeded);
+        XNamespace ns="http://schemas.microsoft.com/windows/2004/02/mit/task";
+        Assert.Equal(_executable,ReadTask().Descendants(ns+"Command").Single().Value);
+        Assert.Equal(oldCommand,_key.GetValue(_id));
+    }
+
     [Fact]
     public void 启用登记无延迟交互登录任务且没有Run重复项()
     {

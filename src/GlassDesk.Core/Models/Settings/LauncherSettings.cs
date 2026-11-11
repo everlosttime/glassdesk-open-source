@@ -3,6 +3,9 @@ namespace GlassDesk.Core.Models.Settings;
 /// <summary>启动台的网格、窗口与搜索行为。</summary>
 public sealed class LauncherSettings
 {
+    /// <summary>使用平铺图标和具名筛选分组，关闭拖动创建文件夹。</summary>
+    public bool GroupModeEnabled { get; set; } = true;
+
     /// <summary>每页的网格行数。</summary>
     public int Rows { get; set; } = 5;
 
@@ -27,4 +30,7 @@ public sealed class LauncherSettings
     /// 再次打开时恢复上次停留的页面，关闭则总是从第一页开始。
     /// </summary>
     public bool RememberLastPage { get; set; } = true;
+
+    /// <summary>提高启动台形变期间的动态背景更新频率；默认开启，可手动关闭。</summary>
+    public bool HighRefreshAnimationsEnabled { get; set; } = true;
 }

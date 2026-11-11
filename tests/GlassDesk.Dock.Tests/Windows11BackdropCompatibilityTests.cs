@@ -10,6 +10,137 @@ namespace GlassDesk.Dock.Tests;
 
 public sealed class Windows11BackdropCompatibilityTests(ITestOutputHelper output)
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SampledWorkerKeepsForeignPixelsExclusionsAndSceneTimesAcrossHideShow(bool documented)
+    {
+        if(GlassDesk.Platform.WindowsCapabilities.BuildNumber!=26100)return;
+        using var fixture=new Fixture();
+        StaTest.Run(()=>
+        {
+            SetThreadDpiAwarenessContext(-4);var events=new List<CaptureTrace>();
+            var own=new Window{Left=320,Top=220,Width=200,Height=120,Background=Brushes.Red,
+                ShowInTaskbar=false,WindowStyle=WindowStyle.None};own.Show();
+            try
+            {
+                using var capture=new IsolatedDesktopSceneCapture(new(300,200,240,160),documented,events.Add,CompatibilityProbePath.File("GlassCaptureProbe.exe"));
+                var target=new byte[80*40*4];var crop=new PixelBounds(60,40,180,120);
+                CapturePixels ReadSample(byte blue,byte green,long barrier=0)
+                {
+                    var clock=Stopwatch.StartNew();CapturePixels? last=null;
+                    while(clock.Elapsed<TimeSpan.FromSeconds(6))
+                    {
+                        global::Program.Pump(TimeSpan.FromMilliseconds(5));
+                        var frame=capture.TryReadSampled(crop,80,40,target,TimeSpan.FromMilliseconds(30),sourceNotBeforeTicks:barrier);
+                        if(frame is not null)last=frame;
+                        if(frame is not null && frame.Center.SequenceEqual(new byte[]{blue,green,0,255}))
+                        {Assert.True(frame.SourceQpcTicks>=barrier);return frame;}
+                    }
+                    throw new TimeoutException($"Real sampled worker expected BGRA ({blue},{green},0,255); last="+
+                        (last is null?"no frame":string.Join(",",last.Center))+$" source={last?.SourceQpcTicks} barrier={barrier}.");
+                }
+                _=ReadSample(255,0);fixture.Send("hide");_=ReadSample(0,255,Stopwatch.GetTimestamp());
+                fixture.Send("show");_=ReadSample(255,0,Stopwatch.GetTimestamp());
+                Assert.Contains(events,t=>t.Stage=="NativePixels" && t.Width==(documented?240:120) && t.Height==(documented?160:80));
+            }
+            finally{own.Close();}
+        });
+    }
+
+    [Fact]
+    public async Task ExternalFixtureSurvivesAnAcknowledgementReaderHoldingTheFile()
+    {
+        using var fixture=new Fixture();fixture.Send("hide");
+        using var held=File.Open(fixture.AcknowledgementPath,FileMode.Open,FileAccess.Read,FileShare.Read);
+        var release=Task.Run(()=>{Thread.Sleep(400);held.Dispose();});
+        try{fixture.Send("show");}
+        finally{await release;}
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void DesktopOnlySceneIgnoresCoveringWindowsAndStillUpdatesItsDesktopSource(bool shared, bool visibleCarrier)
+    {
+        using var fixture = new Fixture();
+        StaTest.Run(() =>
+        {
+            SetThreadDpiAwarenessContext(-4);
+            // The green fixture is a controlled desktop source; a separate blue
+            // application window covers it. Only the selected source may be sampled.
+            using IDesktopSceneCapture capture = shared
+                ? new SharedDesktopSceneCapture(new(300, 200, 240, 160), visibleCarrier,
+                    null, 0, null, desktopOnly: true, () => fixture.BottomHandle)
+                : new DocumentedDesktopSceneCapture(new(300, 200, 240, 160), visibleCarrier,
+                    null, null, () => fixture.BottomHandle, 26100, desktopOnly: true);
+            var type = capture.GetType();
+            var initial = Read(type, capture,
+                frame => Is(frame, 20, 20, 0, 255, 0) && Is(frame, 100, 80, 0, 255, 0));
+            output.WriteLine("Initial desktop pixels verified.");
+            var launcher = new Window { Left = 320, Top = 220, Width = 200, Height = 120,
+                Background = Brushes.Red, ShowInTaskbar = false, WindowStyle = WindowStyle.None };
+            try
+            {
+                launcher.Show();
+                capture.UpdateExclusions();
+                launcher.Hide();
+                fixture.Send("move");
+                Assert.False(capture.UpdateExclusions());
+                // Unrelated window motion need not repaint a static desktop.
+                // Its last green frame remains valid; any newly emitted frame
+                // must also contain no blue covering-window pixels.
+                Assert.True(Is(initial, 100, 80, 0, 255, 0));
+                for (var i = 0; i < 6; i++)
+                {
+                    var next = capture.TryRead(TimeSpan.FromMilliseconds(16));
+                    if (next is not null) Assert.True(Is(next, 100, 80, 0, 255, 0) && Is(next, 200, 120, 0, 255, 0));
+                    global::Program.Pump(TimeSpan.FromMilliseconds(10));
+                }
+                output.WriteLine("Desktop pixels after own window and cover movement verified.");
+                fixture.Send("red");
+                Read(type, capture,
+                    frame => Is(frame, 100, 80, 0, 0, 255));
+            }
+            finally { launcher.Close(); }
+        });
+    }
+
+    [Fact]
+    public void OwnWindowExclusionChangesDoNotAdvanceTheForeignSceneRevision()
+    {
+        StaTest.Run(() =>
+        {
+            SetThreadDpiAwarenessContext(-4);
+            using var capture = new SharedDesktopSceneCapture(new(300, 200, 240, 160),
+                isolatedParentProcess: Environment.ProcessId);
+            var revision = capture.SceneRevision;
+            var own = new Window
+            {
+                Left = 330,
+                Top = 230,
+                Width = 120,
+                Height = 80,
+                ShowInTaskbar = false,
+                WindowStyle = WindowStyle.None,
+            };
+            try
+            {
+                own.Show();
+                Assert.False(capture.UpdateExclusions());
+                Assert.Equal(revision, capture.SceneRevision);
+            }
+            finally
+            {
+                own.Close();
+            }
+            Assert.False(capture.UpdateExclusions());
+            Assert.Equal(revision, capture.SceneRevision);
+        });
+    }
+
     [Fact]
     public void SharedCarrierIsExcludedFromTaskSwitchingWhileLiveCaptureKeepsUpdating()
     {
@@ -115,13 +246,62 @@ public sealed class Windows11BackdropCompatibilityTests(ITestOutputHelper output
                 frame => Is(frame, 170, 100, 255, 0, 0) && Is(frame, 220, 130, 0, 255, 0));
             Assert.True(resized.SourceQpcTicks>=resizedAt);
             fixture.Send("hide");
-            Assert.False(capture.UpdateExclusions());
-            Assert.Equal(visual, visualField.GetValue(capture));
+            Assert.True(capture.UpdateExclusions());
             Read(typeof(SharedDesktopSceneCapture), capture, frame => Is(frame, 170, 100, 0, 255, 0));
+            revision = capture.SceneRevision;
             fixture.Send("add");
             Assert.True(capture.UpdateExclusions());
-            Assert.NotEqual(visual, visualField.GetValue(capture));
+            // A later COM allocation may reuse the pre-hide visual's address.
+            // The acquisition epoch and delivered pixels establish freshness.
+            Assert.True(capture.SceneRevision > revision);
             Read(typeof(SharedDesktopSceneCapture), capture, frame => Is(frame, 120, 96, 0, 255, 255));
+        });
+    }
+
+    [Theory]
+    [InlineData("hide")]
+    [InlineData("minimize")]
+    [InlineData("close")]
+    public void ForeignWindowRemovalInvalidatesTheSceneBeforeTheNextReveal(string command)
+    {
+        if (GlassDesk.Platform.WindowsCapabilities.BuildNumber != 26100) return;
+        using var fixture = new Fixture();
+        StaTest.Run(() =>
+        {
+            SetThreadDpiAwarenessContext(-4);
+            using var capture = CreateCarrierCapture();
+            Read(typeof(SharedDesktopSceneCapture), capture, frame => Is(frame, 100, 80, 255, 0, 0));
+            var carrier = capture.CarrierHandle;
+            var launcher = new Window { Left = 320, Top = 220, Width = 200, Height = 120,
+                Background = Brushes.Red, ShowInTaskbar = false, WindowStyle = WindowStyle.None };
+            try
+            {
+                launcher.Show(); capture.UpdateExclusions();
+                launcher.Hide(); capture.UpdateExclusions();
+                var previousRevision = capture.SceneRevision;
+                var removedAt = Stopwatch.GetTimestamp();
+                fixture.Send(command);
+                // A hidden HWND may retain its redirected surface. Merely dropping
+                // queued WGC frames cannot invalidate that surface in the parent.
+                Assert.True(capture.UpdateExclusions());
+                Assert.True(capture.SceneRevision > previousRevision);
+                Assert.Equal(carrier, capture.CarrierHandle);
+                launcher.Show(); capture.UpdateExclusions();
+                var fresh = Read(typeof(SharedDesktopSceneCapture), capture,
+                    frame => Is(frame, 100, 80, 0, 255, 0));
+                Assert.True(fresh.SourceQpcTicks >= removedAt);
+                if (command != "close")
+                {
+                    fixture.Send("show");
+                    Read(typeof(SharedDesktopSceneCapture), capture, frame => Is(frame, 100, 80, 255, 0, 0),expectedWindow:fixture.TopHandle,
+                        repaintSource:()=>{fixture.Send("repaint");return fixture.Status;});
+                    launcher.Hide(); capture.UpdateExclusions();
+                    fixture.Send(command);
+                    launcher.Show(); capture.UpdateExclusions();
+                    Read(typeof(SharedDesktopSceneCapture), capture, frame => Is(frame, 100, 80, 0, 255, 0));
+                }
+            }
+            finally { launcher.Close(); }
         });
     }
 
@@ -343,7 +523,8 @@ public sealed class Windows11BackdropCompatibilityTests(ITestOutputHelper output
             && Math.Abs(frame.Pixels[i + 2] - r) <= 3 && frame.Pixels[i + 3] >= 250;
     }
 
-    private static CapturePixels Read(Type type, object capture, Func<CapturePixels, bool> matches)
+    private static CapturePixels Read(Type type, object capture, Func<CapturePixels, bool> matches,
+        nint expectedWindow=0,Func<string>? repaintSource=null,[System.Runtime.CompilerServices.CallerLineNumber] int callerLine=0)
     {
         var method = type.GetMethod("TryRead", BindingFlags.NonPublic | BindingFlags.Instance)!;
         var watch = Stopwatch.StartNew();
@@ -354,14 +535,53 @@ public sealed class Windows11BackdropCompatibilityTests(ITestOutputHelper output
             if (last is not null && matches(last)) return last;
             global::Program.Pump(TimeSpan.FromMilliseconds(10));
         }
-        throw new TimeoutException("Documented scene did not deliver expected pixels. Center=" +
-            (last is null ? "no frame" : string.Join(",", last.Center)));
+        var diagnostic="";
+        if(expectedWindow!=0)
+        {
+            try
+            {
+                var visible=IsWindowVisible(expectedWindow);
+                _=GetWindowDisplayAffinity(expectedWindow,out var affinity);
+                _=DwmGetWindowAttribute(expectedWindow,14,out var cloaked,sizeof(int));
+                var nativeBounds=WgcWindowCapture.ReadScreenBounds(expectedWindow);
+                var reference=WgcWindowCapture.Capture(expectedWindow,TimeSpan.FromSeconds(2));
+                global::Program.Pump(TimeSpan.FromMilliseconds(100));
+                var referenceAgain=WgcWindowCapture.Capture(expectedWindow,TimeSpan.FromSeconds(2));
+                var sourceState=repaintSource?.Invoke();global::Program.Pump(TimeSpan.FromMilliseconds(80));
+                var repainted=WgcWindowCapture.Capture(expectedWindow,TimeSpan.FromSeconds(2));
+                var before=(CapturePixels?)method.Invoke(capture,[TimeSpan.FromMilliseconds(30),CancellationToken.None,0L,false]);
+                type.GetMethod("DiagnosticReplaceVisual",BindingFlags.NonPublic|BindingFlags.Instance)?.Invoke(capture,null);
+                global::Program.Pump(TimeSpan.FromMilliseconds(80));
+                var after=(CapturePixels?)method.Invoke(capture,[TimeSpan.FromMilliseconds(30),CancellationToken.None,0L,false]);
+                diagnostic=" Independent window visible="+visible+" center="+(reference is null?"no frame":string.Join(",",reference.Center))
+                    +" affinity="+affinity+" cloaked="+cloaked+" bounds="+nativeBounds
+                    +" second center="+(referenceAgain is null?"no frame":string.Join(",",referenceAgain.Center))
+                    +" after source repaint="+(repainted is null?"no frame":string.Join(",",repainted.Center))
+                    +" expected HWND="+expectedWindow+" source state="+sourceState
+                    +" before forced rebind="+(before is null?"no frame":string.Join(",",before.Center))
+                    +" after forced rebind="+(after is null?"no frame":string.Join(",",after.Center));
+            }
+            catch(Exception error){diagnostic=" Diagnostic failed: "+error;}
+        }
+        throw new TimeoutException("Documented scene did not deliver expected pixels at caller line "+callerLine+". Center=" +
+            (last is null ? "no frame" : string.Join(",", last.Center))+diagnostic);
     }
 
     private sealed class Fixture : IDisposable
     {
         private readonly string _root = Path.Combine(Path.GetTempPath(), "GlassDesk-compatibility-" + Guid.NewGuid().ToString("N"));
         private readonly Process _process;
+        private readonly Task<string> _stderr;
+        public string Status=>File.ReadAllText(Path.Combine(_root,"state.json"));
+        public string AcknowledgementPath=>Path.Combine(_root,"ack.txt");
+        public nint BottomHandle
+        {
+            get
+            {
+                using var ready = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(_root, "ready.json")));
+                return (nint)ready.RootElement.GetProperty("bottom").GetInt64();
+            }
+        }
         public nint TopHandle
         {
             get
@@ -374,9 +594,10 @@ public sealed class Windows11BackdropCompatibilityTests(ITestOutputHelper output
         {
             Directory.CreateDirectory(_root);
             var probe = CompatibilityProbePath.File("GlassCaptureProbe.dll");
-            var start = new ProcessStartInfo("D:\\dotnet10\\dotnet.exe") { UseShellExecute = false, CreateNoWindow = true };
+            var start = new ProcessStartInfo("D:\\dotnet10\\dotnet.exe") { UseShellExecute = false, CreateNoWindow = true,RedirectStandardError=true };
             start.ArgumentList.Add(probe); start.ArgumentList.Add("fixture"); start.ArgumentList.Add(_root);
             _process = Process.Start(start)!;
+            _stderr=_process.StandardError.ReadToEndAsync();
             Wait(() => File.Exists(Path.Combine(_root, "ready.json")));
         }
         public void Send(string command)
@@ -398,7 +619,7 @@ public sealed class Windows11BackdropCompatibilityTests(ITestOutputHelper output
             var timer = Stopwatch.StartNew();
             while (timer.Elapsed < TimeSpan.FromSeconds(10))
             {
-                if (_process.HasExited) throw new Exception("Fixture exited: " + _process.ExitCode);
+                if (_process.HasExited) throw new Exception("Fixture exited: " + _process.ExitCode+" "+_stderr.GetAwaiter().GetResult());
                 try { if (ready()) return; } catch (IOException) { }
                 Thread.Sleep(20);
             }
@@ -416,6 +637,7 @@ public sealed class Windows11BackdropCompatibilityTests(ITestOutputHelper output
     }
 
     [DllImport("user32.dll")] private static extern bool GetWindowDisplayAffinity(nint hwnd, out uint affinity);
+    [DllImport("dwmapi.dll")] private static extern int DwmGetWindowAttribute(nint hwnd,int attribute,out int value,int size);
     [DllImport("user32.dll")] private static extern nint GetWindowLongPtrW(nint hwnd, int index);
     [DllImport("user32.dll")] private static extern nint GetWindow(nint hwnd, uint command);
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(nint hwnd);

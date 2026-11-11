@@ -1,3 +1,4 @@
+// Public 1.6.0 adaptation: information-bar-specific implementation is excluded.
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -46,9 +47,6 @@ internal sealed partial class AppHost : IDisposable
 
     /// <summary>用于接收托盘消息的隐藏窗口的窗口类名。</summary>
     private const string MessageWindowName = "GlassDesk.TrayMessageWindow";
-
-    /// <summary>HWND_MESSAGE：一种只为接收消息而存在的窗口。</summary>
-    private static readonly nint MessageOnlyWindow = new(-3);
 
     private readonly Application _application;
     private readonly CommandLineOptions _options;
@@ -147,6 +145,7 @@ internal sealed partial class AppHost : IDisposable
 
         _data = new GlassDeskDataStore(AppPaths.ForCurrentUser());
         _loadReport = _data.LoadAll();
+        LoadNaiwaOptions();
         _backdropDiagnostics = GlassDesk.UI.BackdropRecovery.BeginAutomaticDiagnostics(_data.Paths.LogDirectory);
 
         // 应用服务（导入、启动、图标、失效复查）在这里建一次，
@@ -178,14 +177,26 @@ internal sealed partial class AppHost : IDisposable
         CreateTrayIcon();
 
         CreateWindows();
+        InitializeDefaultAutostart();
         InitializePerformanceCoordinator();
         InitializeInteractionController();
+        InitializeNearby();
+        InitializeNativeRenderTest();
+
+        // 首次点击启动台之前先在空闲帧采样并过滤一次背景；不会抢占 Dock 的首帧。
+        _application.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle, new Action(() =>
+        {
+            if (!_disposed && !_shuttingDown && _launcher?.IsVisible != true)
+                _launcher?.PrewarmNextRevealMaterial();
+        }));
 
         theme.Changed += OnThemeChanged;
 
         WriteStartupLog();
 
         InitializeUpdates();
+        InitializeOnboarding();
+        if (StartupIntent.ShouldOpenSettings(_options)) ShowSettings();
 
         return StartupOutcome.Started;
     }
@@ -237,8 +248,13 @@ internal sealed partial class AppHost : IDisposable
         }
 
         _deferredCommandGate.Close();
+        _desktopRecoveryTimer?.Stop();
 
+        // Restore the desktop before stopping services that can fail during teardown.
+        DisposeInteractionController();
+        DisposeOnboarding();
         DisposeUpdates();
+        DisposeNearbyUi();
 
         if (ThemeService.Current is { } theme)
         {
@@ -251,9 +267,11 @@ internal sealed partial class AppHost : IDisposable
         }
 
         DisposeInteractionController();
+        StopNaiwa();
         DisposePerformanceCoordinator();
         _backdropDiagnostics?.Dispose(); _backdropDiagnostics = null;
 
+        StopTrayRecovery();
         _tray?.Dispose();
         _tray = null;
 
@@ -302,23 +320,31 @@ internal sealed partial class AppHost : IDisposable
 
     private void ShowSettings()
     {
-        if (_settings is null || _primaryDisplaySession?.IsAvailable != true)
+        if (_disposed || _shuttingDown || _primaryDisplaySession?.IsAvailable != true)
         {
             return;
         }
 
-        _settings.RefreshDiagnostics(_loadReport);
-        _settings.RefreshStartupRegistration();
-        _settings.RefreshInstallationStatus(() =>
+        var settings = EnsureSettingsWindow();
+        settings.RefreshDiagnostics(_loadReport);
+        settings.RefreshStartupRegistration();
+        settings.RefreshInstallationStatus(() =>
             new InstallationLocator().Inspect(Environment.ProcessPath ?? string.Empty));
 
-        if (!_settings.IsVisible)
+        if (!settings.IsVisible)
         {
-            _settings.PositionOnPrimary();
-            _settings.Show();
+            settings.PositionOnPrimary();
+            settings.Show();
         }
 
-        _settings.Activate();
+        settings.Activate();
+        // First Show initializes the HWND and refreshes registration again.
+        // Apply the deferred failure only after that refresh has completed.
+        if (_startupRegistrationFailure is { } failure)
+        {
+            settings.ShowStartupRegistrationFailure(failure);
+            _startupRegistrationFailure=null;
+        }
     }
 
     private void ExitApplication()
@@ -326,6 +352,7 @@ internal sealed partial class AppHost : IDisposable
         // 必须放行窗口关闭，关停才能走完，
         // 否则下面的关闭处理函数会把它拦住。
         _deferredCommandGate.Close();
+        _desktopRecoveryTimer?.Stop();
         _shuttingDown = true;
 
         // 显式关停：启动台和设置窗口平时常是隐藏的，
@@ -348,25 +375,12 @@ internal sealed partial class AppHost : IDisposable
 
     private void CreateWindows()
     {
-        _dock = new DockWindow();
         _launcher = new LauncherWindow();
         var primaryDisplay = _primaryDisplaySession
             ?? throw new InvalidOperationException("Primary Display must be captured before creating GlassDesk windows.");
-        _dock.BindPrimaryDisplay(primaryDisplay);
         _launcher.BindPrimaryDisplay(primaryDisplay);
         _launcher.ContainerAnchorProvider = () => _dock?.GetLauncherButtonPixelBounds();
         _launcher.IsVisibleChanged += (_, e) => _dock?.SetLauncherContainerState(e.NewValue is true);
-        _settings = new SettingsWindow();
-        _settings.BindPrimaryDisplay(primaryDisplay);
-
-        _settings.AttachDataStore(_data!, _loadReport);
-        _settings.AttachStartupRegistration(
-            new StartupRegistration(),
-            Environment.ProcessPath ?? string.Empty);
-        _settings.AttachInstallation(new InstallationLocator().Inspect(Environment.ProcessPath ?? string.Empty));
-        _dock.AttachServices(_services!, _dockSettings!, (PixelRect? source) =>
-            ToggleLauncherFromDock(_launcher, source, ShowLauncher));
-        _dock.ToggleDesktopIcons = () => ExecuteInteraction(GlassDesk.Core.Input.InputAction.ToggleDesktopIcons);
         _launcher.AttachServices(_services!, _loadReport?.LibraryStatus != LoadStatus.Unrecoverable);
         _launcher.InternalDragStarted += (_, _) => _dock?.RaiseAboveLauncherDuringDrag();
         _launcher.InternalDragFinished += (_, _) => _launcher?.RaiseAboveDockAfterDrag();
@@ -379,31 +393,19 @@ internal sealed partial class AppHost : IDisposable
             else
                 _application.Dispatcher.BeginInvoke(RefreshLibraryForPerformance);
         };
-        _settings.LauncherSettingsChanged += (_, settings) => _launcher?.ApplySettings(settings);
-
         _launcher.ApplySettings(_data!.Settings.Current.Launcher);
 
         var icon = CreateWindowIcon();
-        foreach (Window window in new Window[] { _dock, _launcher, _settings })
-        {
-            window.Icon = icon;
+        _launcher.Icon = icon;
+        _launcher.Closing += OnWindowClosing;
 
-            // 一次误触的关闭请求（比如在程序坞上按 Alt+F4）不能把产品带下线；
-            // 退出是托盘菜单的职责。
-            window.Closing += OnWindowClosing;
-        }
-
-        _dock.Show();
+        CreateDesktopBars();
 
         if (StartupIntent.ShouldOpenLauncher(_options))
         {
             ShowLauncher();
         }
 
-        if (StartupIntent.ShouldOpenSettings(_options))
-        {
-            ShowSettings();
-        }
     }
 
     private static BitmapSource CreateWindowIcon()
@@ -420,7 +422,9 @@ internal sealed partial class AppHost : IDisposable
             PositionX = 0,
             PositionY = 0,
             WindowStyle = 0,
-            ParentWindow = MessageOnlyWindow,
+            // A hidden top-level HWND receives TaskbarCreated broadcasts; an
+            // HWND_MESSAGE host would miss Explorer recreation events.
+            ParentWindow = 0,
         };
 
         _messageWindow = new HwndSource(parameters);
@@ -438,16 +442,25 @@ internal sealed partial class AppHost : IDisposable
 
         _tray = new TrayIcon(_messageWindow.Handle);
         _tray.Show(_trayIconHandle, "GlassDesk");
+        StartTrayRecovery();
     }
 
     private nint OnMessageWindowProc(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
     {
+        if (TrayIcon.TaskbarCreatedMessage != 0 && msg == TrayIcon.TaskbarCreatedMessage)
+        {
+            RefreshTrayRegistration();
+            QueueDesktopBarsRecovery();
+            handled = true;
+            return 0;
+        }
         if (msg == 0x0312)
         {
             if (_settings?.TryCaptureRegisteredHotkey(lParam) != true)
             {
                 var key = (uint)((lParam.ToInt64() >> 16) & 0xFFFF);
-                if (_performance?.IsSuppressionRequested == true && _launcher?.IsVisible != true && key is 5 or 6 or 0x100 or 0x101)
+                if (_performance?.IsSuppressionRequested == true && _launcher?.IsVisible != true
+                    && (key is 5 or 6 or 0x100 or 0x101) && _interaction?.IsGameSleepHotkey(wParam.ToInt32()) != true)
                 { handled = true; return 0; }
                 _interaction?.HandleHotkey(wParam.ToInt32());
             }
@@ -594,6 +607,12 @@ internal sealed partial class AppHost : IDisposable
 
     private void OnThemeChanged(object? sender, EventArgs e)
     {
+        if (_data is not null && _desktopBarsPinned != _data.Settings.Current.Appearance.PinBarsToDesktop)
+        {
+            _desktopBarsNeedRebuild = true;
+            QueueDesktopBarsRecovery();
+        }
+        OnPerformanceSettingsChanged(sender, e);
         // 这个标志是按浅色或深色背景分别绘制的，所以必须重新渲染。
         if (_tray is null)
         {
@@ -601,11 +620,13 @@ internal sealed partial class AppHost : IDisposable
         }
 
         _tray.Update(TrayIconArtwork.CreateHandle(32), "GlassDesk");
+        if (_trayRecoveryTimer is not null)
+            _trayRecoveryTimer.Interval = TimeSpan.FromSeconds(_tray.IsVisible ? 30 : 2);
 
         var icon = CreateWindowIcon();
-        foreach (Window window in new Window[] { _dock!, _launcher!, _settings! })
+        foreach (var window in new Window?[] { _dock, _launcher, _settings })
         {
-            window.Icon = icon;
+            if (window is not null) window.Icon = icon;
         }
     }
 
@@ -625,6 +646,8 @@ internal sealed partial class AppHost : IDisposable
         {
             if (window is LauncherWindow launcher)
                 launcher.CloseWithTransition();
+            else if (window is DockWindow)
+                ((GlassDesk.UI.Controls.GlassWindow)window).HideSurface();
             else
                 window.Hide();
         }

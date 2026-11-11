@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Media;
+using GlassDesk.Core.Models;
 using GlassDesk.UI.Theming;
 
 namespace GlassDesk.UI.Controls;
@@ -39,6 +40,12 @@ public sealed class SharedGlassLens : FrameworkElement
         if (ActualWidth <= 0 || ActualHeight <= 0) return;
         var rect = new Rect(RenderSize);
         var shape = SquircleGlassGeometry.CreateCompact(rect, Radius);
+        if (_source?.IsPlainGlass
+            ?? (ThemeService.Current?.Appearance.GlassMaterial == GlassDesk.Core.Models.GlassMaterialMode.PlainGlass))
+        {
+            dc.DrawGeometry(new SolidColorBrush(LiquidGlassSurface.PlainGlassColor(GlassMaterialTarget.Launcher)), null, shape);
+            return;
+        }
         var dark = ThemeService.Current?.IsDark != false;
         var opaque = ThemeService.Current?.UseOpaquePanels == true || BackdropRecovery.RequiresBasicRendering;
         // Vector shadow rings avoid one bitmap blur layer per folder icon.

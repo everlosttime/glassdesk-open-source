@@ -1,3 +1,4 @@
+// Public 1.6.0 adaptation: information-bar-specific implementation is excluded.
 using System.Globalization;
 using System.Text;
 using System.Windows;
@@ -63,7 +64,7 @@ public partial class SettingsWindow : GlassWindow
         }
 
         _sectionHeadings = [AppearanceSectionHeading, DockSectionHeading, LauncherSectionHeading,
-            ShortcutsSectionHeading, PerformanceSectionHeading, DesktopSectionHeading, BackupSectionHeading,
+            ShortcutsSectionHeading, PerformanceSectionHeading, NaiwaSectionHeading, NearbySectionHeading, BackupSectionHeading,
             SponsorshipSectionHeading, AboutSectionHeading];
         PlannedPages =
         [
@@ -72,7 +73,8 @@ public partial class SettingsWindow : GlassWindow
             "启动台",
             "快捷操作",
             "性能",
-            "桌面",
+            "回收站",
+            "附近传输",
             "备份恢复",
             "赞助支持",
             "关于",
@@ -84,7 +86,7 @@ public partial class SettingsWindow : GlassWindow
     private void OnSettingsWindowLoaded(object sender, RoutedEventArgs e) => SyncCategoryFromScroll();
 
     private bool CanResetSelectedPage => SettingsPageList.SelectedItem is string page
-        && page is "外观" or "Dock" or "启动台" or "快捷操作" or "性能" or "桌面";
+        && page is "外观" or "Dock" or "启动台" or "快捷操作" or "性能" or "回收站" or "附近传输";
 
     private void UpdateResetPageButton() => ResetPageButton.IsEnabled = SettingsPageList.IsEnabled
         && _dataStore is not null && CanResetSelectedPage;
@@ -113,7 +115,8 @@ public partial class SettingsWindow : GlassWindow
         LoadAppearanceControls();
         LoadInteractionControls();
         LoadPerformanceControls();
-        LoadDesktopStatus();
+        LoadNaiwaControls();
+        LoadNearbyControls();
         RefreshDiagnostics(loadReport);
     }
 
@@ -150,14 +153,17 @@ public partial class SettingsWindow : GlassWindow
             }
 
             var status = _startupRegistration.Query(_startupExecutablePath);
+            var canAdopt = status.State == StartupRegistrationState.OtherTarget
+                && _startupRegistration.CanUseCurrentInstallation(_startupExecutablePath);
             AutostartCheck.IsChecked = status.State == StartupRegistrationState.Owned;
-            AutostartCheck.IsEnabled = status.State is StartupRegistrationState.Missing or StartupRegistrationState.Owned;
+            AutostartCheck.IsEnabled = canAdopt || status.State is StartupRegistrationState.Missing or StartupRegistrationState.Owned;
             AutostartStatus.Text = status.State switch
             {
-                StartupRegistrationState.Missing => "未注册；默认关闭。",
-                StartupRegistrationState.Owned => "已启用当前用户登录启动；可通过此开关关闭。",
-                StartupRegistrationState.OtherTarget => "同名启动项指向其它位置；为保护其它副本，此处不会覆盖或删除它。",
-                _ => "无法读取或校验当前用户登录项：" + (status.Error ?? "原因未知。"),
+                StartupRegistrationState.Missing => "未启用；可通过此开关开启。首次运行默认启用，手动关闭后会保持关闭。",
+                StartupRegistrationState.Owned => "已启用开机自启动，进入当前用户桌面后运行；可通过此开关关闭。",
+                StartupRegistrationState.OtherTarget when canAdopt => "开机自启动当前指向另一处 GlassDesk；勾选后将改为当前程序。",
+                StartupRegistrationState.OtherTarget => "同名启动项无法确认为 GlassDesk；未修改它。",
+                _ => "无法读取或校验开机自启动项：" + (status.Error ?? "原因未知。"),
             };
         }
         finally
@@ -168,16 +174,21 @@ public partial class SettingsWindow : GlassWindow
 
     public void PositionOnPrimary() => CenterOnPrimaryWorkArea();
 
+    public void ShowStartupRegistrationFailure(string message)
+        => AutostartStatus.Text = "未能启用开机自启动：" + message + Environment.NewLine + AutostartStatus.Text;
+
     private void OnAutostartClick(object sender, RoutedEventArgs e)
     {
         if (_loadingStartupRegistration || _startupRegistration is null) return;
 
         var enabled = AutostartCheck.IsChecked == true;
-        var result = _startupRegistration.SetEnabled(_startupExecutablePath, enabled);
+        var result = enabled
+            ? _startupRegistration.SetEnabledForCurrentInstallation(_startupExecutablePath)
+            : _startupRegistration.SetEnabled(_startupExecutablePath, false);
         RefreshStartupRegistration();
         if (!result.Succeeded)
         {
-            AutostartStatus.Text = "未能更改登录启动项：" + (result.Error ?? "未知错误。")
+            AutostartStatus.Text = "未能更改开机自启动项：" + (result.Error ?? "未知错误。")
                 + Environment.NewLine + "当前实际状态：" + AutostartStatus.Text;
         }
     }
@@ -203,11 +214,13 @@ public partial class SettingsWindow : GlassWindow
             var availableWidthDip = display is null
                 ? DockSettings.MaximumFrameLengthDip
                 : display.ToDips((int)display.WorkArea.Width) - 32;
-            var maximum = Math.Min(DockSettings.MaximumFrameLengthDip, Math.Max(64, availableWidthDip));
+            var maximum = Math.Min(DockSettings.MaximumFrameLengthDip, Math.Max(64, (dock.Placement is DockPlacement.LeftCenter or DockPlacement.RightCenter) && display is not null
+                ? display.ToDips((int)display.WorkArea.Height) - 32 : availableWidthDip));
             var entryCount = (dock.ShowLauncherEntry ? 1 : 0) + (dock.ShowThisPcEntry ? 1 : 0)
                 + (dock.ShowDesktopIconsEntry ? 1 : 0);
             var minimum = Math.Min(Math.Max(DockSettings.MinimumFrameLengthDip,
                 22 + (DockSettings.FixedIconSize + DockSettings.FixedIconSpacing) * entryCount) * dock.SizeScale, maximum);
+            if (display is not null) minimum = Math.Min(maximum, display.ToDips((int)Math.Ceiling(minimum * display.ScaleFactor)));
             DockFrameLengthSlider.Minimum = minimum;
             DockFrameLengthSlider.Maximum = maximum;
             var frameLengthValid = dock.FrameLengthDip == 0
@@ -219,6 +232,7 @@ public partial class SettingsWindow : GlassWindow
                 ? $"固定外框：{DockFrameLengthSlider.Value:0} DIP"
                 : "当前随图标内容自动调整；拖动滑块后固定外框长度。";
             _dockValuesOutOfRange = !Enum.IsDefined(dock.Placement)
+                || !Enum.IsDefined(dock.StatusBarEdge)
                 || !Within(dock.OffsetX, -200, 200) || !Within(dock.OffsetY, -200, 200)
                 || !frameLengthValid;
             DockOffsetXSlider.Value = Coerce(dock.OffsetX, -200, 200);
@@ -245,6 +259,8 @@ public partial class SettingsWindow : GlassWindow
             LauncherColumnsSlider.Value = Math.Clamp(settings.Columns, 2, 12);
             LauncherFocusSearchCheck.IsChecked = settings.FocusSearchOnOpen;
             LauncherRememberPageCheck.IsChecked = settings.RememberLastPage;
+            LauncherHighRefreshCheck.IsChecked = settings.HighRefreshAnimationsEnabled;
+            LauncherModeCombo.SelectedIndex = settings.GroupModeEnabled ? 1 : 0;
             LauncherSettingsStatus.Text = _launcherValuesOutOfRange
                 ? "配置文件中的网格数值超出支持范围，已显示为最近的可用值；请先恢复当前页默认，避免覆盖原数据。"
                 : "修改后立即保存并应用到启动台。";
@@ -266,6 +282,8 @@ public partial class SettingsWindow : GlassWindow
             FullscreenMode = false,
             FocusSearchOnOpen = LauncherFocusSearchCheck.IsChecked == true,
             RememberLastPage = LauncherRememberPageCheck.IsChecked == true,
+            HighRefreshAnimationsEnabled = LauncherHighRefreshCheck.IsChecked == true,
+            GroupModeEnabled = LauncherModeCombo.SelectedIndex == 1,
         };
         var candidate = SettingsPageEditor.Clone(current);
         candidate.Launcher = next;
@@ -277,7 +295,9 @@ public partial class SettingsWindow : GlassWindow
             return;
         }
         if (old.Rows == next.Rows && old.Columns == next.Columns && old.FullscreenMode == next.FullscreenMode
-            && old.FocusSearchOnOpen == next.FocusSearchOnOpen && old.RememberLastPage == next.RememberLastPage) return;
+            && old.FocusSearchOnOpen == next.FocusSearchOnOpen && old.RememberLastPage == next.RememberLastPage
+            && old.HighRefreshAnimationsEnabled == next.HighRefreshAnimationsEnabled
+            && old.GroupModeEnabled == next.GroupModeEnabled) return;
         try
         {
             current.Launcher = next;
@@ -297,8 +317,10 @@ public partial class SettingsWindow : GlassWindow
     {
         if (!IsLoaded) return;
         UpdateResetPageButton();
-        if (_syncingCategoryFromScroll || SettingsPageList.SelectedIndex < 0) return;
-        ScrollToSection(_sectionHeadings[SettingsPageList.SelectedIndex]);
+        if (SettingsPageList.SelectedIndex < 0) return;
+        SettingsPageList.ScrollIntoView(SettingsPageList.SelectedItem);
+        if (!_syncingCategoryFromScroll)
+            ScrollToSection(_sectionHeadings[SettingsPageList.SelectedIndex]);
     }
 
     private void OnSettingsScrollChanged(object sender, System.Windows.Controls.ScrollChangedEventArgs e)
@@ -348,6 +370,7 @@ public partial class SettingsWindow : GlassWindow
         if (_loadingDockControls || _dataStore is null || DockPlacementCombo.SelectedIndex < 0
             || DockDisplayModeCombo.SelectedIndex < 0) return;
         if (_dockValuesOutOfRange) { LoadDockControls(); return; }
+        var status = DockSettingsStatus;
 
         var current = _dataStore.Settings.Current;
         var previousDock = current.Dock;
@@ -356,8 +379,20 @@ public partial class SettingsWindow : GlassWindow
         {
             SizeScale = DockScaleSlider.Value,
             ShowLauncherEntry = ShowLauncherEntryCheckBox.IsChecked == true,
+            ShowStatusBar = previousDock.ShowStatusBar,
+            ShowStatusBarNetworkSpeed = previousDock.ShowStatusBarNetworkSpeed,
+            CalendarShowLunar = previousDock.CalendarShowLunar,
+            StatusBarSecondaryItems = previousDock.StatusBarSecondaryItems.ToArray(),
+            StatusBarMouseDeviceKey = previousDock.StatusBarMouseDeviceKey,
+            StatusBarHeadsetDeviceKey = previousDock.StatusBarHeadsetDeviceKey,
+            StatusBarKeyboardDeviceKey = previousDock.StatusBarKeyboardDeviceKey,
             ShowThisPcEntry = ShowThisPcEntryCheckBox.IsChecked == true,
             ShowDesktopIconsEntry = ShowDesktopIconsEntryCheckBox.IsChecked == true,
+            LauncherCustomIconPath = previousDock.LauncherCustomIconPath,
+            ThisPcCustomIconPath = previousDock.ThisPcCustomIconPath,
+            DesktopIconsCustomIconPath = previousDock.DesktopIconsCustomIconPath,
+            ShowNearbyEntry = previousDock.ShowNearbyEntry,
+            NearbyCustomIconPath = previousDock.NearbyCustomIconPath,
             IconSize = DockSettings.FixedIconSize,
             IconSpacing = DockSettings.FixedIconSpacing,
             MagnificationPeak = DockSettings.FixedMagnificationPeak,
@@ -367,6 +402,10 @@ public partial class SettingsWindow : GlassWindow
             Placement = (DockPlacement)DockPlacementCombo.SelectedIndex,
             OffsetX = DockOffsetXSlider.Value,
             OffsetY = DockOffsetYSlider.Value,
+            StatusBarEdge = previousDock.StatusBarEdge,
+            StatusBarSizeScale = previousDock.StatusBarSizeScale,
+            StatusBarOffsetX = previousDock.StatusBarOffsetX,
+            StatusBarOffsetY = previousDock.StatusBarOffsetY,
             AutoHide = DockDisplayModeCombo.SelectedIndex == 1,
             AutoHideLeaveDelayMs = previousDock.AutoHideLeaveDelayMs,
             EdgeRevealEnabled = false,
@@ -383,7 +422,7 @@ public partial class SettingsWindow : GlassWindow
         if (validationError is not null)
         {
             LoadDockControls();
-            DockSettingsStatus.Text = "设置无效，未保存：" + validationError;
+            status.Text = "设置无效，未保存：" + validationError;
             return;
         }
 
@@ -399,14 +438,14 @@ public partial class SettingsWindow : GlassWindow
                 ? $"固定外框：{DockFrameLengthSlider.Value:0} DIP"
                 : "当前随图标内容自动调整；拖动滑块后固定外框长度。";
             LoadDockControls();
-            DockSettingsStatus.Text = $"已保存；整体大小 {next.SizeScale:P0}，图标 {48 * next.SizeScale:0} DIP。";
+            status.Text = $"已保存；Dock {next.SizeScale:P0}。";
         }
         catch (Exception ex)
         {
             current.Dock = previousDock;
             current.Appearance.DockCornerRadius = previousCorner;
             LoadDockControls();
-            DockSettingsStatus.Text = "保存失败，已恢复原设置：" + ex.Message;
+            status.Text = "保存失败，已恢复原设置：" + ex.Message;
         }
     }
 
@@ -435,11 +474,11 @@ public partial class SettingsWindow : GlassWindow
         if (theme is not null)
         {
             builder.AppendLine(culture, $"主题：{theme.Appearance.Theme}（当前 {(theme.IsDark ? "深色" : "浅色")}）");
-            builder.AppendLine(culture, $"面板：{(theme.UseOpaquePanels ? "不透明" : "半透明玻璃")}");
+            builder.AppendLine(culture, $"全局透明效果：{(theme.UseOpaquePanels ? "已关闭" : "已开启")}");
             builder.AppendLine(culture, $"动画：{(theme.AnimationsEnabled ? "开启" : "已减少")}");
         }
 
-        builder.AppendLine(culture, $"窗口玻璃做法：{(SurfaceMode == GlassSurfaceMode.Acrylic ? "亚克力背景模糊" : "自绘半透明面板（无背景模糊）")}");
+        builder.AppendLine("设置窗口：深色不透明（无背景模糊）");
 
         if (_dataStore is not null)
         {

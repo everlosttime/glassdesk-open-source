@@ -14,6 +14,7 @@ namespace GlassDesk.Dock;
 public sealed class DockTileModel : INotifyPropertyChanged
 {
     private Visibility _runningVisibility = Visibility.Collapsed;
+    private bool _isActive;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -36,6 +37,14 @@ public sealed class DockTileModel : INotifyPropertyChanged
     /// <summary>运行状态点的颜色。来自当前调色板的前景色。</summary>
     public System.Windows.Media.Brush? DotBrush { get; init; }
 
+    /// <summary>当前前台应用使用的强调色。</summary>
+    public System.Windows.Media.Brush? ActiveBrush { get; init; }
+
+    public System.Windows.Media.Brush? IndicatorBrush => IsActive ? ActiveBrush ?? DotBrush : DotBrush;
+
+    /// <summary>当前前台应用使用较宽的胶囊；其他运行应用仍显示圆点。</summary>
+    public double IndicatorWidth => IsActive ? 15 : 5;
+
     /// <summary>图标边长，DIP，来自程序坞设置。</summary>
     public double IconSize { get; init; } = 48;
 
@@ -55,6 +64,20 @@ public sealed class DockTileModel : INotifyPropertyChanged
 
             _runningVisibility = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RunningVisibility)));
+        }
+    }
+
+    /// <summary>这枚磁贴是否对应当前前台窗口。</summary>
+    public bool IsActive
+    {
+        get => _isActive;
+        set
+        {
+            if (_isActive == value) return;
+            _isActive = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsActive)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IndicatorBrush)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IndicatorWidth)));
         }
     }
 }

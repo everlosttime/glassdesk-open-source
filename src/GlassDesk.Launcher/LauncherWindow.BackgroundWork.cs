@@ -6,13 +6,22 @@ public partial class LauncherWindow
     private long _iconRequestGeneration;
     private bool _iconsNeedReapply;
 
+    /// <summary>前台窗口变化时只更新可见启动台的桌面取样。</summary>
+    public void RequestGlassRefresh()
+    {
+        if (IsVisible) GlassSurface.RequestBackdropRefresh();
+    }
+
     public void SetPerformanceSleeping(bool sleeping)
     {
         GlassSurface.SetPerformanceSleeping(sleeping);
         if (!sleeping || IsVisible || Handle == 0) return;
+        RetireIndependentShadowResources();
+        RetireUnifiedTransitionSurfaces();
         CancelDrag(); StopPageSlide();
         _iconRequestGeneration++;
-        _iconLoader.Clear();
+        // Keep bounded, frozen icon pixels across idle/game sleep. Retire the large
+        // visual tree and layered surface below without forcing a cold icon decode.
         _retainedTilePages.Clear(); _retainedTileKey = null; _lastTilesRenderKey = null;
         TileGrid.Children.Clear(); GroupItems.Children.Clear();
         _iconsNeedReapply = true;
@@ -37,5 +46,6 @@ public partial class LauncherWindow
             _retainedTilePages.Clear();
             if (IsVisible && _services is not null) RenderTiles();
         }
+        if (!suspended) PreloadIcons();
     }
 }

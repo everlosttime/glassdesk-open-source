@@ -45,8 +45,9 @@ public sealed class GlassGeometryContractTests
                     var point = new Point(x + .5, y + .5);
                     var expectedInside = expected.FillContains(point, .001, ToleranceType.Absolute);
                     Assert.Equal(expectedInside, clip!.FillContains(point, .001, ToleranceType.Absolute));
-                    Assert.Equal(expectedInside,
-                        (bool)hitTest.Invoke(dock, [bounds, radius, point])!);
+                    var analyticInside = SquircleGlassGeometry.Contains(bounds, radius, point);
+                    Assert.Equal(analyticInside, (bool)hitTest.Invoke(dock, [bounds, radius, point])!);
+                    AssertBoundaryAgreement(expectedInside, analyticInside, bounds, radius, point);
                 }
 
                 var source = Enumerable.Repeat((byte)255, width * height * 4).ToArray();
@@ -55,8 +56,10 @@ public sealed class GlassGeometryContractTests
                 for (var x = 0; x < width; x++)
                 {
                     var point = new Point(x + .5, y + .5);
-                    Assert.Equal(expected.FillContains(point, .001, ToleranceType.Absolute),
-                        optical[(y * width + x) * 4 + 3] != 0);
+                    var analyticInside = SquircleGlassGeometry.Contains(bounds, radius, point);
+                    Assert.Equal(analyticInside, optical[(y * width + x) * 4 + 3] != 0);
+                    AssertBoundaryAgreement(expected.FillContains(point, .001, ToleranceType.Absolute),
+                        analyticInside, bounds, radius, point);
                 }
 
                 AssertRenderedSurfaceMask(dock, bounds, radius);
@@ -70,6 +73,15 @@ public sealed class GlassGeometryContractTests
                 dock.Close();
             }
         });
+    }
+
+    private static void AssertBoundaryAgreement(bool clipInside, bool analyticInside, Rect bounds,
+        double radius, Point point)
+    {
+        // The continuous cubic clip approximates the analytic lens/input curve to <0.1 DIP.
+        // Keep exact input/optics parity above and bound any clip disagreement to that edge.
+        if (clipInside != analyticInside)
+            Assert.InRange(Math.Abs(GlassSignedDistance.Squircle(bounds, radius, point)), 0, .1);
     }
 
     private static void AssertRenderedSurfaceMask(DockWindow dock, Rect bounds, double radius)

@@ -9,6 +9,7 @@
 docs/third-party/dotnet-10.0.12/LICENSE.txt text eol=crlf
 docs/third-party/dotnet-10.0.12/ThirdPartyNotices.txt text eol=crlf
 docs/third-party/inno-setup-license.txt text eol=crlf
+docs/third-party/aspnetcore-10.0.12/*.txt text eol=crlf whitespace=-blank-at-eol
 
 # 二进制资源不做换行转换。
 *.png binary
@@ -17,3 +18,9 @@ docs/third-party/inno-setup-license.txt text eol=crlf
 *.exe binary
 *.dll binary
 *.zip binary
+
+# These files are byte-pinned by the offline battery component manifest.
+# Preserve upstream license/source bytes and the corresponding-source ZIP inputs.
+third_party/myfinder-device-battery/** -text -whitespace
+components-src/battery-engine/** -text whitespace=cr-at-eol
+build/battery-engine.lock.json -text whitespace=cr-at-eol

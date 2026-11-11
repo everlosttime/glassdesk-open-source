@@ -197,6 +197,9 @@ function Assert-PayloadFilePath {
             throw "Unsafe payload path: '$Path'."
         }
     }
+    if ($Path -match '(?i)\.py[cow]?$' -and $Path -notmatch '^components/battery-engine/') {
+        throw "Forbidden payload Python source: '$Path'."
+    }
     if ($Path -match '(?i)(\.pdb$|\.cs$|\.csproj$|\.slnx?$|\.props$|\.targets$|\.ps1$|\.psm1$|\.psd1$|\.nupkg$|project\.assets\.json$|\.Tests?\.dll$|\.TestAdapter\.dll$|^testhost|^Microsoft\.TestPlatform|^Microsoft\.CodeCoverage|^Microsoft\.CodeAnalysis|^Microsoft\.Build|^NuGet\.|^dotnet\.exe$|^csc\.dll$|^vbc\.dll$|^MSBuild\.dll$)') {
         throw "Forbidden payload file: '$Path'."
     }
@@ -265,7 +268,7 @@ function Assert-RequiredLicenseSources {
     $versioned = Join-Path $repoRoot 'docs/third-party/dotnet-10.0.12'
     $thirdPartySummary = Join-Path $repoRoot ('docs/' + [char]0x7B2C + [char]0x4E09 + [char]0x65B9 + [char]0x58F0 + [char]0x660E + '.md')
     $copyMap = @(
-        [pscustomobject]@{ Source = (Join-Path $DotnetRoot 'LICENSE.txt'); Expected = (Join-Path $versioned 'LICENSE.txt'); Target = (Join-Path $Stage 'LICENSE.txt') },
+        [pscustomobject]@{ Source = (Join-Path $DotnetRoot 'LICENSE.txt'); Expected = (Join-Path $versioned 'LICENSE.txt'); Target = (Join-Path $Stage 'DOTNET-LICENSE.txt') },
         [pscustomobject]@{ Source = (Join-Path $DotnetRoot 'ThirdPartyNotices.txt'); Expected = (Join-Path $versioned 'ThirdPartyNotices.txt'); Target = (Join-Path $Stage 'ThirdPartyNotices.txt') },
         [pscustomobject]@{ Source = (Join-Path $repoRoot 'docs/third-party/windows-sdk-license-en-us.txt'); Expected = $null; Target = (Join-Path $Stage 'WINDOWS-SDK-LICENSE.txt') },
         [pscustomobject]@{ Source = (Join-Path $repoRoot 'docs/third-party/inno-setup-license.txt'); Expected = $null; Target = (Join-Path $Stage 'INNO-SETUP-LICENSE.txt') },
@@ -290,6 +293,19 @@ function Assert-RequiredLicenseSources {
     if (-not (Test-Path -LiteralPath $unicodeTarget -PathType Leaf) -or
         (Get-Sha256HexFromFile -Path $unicodeTarget) -ne (Get-Sha256HexFromFile -Path (Join-Path $repoRoot 'docs/third-party/unicode-license-v3.txt'))) {
         throw 'The publish output Unicode license does not match the pinned source.'
+    }
+    if (Test-Path -LiteralPath (Join-Path $Stage 'GlassDesk.Nearby.dll') -PathType Leaf) {
+        foreach ($notice in @(
+            [pscustomobject]@{ Source = 'LICENSE.txt'; Target = 'ASPNETCORE-LICENSE.txt' },
+            [pscustomobject]@{ Source = 'THIRD-PARTY-NOTICES.txt'; Target = 'ASPNETCORE-THIRD-PARTY-NOTICES.txt' }
+        )) {
+            $pinned = Join-Path $repoRoot ('docs/third-party/aspnetcore-10.0.12/' + $notice.Source)
+            $published = Join-Path $Stage $notice.Target
+            if (-not (Test-Path -LiteralPath $published -PathType Leaf) -or
+                (Get-Sha256HexFromFile -Path $pinned) -ne (Get-Sha256HexFromFile -Path $published)) {
+                throw ('ASP.NET Core license does not match the pinned runtime source: ' + $notice.Target)
+            }
+        }
     }
 }
 
@@ -377,7 +393,8 @@ try {
     $gh = Get-Command gh -ErrorAction SilentlyContinue
     $attestationStatus = 'NotRun'
     if ($gh) {
-        $attestationResult = Invoke-CapturedProcess -FilePath $gh.Source -Arguments @('release', 'verify-asset', $innoInstaller, '--repo', 'jrsoftware/issrc') -WorkingDirectory $repoRoot -LogPath (Join-Path $runEvidenceDirectory 'inno-release-attestation.log')
+        $innoReleaseTag = 'is-' + ([string]$release.innoVersion).Replace('.', '_')
+        $attestationResult = Invoke-CapturedProcess -FilePath $gh.Source -Arguments @('release', 'verify-asset', $innoReleaseTag, $innoInstaller, '--repo', 'jrsoftware/issrc') -WorkingDirectory $repoRoot -LogPath (Join-Path $runEvidenceDirectory 'inno-release-attestation.log')
         if ($attestationResult.ExitCode -ne 0) { throw 'GitHub release attestation verification failed for the Inno Setup installer.' }
         $attestationStatus = 'Verified'
     }
@@ -401,6 +418,7 @@ try {
             -ProductVersion ([string]$release.productVersion) `
             -AssemblyVersion ([string]$release.assemblyVersion) `
             -FileVersion ([string]$release.fileVersion) `
+            -IncludeNaiwa:($release.PSObject.Properties['naiwaCompanion'] -and $release.naiwaCompanion -eq $true) `
             -AcceptanceDataRoot $acceptanceDataRoot *>&1
     }
     finally {
@@ -537,7 +555,7 @@ try {
     $packageDirectoryRelative = $candidateDirectory.Substring($repoRoot.TrimEnd('\').Length + 1).Replace('\', '/')
     $verifyResult = Invoke-CapturedProcess -FilePath $powerShell -Arguments @(
         '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', 'build/verify-package.ps1',
-        '-PackageDirectory', $packageDirectoryRelative, '-ReleaseManifest', 'packaging/release.json'
+        '-PackageDirectory', $packageDirectoryRelative, '-ReleaseManifest', $releasePath
     ) -WorkingDirectory $repoRoot -LogPath $verifierLog
     if ($verifyResult.ExitCode -ne 0) { throw 'Static package verification failed; see verify-package.log.' }
 

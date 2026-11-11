@@ -5,6 +5,21 @@ namespace GlassDesk.Dock.Tests;
 public sealed class StaticBackdropTests
 {
     [Fact]
+    public void ValidatedLivePixelsRemainAvailableUntilTheSceneGenerationChanges()
+    {
+        using var state = new LatestBackdropState();
+        var request = state.Request(new(0, 0, 2, 2), 2, 2);
+        var frame = new BackdropFrame(request, 1, 100, 110, new byte[16], 100);
+        Assert.True(state.Publish(frame));
+
+        Assert.True(state.TryRead(10000, 120, out var reused));
+        reused?.Dispose();
+
+        state.InvalidateScene();
+        Assert.False(state.TryRead(10001, 120, out _));
+    }
+
+    [Fact]
     public void ValidatedStaticPixelsKeepTheirSourceTimeAndExpireAtSceneBoundaries()
     {
         using var state = new LatestBackdropState();

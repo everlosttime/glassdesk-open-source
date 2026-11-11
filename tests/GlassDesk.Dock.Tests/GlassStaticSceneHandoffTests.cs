@@ -90,6 +90,19 @@ public sealed class GlassStaticSceneHandoffTests
                 typeof(LiquidGlassSurface).GetField("_materialRetentionUntil", Private)!.SetValue(surface, 1L);
                 surface.RequestBackdropRefresh();
                 Assert.Equal(fresh, Get(surface, frameField) is not null);
+                if (!fresh)
+                {
+                    global::Program.Pump(TimeSpan.FromMilliseconds(180));
+                    Assert.Null(Get(surface, frameField));
+                    Assert.False(scene.Equals(Get(surface, sceneField)),
+                        "An expired pre-move sample must not be composed again and relabeled as the new desktop scene.");
+                    publishing.Set();
+                    var recovery = Stopwatch.StartNew();
+                    while (!scene.Equals(Get(surface, sceneField)) && recovery.Elapsed < TimeSpan.FromSeconds(2))
+                        global::Program.Pump(TimeSpan.FromMilliseconds(10));
+                    Assert.NotNull(Get(surface, frameField));
+                    Assert.Equal(scene, Get(surface, sceneField));
+                }
                 surface.Measure(new Size(200, 100));
                 surface.Arrange(new Rect(0, 0, 200, 100));
                 surface.UpdateLayout();

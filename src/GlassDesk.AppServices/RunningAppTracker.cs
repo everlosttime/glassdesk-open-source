@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using GlassDesk.Core.Models;
 using GlassDesk.Core.Storage;
+using GlassDesk.Platform;
 using GlassDesk.Platform.Shell;
 
 namespace GlassDesk.AppServices;
@@ -40,6 +41,7 @@ public sealed class RunningAppTracker : IDisposable
 
     private WindowEventWatcher? _watcher;
     private IReadOnlyList<WindowIdentityInfo> _windows = [];
+    private nint _foregroundWindow;
     private DateTime _lastReconcileUtc = DateTime.MinValue;
     private volatile bool _disposed;
     private bool _suspended, _dirty;
@@ -133,6 +135,7 @@ public sealed class RunningAppTracker : IDisposable
         }
 
         var windows = WindowLocator.EnumerateTopLevelWindows();
+        var foregroundWindow = WindowControl.GetForegroundWindow();
         bool changed;
 
         lock (_sync)
@@ -141,8 +144,9 @@ public sealed class RunningAppTracker : IDisposable
             { _dirty = true; return _windows.Count; }
             _dirty = false;
             _reconcileCount++;
-            changed = !SameWindowSet(_windows, windows);
+            changed = !SameWindowSet(_windows, windows) || _foregroundWindow != foregroundWindow;
             _windows = windows;
+            _foregroundWindow = foregroundWindow;
         }
 
         if (changed)
@@ -156,6 +160,13 @@ public sealed class RunningAppTracker : IDisposable
     /// <summary>这条记录此刻是否有已运行的窗口。匹配对最近一次调和的快照做，不再枚举。</summary>
     public bool IsRunning(AppEntry entry)
         => FindWindows(entry).Count > 0;
+
+    /// <summary>这条记录是否拥有当前前台窗口。</summary>
+    public bool IsActive(AppEntry entry)
+    {
+        var foreground = WindowControl.GetForegroundWindow();
+        return foreground != 0 && FindWindows(entry).Any(window => window.Handle == foreground);
+    }
 
     /// <summary>这条记录此刻匹配的已运行窗口（对最近一次调和的快照匹配）。规则见 <see cref="WindowMatcher"/>。</summary>
     public IReadOnlyList<WindowIdentityInfo> FindWindows(AppEntry entry)

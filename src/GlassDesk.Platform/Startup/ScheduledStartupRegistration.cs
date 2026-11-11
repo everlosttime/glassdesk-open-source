@@ -22,14 +22,14 @@ internal sealed class ScheduledStartupRegistration
         _taskName = taskName ?? "GlassDesk.Autostart-" + _userSid;
     }
 
-    internal StartupRegistrationStatus Query(string executable)
+    internal StartupRegistrationStatus Query(string executable, bool allowOtherInstallation = false)
     {
         try
         {
             return WithFolder(folder =>
             {
                 object? task = GetTask(folder);
-                try { return ReadStatus(task, executable); }
+                try { return ReadStatus(task, executable, allowOtherInstallation); }
                 finally { Release(task); }
             });
         }
@@ -39,7 +39,7 @@ internal sealed class ScheduledStartupRegistration
         }
     }
 
-    internal StartupChangeResult SetEnabled(string executable, bool enabled)
+    internal StartupChangeResult SetEnabled(string executable, bool enabled, bool allowOtherInstallation = false)
     {
         try
         {
@@ -48,7 +48,7 @@ internal sealed class ScheduledStartupRegistration
                 object? task = GetTask(folder);
                 bool existed = task is not null;
                 StartupRegistrationStatus before;
-                try { before = ReadStatus(task, executable); }
+                try { before = ReadStatus(task, executable, allowOtherInstallation); }
                 finally { Release(task); }
                 if (before.State is StartupRegistrationState.OtherTarget or StartupRegistrationState.Unavailable)
                     return new StartupChangeResult(false, before, before.Error);
@@ -77,7 +77,31 @@ internal sealed class ScheduledStartupRegistration
         }
     }
 
-    private StartupRegistrationStatus ReadStatus(object? task, string executable)
+    internal string? CaptureXml() => WithFolder(folder =>
+    {
+        object? task = GetTask(folder);
+        try { return task is null ? null : (string)((dynamic)task).Xml; }
+        finally { Release(task); }
+    });
+
+    internal bool RestoreSnapshot(string? originalXml, string expectedCurrentXml) => WithFolder(folder =>
+    {
+        object? task = GetTask(folder);
+        try
+        {
+            if (task is null || !string.Equals((string)((dynamic)task).Xml, expectedCurrentXml, StringComparison.Ordinal)) return false;
+        }
+        finally { Release(task); }
+        if (originalXml is null) folder.DeleteTask(_taskName, 0);
+        else
+        {
+            object restored = folder.RegisterTask(_taskName, originalXml, 4, _userSid, null, 3, null);
+            Release(restored);
+        }
+        return true;
+    });
+
+    private StartupRegistrationStatus ReadStatus(object? task, string executable, bool allowOtherInstallation = false)
     {
         if (task is null) return new(StartupRegistrationState.Missing, executable, null);
         dynamic registered = task;
@@ -91,7 +115,8 @@ internal sealed class ScheduledStartupRegistration
             && principal?.Element(Ns + "LogonType")?.Value == "InteractiveToken"
             && (principal?.Element(Ns + "RunLevel")?.Value ?? "LeastPrivilege") == "LeastPrivilege"
             && actions.Length == 1 && actions[0].Name == Ns + "Exec"
-            && string.Equals(actions[0].Element(Ns + "Command")?.Value, executable, StringComparison.OrdinalIgnoreCase)
+            && (string.Equals(actions[0].Element(Ns + "Command")?.Value, executable, StringComparison.OrdinalIgnoreCase)
+                || allowOtherInstallation && StartupRegistration.IsSameAutostartExecutable(actions[0].Element(Ns + "Command")?.Value, executable))
             && actions[0].Element(Ns + "Arguments")?.Value == "--autostart"
             && triggers.Length == 1 && triggers[0].Name == Ns + "LogonTrigger"
             && IsCurrentUser(triggers[0].Element(Ns + "UserId")?.Value);

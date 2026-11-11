@@ -18,35 +18,52 @@ public partial class LauncherWindow
     private readonly LauncherIconLoader _iconLoader = new();
     private readonly record struct TilesRenderKey(
         long LibraryVersion, long LayoutVersion, string Query, int Page, int Rows, int Columns,
-        double PanelWidth, double PanelHeight, string? OpenGroupId, int IconPixels);
+        double PanelWidth, double PanelHeight, string? OpenGroupId, int IconPixels, bool GroupMode, string? FilterGroupId);
 
     private TilesRenderKey CurrentTilesRenderKey() => new(
         _services!.Library.Version, _services.Layouts.LauncherVersion, _view.Query, _view.Page,
-        _view.Rows, _view.Columns, LauncherPanelRoot.Width, LauncherPanelRoot.Height, _view.OpenGroupId, IconPixelSize(AppIconSize));
+        _view.Rows, _view.Columns, LauncherPanelRoot.Width, LauncherPanelRoot.Height, _view.OpenGroupId, IconPixelSize(AppIconSize),
+        _settings.GroupModeEnabled, _activeFilterGroupId);
 
     private int IconPixelSize(double size)
     {
         var dpi = VisualTreeHelper.GetDpi(this);
-        return (int)Math.Ceiling(size * Math.Max(dpi.DpiScaleX, dpi.DpiScaleY) * 1.25);
+        var required = size * Math.Max(dpi.DpiScaleX, dpi.DpiScaleY) * 2;
+        return required <= 64 ? 64 : required <= 128 ? 128 : required <= 256 ? 256 : 512;
     }
 
-    private double AppIconSize => Math.Clamp(Math.Floor(((LauncherPanelRoot.Height - 160) / _view.Rows - 44) / 4) * 4, 32, 64);
+    private double AppIconSize => Math.Clamp(Math.Floor(((LauncherPanelRoot.Height - 160
+        - (FilterGroupBar.Visibility == Visibility.Visible ? 44 : 0)) / _view.Rows - 44) / 4) * 4, 32, 64);
     private List<LauncherSlot> CurrentSlots()
     {
         if (_services is null || _workspace is null) return [];
         if (_view.IsSearching)
         {
-            var members = LauncherLayoutRules.AppIds(_workspace.Layout).ToHashSet(StringComparer.Ordinal);
+            var members = LauncherLayoutRules.AppIds(BrowseLayout).ToHashSet(StringComparer.Ordinal);
             return _services.Search.SearchApps(_view.Query, int.MaxValue)
                 .Where(hit => members.Contains(hit.Item.Id))
                 .Select(hit => new LauncherSlot { ItemId = hit.Item.Id }).ToList();
         }
-        return (_dragEdit?.Draft ?? _workspace.Layout).Pages.SelectMany(page => page.Slots).ToList();
+        return BrowseLayout.Pages.SelectMany(page => page.Slots).ToList();
+    }
+
+    private IEnumerable<LauncherSlot> VisiblePageSlots()
+        => _view.IsSearching ? CurrentSlots().Skip(_view.Page * _view.Capacity).Take(_view.Capacity)
+            : BrowseLayout.Pages.ElementAtOrDefault(_view.Page)?.Slots ?? [];
+
+    private void UpdatePageCounts()
+    {
+        if (_view.IsSearching) { _view.SetItemCount(CurrentSlots().Count); return; }
+        var counts = BrowseLayout.Pages.Select(page => page.Slots.Count).ToList();
+        while (_dragOrigin is not null && counts.Count < _dragPageCount) counts.Add(0);
+        _view.SetPageCounts(counts);
     }
 
     private void RenderTiles(bool reuseUnchanged = false, bool reusePageTiles = false)
     {
         if (_services is null || _workspace is null) return;
+        StopFilterTransition();
+        RenderFilterGroups();
         StopPageSlide();
         if (reuseUnchanged && _lastTilesRenderKey == CurrentTilesRenderKey())
         {
@@ -56,7 +73,7 @@ public partial class LauncherWindow
         }
         _lastTilesRenderKey = null;
         var slots = CurrentSlots();
-        _view.SetItemCount(slots.Count);
+        UpdatePageCounts();
         var pageKey = CurrentTilesRenderKey() with { Page = 0 };
         if (!reusePageTiles || _retainedTileKey != pageKey || _dragOrigin is not null)
         {
@@ -72,7 +89,7 @@ public partial class LauncherWindow
             foreach (var tile in retained) TileGrid.Children.Add(tile);
         }
         else
-            foreach (var slot in slots.Skip(_view.Page * _view.Capacity).Take(_view.Capacity))
+            foreach (var slot in VisiblePageSlots())
                 TileGrid.Children.Add(CreateTile(slot));
         _retainedTilePages[_view.Page] = TileGrid.Children.Cast<LauncherAppTileButton>().ToArray();
         foreach (var page in _retainedTilePages.Keys.OrderBy(p => Math.Abs(p - _view.Page)).Skip(2).ToArray())
@@ -81,8 +98,9 @@ public partial class LauncherWindow
         PreviousPage.IsEnabled = _view.Page > 0;
         NextPage.IsEnabled = _view.Page < _view.PageCount - 1;
         if (slots.Count == 0)
-            _notice = _view.IsSearching ? "没有匹配的应用。" : "应用库为空。使用“添加”导入文件、文件夹或网址。";
-        else if (_notice is "没有匹配的应用。" or "应用库为空。使用“添加”导入文件、文件夹或网址。")
+            _notice = _view.IsSearching ? "没有匹配的应用。" : _activeFilterGroupId is not null
+                ? "此分组暂无图标，再次点击分组可查看全部应用。" : "应用库为空。使用“添加”导入文件、文件夹或网址。";
+        else if (_notice is "没有匹配的应用。" or "应用库为空。使用“添加”导入文件、文件夹或网址。" or "此分组暂无图标，再次点击分组可查看全部应用。")
             _notice = null;
         RefreshDiagnostics();
         RenderGroup();
@@ -120,6 +138,7 @@ public partial class LauncherWindow
                     Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
         iconVisual.HorizontalAlignment = HorizontalAlignment.Center;
         var iconHost = new Border { Child = iconVisual };
+        RenderOptions.SetBitmapScalingMode(iconHost, BitmapScalingMode.HighQuality);
         if (!isGroup && entry is not null) RequestIcon(entry, iconHost, AppIconSize);
         stack.Children.Add(iconHost);
         stack.Children.Add(text);
@@ -156,17 +175,38 @@ public partial class LauncherWindow
         return button;
     }
 
-    private void RequestIcon(AppEntry entry, Border host, double size)
+    /// <summary>
+    /// 隐藏时先预热当前页，再预热其他应用（含分组内应用）。按解码预算限制数量，
+    /// 避免大应用库或高 DPI 下的预热把当前页挤出缓存；休眠时不启动后台解码。
+    /// </summary>
+    private void PreloadIcons()
+    {
+        if (_backgroundWorkSuspended || _services is null || _workspace is null) return;
+        var pixels = IconPixelSize(AppIconSize);
+        var current = VisiblePageSlots().Where(slot => slot.Kind != LauncherSlotKind.Group)
+            .Select(slot => _services.Library.Find(slot.ItemId)).OfType<AppEntry>();
+        foreach (var entry in current.Concat(_services.Library.Items).DistinctBy(entry => entry.Id)
+                     .Take(_iconLoader.PreloadCapacity(pixels)))
+            _ = QueueIconLoad(entry, pixels);
+    }
+
+    private Task<BitmapImage?> QueueIconLoad(AppEntry entry, int pixels)
     {
         var icons = _services?.Icons;
-        if (icons is null) return;
+        if (icons is null) return Task.FromResult<BitmapImage?>(null);
         var source = entry.IconSource ?? string.Empty;
         var custom = entry.CustomIconPath;
         var version = _services!.Library.Version;
+        var key = $"{version}\0{custom}\0{source}\0{pixels}";
+        return _iconLoader.LoadAsync(key, () => LoadIcon(icons, source, custom, pixels));
+    }
+
+    private void RequestIcon(AppEntry entry, Border host, double size)
+    {
+        var version = _services!.Library.Version;
         var pixels = IconPixelSize(size);
         var generation = _iconRequestGeneration;
-        var key = $"{version}\0{custom}\0{source}\0{pixels}";
-        var task = _iconLoader.LoadAsync(key, () => LoadIcon(icons, source, custom, pixels));
+        var task = QueueIconLoad(entry, pixels);
         if (task.IsCompletedSuccessfully) Apply(task.Result);
         else _ = CompleteAsync();
 
@@ -180,6 +220,7 @@ public partial class LauncherWindow
             if (pixels != IconPixelSize(size)) return;
             host.Child = new Image { Source = image, Width = size, Height = size, Stretch = Stretch.Uniform,
                 HorizontalAlignment = HorizontalAlignment.Center };
+            _unifiedContentRevision++;
         }
         async Task CompleteAsync()
         {
@@ -218,7 +259,7 @@ public partial class LauncherWindow
 
     private void OnTileActivated(LauncherSlot slot)
     {
-        if (_dragEdit is not null || _suppressTileClick) return;
+        if (_dragEdit is not null || _suppressTileClick || _filterTransitionActive) return;
         var id = slot.Kind == LauncherSlotKind.Group ? slot.Group?.Id : slot.ItemId;
         if (slot.Kind == LauncherSlotKind.Group)
         {

@@ -17,6 +17,15 @@ internal sealed class NativeCaptureDiagnostics
     }
     internal void ObservePixels(CapturePixels frame, long generation)
     {
+        var sample = MeasurePixels(frame, generation);
+        var state = (sample.NearBlackFraction >= .95, sample.TransparentFraction > 0);
+        if (_pixelState == state) return;
+        _pixelState = state;
+        Observe(sample);
+    }
+
+    internal static CaptureTrace MeasurePixels(CapturePixels frame, long generation)
+    {
         var pixels = frame.Pixels;
         var count = pixels.Length / 4; var step = Math.Max(1, count / 512);
         var samples = 0; var black = 0; var transparent = 0; long sum = 0;
@@ -30,13 +39,10 @@ internal sealed class NativeCaptureDiagnostics
         }
         var blackFraction = black / (double)Math.Max(1, samples);
         var transparentFraction = transparent / (double)Math.Max(1, samples);
-        var state = (blackFraction >= .95, transparentFraction > 0);
-        if (_pixelState == state) return;
-        _pixelState = state;
         // Statistics mark evidence only. Opaque black wallpaper/video is valid and
         // must continue through the exact same acquisition and sampling pipeline.
-        Observe(new("NativePixels", "StatisticsChanged", Stopwatch.GetTimestamp(), frame.SourceQpcTicks,
+        return new("NativePixels", "StatisticsChanged", Stopwatch.GetTimestamp(), frame.SourceQpcTicks,
             Generation: generation, Width: frame.Width, Height: frame.Height, NearBlackFraction: blackFraction,
-            TransparentFraction: transparentFraction, MeanChannel: sum / (double)Math.Max(1, samples * 3)));
+            TransparentFraction: transparentFraction, MeanChannel: sum / (double)Math.Max(1, samples * 3));
     }
 }

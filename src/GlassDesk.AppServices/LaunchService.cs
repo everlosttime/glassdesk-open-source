@@ -21,15 +21,39 @@ namespace GlassDesk.AppServices;
 public sealed class LaunchService : ILaunchService
 {
     private readonly AppLibraryStore _library;
+    private readonly Func<AppEntry, bool, ShellLaunchOutcome> _open;
 
     public LaunchService(AppLibraryStore library)
+        : this(library, (entry, elevated) => elevated
+            ? ShellExecutor.RunAsAdministrator(entry.Target, entry.Arguments, entry.WorkingDirectory)
+            : ShellExecutor.Open(entry.Target, entry.Arguments, entry.WorkingDirectory))
+    { }
+
+    internal LaunchService(AppLibraryStore library, Func<AppEntry, bool, ShellLaunchOutcome> open)
     {
         ArgumentNullException.ThrowIfNull(library);
         _library = library;
+        _open = open ?? throw new ArgumentNullException(nameof(open));
     }
 
     /// <summary>最近一次成功启动得到的进程 id，供「已运行就激活」在同一次会话里复用。</summary>
     public uint LastLaunchedProcessId { get; private set; }
+
+    public bool CanRunAsAdministrator(string itemId) => _library.Find(itemId) is { } entry
+        && SupportsElevation(entry) && !IsTargetGone(entry);
+
+    public LaunchResult LaunchAsAdministrator(string itemId)
+    {
+        var entry = _library.Find(itemId);
+        if (entry is null) return new() { Succeeded = false, Failure = LaunchFailureReason.UnknownItem, Message = "应用库里没有这一条记录。" };
+        if (!SupportsElevation(entry)) return new() { Succeeded = false, Failure = LaunchFailureReason.Unsupported, Message = "此条目不支持以管理员身份运行。" };
+        if (IsTargetGone(entry)) return new() { Succeeded = false, Failure = LaunchFailureReason.TargetMissing, Message = $"目标已不在原处，请重新定位：{entry.Target}" };
+        // An existing unelevated window must never substitute for this explicit request.
+        return OpenWithShell(entry, elevated: true);
+    }
+
+    private static bool SupportsElevation(AppEntry entry) => entry.Kind is AppItemKind.Program or AppItemKind.Shortcut
+        && Path.GetExtension(entry.Target).ToLowerInvariant() is ".exe" or ".com" or ".bat" or ".cmd" or ".lnk";
 
     public LaunchResult LaunchItem(string itemId)
     {
@@ -223,9 +247,9 @@ public sealed class LaunchService : ILaunchService
         };
     }
 
-    private LaunchResult OpenWithShell(AppEntry entry)
+    private LaunchResult OpenWithShell(AppEntry entry, bool elevated = false)
     {
-        var outcome = ShellExecutor.Open(entry.Target, entry.Arguments, entry.WorkingDirectory);
+        var outcome = _open(entry, elevated);
 
         if (outcome.Started)
         {
@@ -237,7 +261,7 @@ public sealed class LaunchService : ILaunchService
         {
             Succeeded = false,
             Failure = Classify(outcome),
-            Message = Describe(outcome, entry),
+            Message = elevated && outcome.ErrorCode == 1223 ? "已取消管理员启动。" : Describe(outcome, entry),
         };
     }
 

@@ -1,18 +1,20 @@
 using System.Windows;
 using System.Windows.Media;
+using GlassDesk.Rendering;
 
 namespace GlassDesk.UI.Controls;
 
 /// <summary>The same nine-app glyph travels from the Dock into the expanding container.</summary>
-public sealed class LaunchpadGlyph : FrameworkElement
+public sealed class LaunchpadGlyph : FrameworkElement,IRetainedDrawingRevision
 {
+    public ulong DrawingRevision {get;private set;}
     public static readonly DependencyProperty OutlineBrushProperty = DependencyProperty.Register(
         nameof(OutlineBrush), typeof(Brush), typeof(LaunchpadGlyph),
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
     public static readonly DependencyProperty IsFilledProperty = DependencyProperty.Register(
         nameof(IsFilled), typeof(bool), typeof(LaunchpadGlyph),
-        new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.AffectsRender));
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
 
     public bool IsFilled
     {
@@ -30,7 +32,7 @@ public sealed class LaunchpadGlyph : FrameworkElement
     protected override void OnRender(DrawingContext drawingContext)
     {
         var dc = drawingContext;
-        base.OnRender(dc);
+        base.OnRender(dc);DrawingRevision++;
         var unit = Math.Min(ActualWidth, ActualHeight) / 48;
         if (unit <= 0) return;
         if (OutlineBrush is { } outline)

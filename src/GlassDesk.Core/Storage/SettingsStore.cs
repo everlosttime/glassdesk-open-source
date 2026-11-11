@@ -32,7 +32,14 @@ public sealed class SettingsStore
         var outcome = _store.Load(static () => new GlassDeskSettings());
 
         var settings = outcome.Value;
+        // 旧资料升级时不打扰用户；新资料即使先保存过其它设置，仍应在首次使用时教学。
+        settings.OnboardingDismissed ??= outcome.Status != LoadStatus.FirstRun;
         settings.Normalize();
+        if (AppPaths.IsManagedCustomIconPath(settings.Dock.NearbyCustomIconPath))
+        {
+            var rebased = AppPaths.ManagedCustomIconPath(Path.GetDirectoryName(_store.Path)!, Path.GetFileName(settings.Dock.NearbyCustomIconPath!));
+            if (File.Exists(rebased)) settings.Dock.NearbyCustomIconPath = rebased;
+        }
         Migrate(settings, outcome.Status == LoadStatus.Loaded ? ReadSchemaVersionOnDisk() : settings.SchemaVersion);
 
         Current = settings;
@@ -45,6 +52,19 @@ public sealed class SettingsStore
     {
         Current.Normalize();
         _store.Save(Current);
+    }
+
+    /// <summary>完成、跳过或关闭教学都记录一次；写入失败时恢复内存状态。</summary>
+    public void DismissOnboarding()
+    {
+        var previous = Current.OnboardingDismissed;
+        Current.OnboardingDismissed = true;
+        try { Save(); }
+        catch (StorageException)
+        {
+            Current.OnboardingDismissed = previous;
+            throw;
+        }
     }
 
     /// <summary>

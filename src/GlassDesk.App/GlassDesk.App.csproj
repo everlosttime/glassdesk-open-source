@@ -1,3 +1,4 @@
+<!-- Public 1.6.0 adaptation: information-bar-specific implementation is excluded. -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
@@ -29,6 +30,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="$(NativeRenderingDllPath)" Condition="'$(NativeRenderingDllPath)' != ''"
+             Link="GlassDesk.Rendering.Native.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- Desktop-sized image buffers otherwise leave a large fragmented LOH after
+         reveals. Let the runtime compact it under its normal GC policy. -->
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="5" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\GlassDesk.AppServices\GlassDesk.AppServices.csproj" />
     <ProjectReference Include="..\GlassDesk.Core\GlassDesk.Core.csproj" />
     <ProjectReference Include="..\GlassDesk.Platform\GlassDesk.Platform.csproj" />
@@ -40,6 +49,10 @@
 
   <ItemGroup>
     <Resource Include="Assets/GlassDeskBrand.png" />
+    <Content Include="../../docs/third-party/aspnetcore-10.0.12/LICENSE.txt" Link="ASPNETCORE-LICENSE.txt"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../docs/third-party/aspnetcore-10.0.12/THIRD-PARTY-NOTICES.txt" Link="ASPNETCORE-THIRD-PARTY-NOTICES.txt"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../LICENSE" Link="LICENSE.txt"
              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../NOTICE" Link="NOTICE.txt"
@@ -48,6 +61,7 @@
              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../packaging/update-source.json" Link="update-source.json"
              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <EmbeddedResource Include="../../packaging/update-source.json" LogicalName="GlassDesk.UpdateSourceDefaults.json" />
     <Content Include="../../docs/third-party/android-liquid-glass/LICENSE"
              Link="licenses/AndroidLiquidGlass-LICENSE.txt"
              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

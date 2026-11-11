@@ -16,6 +16,60 @@ namespace GlassDesk.Dock.Tests;
 /// </remarks>
 public class DockTileStripLayoutTests
 {
+    [Theory]
+    [InlineData(GlassDesk.Core.Models.Settings.DockPlacement.LeftCenter)]
+    [InlineData(GlassDesk.Core.Models.Settings.DockPlacement.RightCenter)]
+    public void 纵向应用图标与内置入口共用同一条中线(GlassDesk.Core.Models.Settings.DockPlacement placement)
+    {
+        StaTest.Run(() =>
+        {
+            var dock = new DockWindow();
+            try
+            {
+                var settings = new GlassDesk.UI.Settings.DockSettingsHost(dock.Dispatcher);
+                settings.Update(new GlassDesk.Core.Models.Settings.DockSettings { Placement = placement });
+                typeof(DockWindow).GetField("_dockSettings",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                    .SetValue(dock, settings);
+                dock.RefreshFromSettings();
+                var row = (StackPanel)dock.FindName("DockEntryRow");
+                var host = (ContentControl)dock.FindName("TileStripHost");
+                var strip = (DockTileStrip)host.Content;
+                strip.SetTiles(Models(5));
+                row.Measure(new Size(160, 800));
+                row.Arrange(new Rect(0, 0, 160, 800));
+                var button = (Button)dock.FindName("LauncherButton");
+                var canvas = (Canvas)((ScrollViewer)((Grid)strip.Child).Children[0]).Content;
+                var center = button.TranslatePoint(new Point(button.ActualWidth / 2, 0), row).X;
+                foreach (var tile in canvas.Children.OfType<Border>())
+                {
+                    var icon = (FrameworkElement)((StackPanel)tile.Child).Children[0];
+                    var iconCenter = icon.TranslatePoint(new Point(icon.ActualWidth / 2, 0), row).X;
+                    Assert.InRange(Math.Abs(center - iconCenter), 0, 1);
+                }
+            }
+            finally { dock.Close(); }
+        });
+    }
+
+    [Fact]
+    public void 纵向磁贴条在加宽的宿主内保持居中()
+    {
+        StaTest.Run(() =>
+        {
+            var strip = new DockTileStrip();
+            strip.SetMetrics(Size, Spacing, Peak, 8, 180, vertical: true);
+            strip.SetTiles(Models(5));
+            var host = new Grid();
+            host.Children.Add(strip);
+            host.Measure(new Size(160, 200));
+            host.Arrange(new Rect(0, 0, 160, 200));
+            var center = strip.TranslatePoint(new Point(strip.ActualWidth / 2, 0), host);
+            Assert.Equal(80, center.X, 3);
+            Assert.True(strip.ActualWidth < host.ActualWidth);
+        });
+    }
+
     private const double Size = 48;
     private const double Spacing = 8;
     private const double Peak = 1.35;

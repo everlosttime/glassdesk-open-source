@@ -58,6 +58,8 @@ public static class DockPlacementCalculator
             DockPlacement.BottomLeft => (workArea.X, workArea.Bottom - windowHeightPixels),
             DockPlacement.BottomRight => (workArea.Right - windowWidthPixels, workArea.Bottom - windowHeightPixels),
             DockPlacement.TopCenter => (workArea.X + ((workArea.Width - windowWidthPixels) / 2), workArea.Y),
+            DockPlacement.RightCenter => (workArea.Right - windowWidthPixels, workArea.Y + ((workArea.Height - windowHeightPixels) / 2)),
+            DockPlacement.LeftCenter => (workArea.X, workArea.Y + ((workArea.Height - windowHeightPixels) / 2)),
             _ => (workArea.X + ((workArea.Width - windowWidthPixels) / 2), workArea.Bottom - windowHeightPixels),
         };
 

@@ -1,3 +1,4 @@
+// Public 1.6.0 adaptation: information-bar-specific implementation is excluded.
 namespace GlassDesk.Core.Models.Settings;
 
 /// <summary>程序坞停在哪里、以及它如何呈现。</summary>
@@ -7,6 +8,15 @@ public enum DockPlacement
     BottomLeft = 1,
     BottomRight = 2,
     TopCenter = 3,
+    LeftCenter = 4,
+    RightCenter = 5,
+}
+
+/// <summary>桌面信息栏附着的屏幕边缘。</summary>
+public enum StatusBarEdge
+{
+    Top = 0,
+    Bottom = 1,
 }
 
 public sealed class DockSettings
@@ -18,6 +28,8 @@ public sealed class DockSettings
     public const double MaximumFrameLengthDip = 10000;
     public const double MinimumSizeScale = 2d / 3;
     public const double MaximumSizeScale = 1.5;
+    public const double MinimumStatusBarSizeScale = 0.75;
+    public const double MaximumStatusBarSizeScale = 1.5;
 
     /// <summary>整体尺寸倍率，同时调整图标、间距与栏厚度。旧配置默认保持原尺寸。</summary>
     public double SizeScale { get; set; } = 1;
@@ -26,6 +38,40 @@ public sealed class DockSettings
     public bool ShowLauncherEntry { get; set; } = true;
     public bool ShowThisPcEntry { get; set; } = true;
     public bool ShowDesktopIconsEntry { get; set; } = true;
+    public bool ShowNearbyEntry { get; set; } = true;
+    public string? NearbyCustomIconPath { get; set; }
+    public string? LauncherCustomIconPath { get; set; }
+    public string? ThisPcCustomIconPath { get; set; }
+    public string? DesktopIconsCustomIconPath { get; set; }
+
+    /// <summary>右上角桌面信息栏；旧配置缺少此项时默认启用。</summary>
+    public bool ShowStatusBar { get; set; } = true;
+
+    /// <summary>日期面板以农历为主显示；旧配置默认保留公历。</summary>
+    public bool CalendarShowLunar { get; set; }
+
+    /// <summary>实时网速默认关闭；读取配置时保留用户已保存的选择。</summary>
+    public bool ShowStatusBarNetworkSpeed { get; set; }
+
+    /// <summary>信息栏第二行的可选项目；空数组表示隐藏全部摘要。</summary>
+    public string[] StatusBarSecondaryItems { get; set; } = ["cpu", "memory", "music"];
+
+    /// <summary>null 为自动选择；手动选择的稳定物理设备键在离线时仍保留。</summary>
+    public string? StatusBarMouseDeviceKey { get; set; }
+    public string? StatusBarHeadsetDeviceKey { get; set; }
+    public string? StatusBarKeyboardDeviceKey { get; set; }
+
+    /// <summary>桌面信息栏的独立缩放倍率，不影响 Dock 图标和外框。</summary>
+    public double StatusBarSizeScale { get; set; } = 1;
+
+    /// <summary>桌面信息栏所在的屏幕边缘。</summary>
+    public StatusBarEdge StatusBarEdge { get; set; } = StatusBarEdge.Top;
+
+    /// <summary>桌面信息栏相对边缘默认右侧锚点的水平偏移，单位为 DIP。</summary>
+    public double StatusBarOffsetX { get; set; }
+
+    /// <summary>旧版自由拖动留下的垂直偏移。保留该字段只为读取旧设置，新版固定为零。</summary>
+    public double StatusBarOffsetY { get; set; }
 
     /// <summary>
     /// Dock 玻璃外框的横向长度，单位为 DIP。零表示继续按内容自动调整，

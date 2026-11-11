@@ -57,6 +57,8 @@ internal sealed class LauncherIconLoader : IDisposable
     {
         lock (_gate) return (_decodedBytes, _cache.Count, _queue.Count, _suspended);
     }
+    internal int PreloadCapacity(int maximumPixels) =>
+        (int)Math.Clamp(_budget / (Math.Max(1L, maximumPixels) * Math.Max(1L, maximumPixels) * 4), 1, 256);
     internal void Clear()
     {
         lock (_gate) { _cache.Clear(); _lru.Clear(); _decodedBytes = 0; }
@@ -96,10 +98,16 @@ internal sealed class LauncherIconLoader : IDisposable
                 if (_disposed) image = null;
                 if (_cache.TryGetValue(work.Key, out var current) && ReferenceEquals(current, work.Entry))
                 {
-                    current.Bytes = image is null ? 0 : (long)image.PixelWidth * image.PixelHeight * 4;
-                    _decodedBytes += current.Bytes;
-                    current.Node = _lru.AddLast(work.Key);
-                    Trim();
+                    // Missing files and transient Shell failures must be retried on
+                    // the next request, rather than poisoning this key until Clear.
+                    if (image is null) _cache.Remove(work.Key);
+                    else
+                    {
+                        current.Bytes = (long)image.PixelWidth * image.PixelHeight * 4;
+                        _decodedBytes += current.Bytes;
+                        current.Node = _lru.AddLast(work.Key);
+                        Trim();
+                    }
                 }
                 work.Entry.Completion.TrySetResult(image);
             }

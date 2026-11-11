@@ -11,6 +11,7 @@ internal sealed class IsolatedDesktopSceneCapture : IDesktopSceneCapture
     private readonly Stream _input, _output;
     private readonly ScreenRect _region;
     private readonly GlassBackdropSource _source;
+    private readonly string? _wallpaperSourceScope;
     public bool AllowsStaticContent => true;
     public bool SupportsSampling => true;
     public long SceneRevision { get; private set; }
@@ -29,11 +30,15 @@ internal sealed class IsolatedDesktopSceneCapture : IDesktopSceneCapture
         : this(region, Start(executable), documented ? GlassBackdropSource.CompatibleScene : GlassBackdropSource.LiveDesktop, trace) { }
     internal IsolatedDesktopSceneCapture(ScreenRect region, GlassBackdropSource source, Action<CaptureTrace>? trace, string? executable = null)
         : this(region, Start(executable), source, trace) { }
+    internal IsolatedDesktopSceneCapture(ScreenRect region, GlassBackdropSource source, Action<CaptureTrace>? trace,
+        string? executable, bool desktopOnly, bool documentedDesktop = false)
+        : this(region, Start(executable), source, trace, desktopOnly, documentedDesktop) { }
     internal IsolatedDesktopSceneCapture(ScreenRect region, ProcessStartInfo start)
         : this(region, start, GlassBackdropSource.LiveDesktop, null) { }
     private static ProcessStartInfo Start(string? executable) => new(executable ?? Environment.ProcessPath
         ?? throw new InvalidOperationException("Cannot locate capture executable."));
-    private IsolatedDesktopSceneCapture(ScreenRect region, ProcessStartInfo start, GlassBackdropSource source, Action<CaptureTrace>? trace)
+    private IsolatedDesktopSceneCapture(ScreenRect region, ProcessStartInfo start, GlassBackdropSource source,
+        Action<CaptureTrace>? trace, bool desktopOnly = false, bool documentedDesktop = false)
     {
         if (region.Width <= 0 || region.Height <= 0 || (long)region.Width * region.Height > 32_000_000)
             throw new ArgumentOutOfRangeException(nameof(region));
@@ -44,6 +49,20 @@ internal sealed class IsolatedDesktopSceneCapture : IDesktopSceneCapture
         start.CreateNoWindow = true; start.WindowStyle = ProcessWindowStyle.Hidden;
         start.ArgumentList.Add("--glass-backdrop-worker"); start.ArgumentList.Add(Environment.ProcessId.ToString());
         CaptureProcessFamily.EnsureRetirementConfirmed();
+        var sourceSetting=Environment.GetEnvironmentVariable("GLASSDESK_DIAGNOSTIC_SHARED_WALLPAPER_SOURCE");
+        var shareFrames=Environment.GetEnvironmentVariable(GlassDesk.UI.CaptureCompatibility.SharedWallpaperBuffer.FrameFanoutEnvironmentVariable)!="0";
+        var shareSource=sourceSetting=="1" || sourceSetting!="0" && shareFrames;
+        if(shareSource)
+        {
+            _wallpaperSourceScope=CaptureProcessFamily.WallpaperSourceScope;
+            start.Environment[GlassDesk.UI.CaptureCompatibility.SharedWallpaperBuffer.ScopeEnvironmentVariable]=_wallpaperSourceScope;
+            start.Environment[GlassDesk.UI.CaptureCompatibility.SharedWallpaperBuffer.FrameFanoutEnvironmentVariable]=shareFrames?"1":"0";
+        }
+        else
+        {
+            start.Environment.Remove(GlassDesk.UI.CaptureCompatibility.SharedWallpaperBuffer.ScopeEnvironmentVariable);
+            start.Environment[GlassDesk.UI.CaptureCompatibility.SharedWallpaperBuffer.FrameFanoutEnvironmentVariable]="0";
+        }
         _process = Process.Start(start) ?? throw new InvalidOperationException("Cannot start capture worker.");
         CaptureProcessFamily.Register(_process.Id);
         _input = _process.StandardInput.BaseStream; _output = _process.StandardOutput.BaseStream;
@@ -54,7 +73,8 @@ internal sealed class IsolatedDesktopSceneCapture : IDesktopSceneCapture
             Send(writer =>
             {
                 writer.Write(BackdropCaptureWorker.ProtocolMagic); writer.Write(BackdropCaptureWorker.ProtocolVersion);
-                writer.Write(source == GlassBackdropSource.LiveDesktop ? (byte)0 : source == GlassBackdropSource.CompatibleScene ? (byte)1 : (byte)2);
+                writer.Write(desktopOnly ? documentedDesktop ? (byte)4 : (byte)3
+                    : source == GlassBackdropSource.LiveDesktop ? (byte)0 : source == GlassBackdropSource.CompatibleScene ? (byte)1 : (byte)2);
                 writer.Write(region.X); writer.Write(region.Y);
                 writer.Write(region.Width); writer.Write(region.Height); writer.Write(_sharedPixels.Name); writer.Write(_sharedPixels.Capacity); WriteFamily(writer);
             }, deadline.Token);
@@ -81,8 +101,8 @@ internal sealed class IsolatedDesktopSceneCapture : IDesktopSceneCapture
         var bytes=checked(_region.Width*_region.Height*4);
         var pixels=reusePixels ? _pixels ??= new byte[bytes] : new byte[bytes];
         if(bytes<=4_000_000)
-            return TryReadSampled(new(0,0,_region.Width,_region.Height),_region.Width,_region.Height,pixels,
-                waitForFrame,cancellation,sourceNotBeforeTicks);
+            return ReadSampled(new(0,0,_region.Width,_region.Height),_region.Width,_region.Height,pixels,
+                waitForFrame,cancellation,sourceNotBeforeTicks,cacheNativeSource:true);
         // Diagnostic native snapshots are tiled across the bounded mapping. Production
         // feeds always use TryReadSampled and never allocate this physical-size array.
         var rows=Math.Max(1,1_000_000/_region.Width);
@@ -93,7 +113,7 @@ internal sealed class IsolatedDesktopSceneCapture : IDesktopSceneCapture
             var count=Math.Min(rows,_region.Height-y);
             if(tile.Length!=_region.Width*count*4) tile=new byte[_region.Width*count*4];
             var frame=ReadSampled(new(0,y,_region.Width,y+count),_region.Width,count,tile,
-                waitForFrame,cancellation,sourceNotBeforeTicks,cachedSourceTicks:ticks);
+                waitForFrame,cancellation,sourceNotBeforeTicks,cachedSourceTicks:ticks,cacheNativeSource:true);
             if(frame is null) return null;
             Buffer.BlockCopy(tile,0,pixels,checked(y*_region.Width*4),tile.Length);ticks=frame.SourceQpcTicks;
         }
@@ -103,7 +123,7 @@ internal sealed class IsolatedDesktopSceneCapture : IDesktopSceneCapture
         TimeSpan waitForFrame=default,CancellationToken cancellation=default,long sourceNotBeforeTicks=0)
         => ReadSampled(crop,width,height,target,waitForFrame,cancellation,sourceNotBeforeTicks);
     private CapturePixels? ReadSampled(PixelBounds crop,int width,int height,byte[] target,
-        TimeSpan waitForFrame,CancellationToken cancellation,long sourceNotBeforeTicks,long cachedSourceTicks=0)
+        TimeSpan waitForFrame,CancellationToken cancellation,long sourceNotBeforeTicks,long cachedSourceTicks=0,bool cacheNativeSource=false)
     {
         if(crop.Left<0 || crop.Top<0 || crop.Right>_region.Width || crop.Bottom>_region.Height || crop.Width<=0 || crop.Height<=0
             || width<=0 || height<=0 || (long)width*height>1_000_000 || target.Length!=(long)width*height*4)
@@ -111,7 +131,7 @@ internal sealed class IsolatedDesktopSceneCapture : IDesktopSceneCapture
         cancellation.ThrowIfCancellationRequested();
         if (sourceNotBeforeTicks > _lastBarrier) { _lastBarrier = sourceNotBeforeTicks; ++_generation; }
         using var deadline = Deadline(cancellation); var sequence = ++_sequence;
-        Command(cachedSourceTicks==0 ? (byte)1 : (byte)4, sequence, deadline.Token, writer =>
+        Command(cachedSourceTicks!=0 ? (byte)4 : cacheNativeSource ? (byte)1 : (byte)6, sequence, deadline.Token, writer =>
         {
             writer.Write(sourceNotBeforeTicks); writer.Write((int)Math.Clamp(waitForFrame.TotalMilliseconds, 0, 100));
             writer.Write(crop.Left);writer.Write(crop.Top);writer.Write(crop.Right);writer.Write(crop.Bottom);
@@ -211,7 +231,13 @@ internal sealed class IsolatedDesktopSceneCapture : IDesktopSceneCapture
         {
             var length = BitConverter.ToInt32(Read(4, token, cancellation));
             if (length < 0 || length > 8192) throw new InvalidDataException("Invalid capture error length.");
-            throw new InvalidOperationException("Isolated capture failed: " + Encoding.UTF8.GetString(Read(length, token, cancellation)));
+            var error=Encoding.UTF8.GetString(Read(length, token, cancellation));
+            if(_wallpaperSourceScope is not null && error==GlassDesk.UI.CaptureCompatibility.SharedWallpaperBufferException.ProtocolErrorCode)
+            {
+                CaptureProcessFamily.RetireWallpaperSourceScope(_wallpaperSourceScope);
+                throw new GlassDesk.UI.CaptureCompatibility.SharedWallpaperBufferException();
+            }
+            throw new InvalidOperationException("Isolated capture failed: " + error);
         }
         if (status > 2) throw new InvalidDataException("Invalid capture worker response.");
         return status;

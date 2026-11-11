@@ -24,7 +24,7 @@ public partial class LauncherWindow
 
     private bool UpdateFolderHover(Point gridPoint, bool exchange)
     {
-        if (exchange || _dragOrigin is null || _dragIconId is null
+        if (_settings.GroupModeEnabled || exchange || _dragOrigin is null || _dragIconId is null
             || _dragOrigin.Pages.SelectMany(p => p.Slots).Any(s => s.Group?.Id == _dragIconId))
         { ClearFolderHover(); return false; }
         var pointer = TileGrid.TranslatePoint(new Point(gridPoint.X - IncomingPageMotion.X, gridPoint.Y), DragOverlay);
@@ -54,9 +54,17 @@ public partial class LauncherWindow
             _folderIntent.Reset();
             if (_layoutBeforePlacement is not null && _dragEdit is not null)
             {
-                var prior = _layoutBeforePlacement.Pages.SelectMany(p => p.Slots).ToList();
-                var current = _dragEdit.Draft.Pages.SelectMany(p => p.Slots).ToList();
-                int Index(List<LauncherSlot> slots) => slots.FindIndex(s => s.ItemId == targetId || s.Group?.Id == targetId);
+                int Index(LauncherLayout layout)
+                {
+                    for (var p = 0; p < layout.Pages.Count; p++)
+                    {
+                        var i = layout.Pages[p].Slots.FindIndex(s => s.ItemId == targetId || s.Group?.Id == targetId);
+                        if (i >= 0) return p * _view.Capacity + i;
+                    }
+                    return -1;
+                }
+                var prior = _layoutBeforePlacement;
+                var current = _dragEdit.Draft;
                 var column = Math.Clamp((int)(gridPoint.X / (TileGrid.ActualWidth / _view.Columns)), 0, _view.Columns - 1);
                 var row = Math.Clamp((int)(gridPoint.Y / (TileGrid.ActualHeight / _view.Rows)), 0, _view.Rows - 1);
                 var pointerSlot = _view.Page * _view.Capacity + row * _view.Columns + column;

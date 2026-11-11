@@ -13,7 +13,7 @@ public sealed class InteractionSettingsTests
     public void MouseChordUsesExistingSaveConflictAndRollbackFlow(string key)
     {
         using var fixture = new Fixture();
-        var binding = new ShortcutSettings { ToggleLauncher = new() { Enabled = true, Key = key }, NextPage = new(), PreviousPage = new() };
+        var binding = new ShortcutSettings { ToggleLauncher = new() { Enabled = true, Key = key }, NextPage = new(), PreviousPage = new(), ToggleGameSleep = new() };
         Assert.Null(fixture.Service.Apply(binding, new()));
         var before = File.ReadAllBytes(fixture.Data.Settings.FilePath);
         using (File.Open(fixture.Data.Settings.FilePath, FileMode.Open, FileAccess.Read, FileShare.None))
@@ -68,14 +68,42 @@ public sealed class InteractionSettingsTests
         using var fixture = new Fixture();
         Assert.Null(fixture.Service.Apply(Bound("Q"), new()));
         var id = fixture.Registry.Items.Single().Key;
-        var next = new ShortcutSettings { HideLauncher = Bound("Q").ToggleLauncher, NextPage = new(), PreviousPage = new() };
+        var next = new ShortcutSettings { HideLauncher = Bound("Q").ToggleLauncher, NextPage = new(), PreviousPage = new(), ToggleGameSleep = new() };
         Assert.Null(fixture.Service.Apply(next, new()));
         Assert.Equal(InputAction.HideLauncher, fixture.Service.ResolveAction(id));
         fixture.Service.Dispose();
         Assert.Empty(fixture.Registry.Items);
     }
 
-    private static ShortcutSettings Bound(string key) => new() { ToggleLauncher = new() { Enabled = true, Control = true, Alt = true, Key = key }, NextPage = new(), PreviousPage = new() };
+    [Fact]
+    public void GameSleepUsesConflictRollbackRebindingAndClearFlow()
+    {
+        using var fixture = new Fixture();
+        var shortcuts = new ShortcutSettings { NextPage = new(), PreviousPage = new() };
+        Assert.Null(fixture.Service.Apply(shortcuts, new()));
+        var original = Assert.Single(fixture.Registry.Items);
+        Assert.Equal(new HotkeyChord(3, 71), original.Value);
+        Assert.Equal(InputAction.ToggleGameSleep, fixture.Service.ResolveAction(original.Key));
+        fixture.Registry.RejectKey = 119; // F8
+        shortcuts.ToggleGameSleep = new() { Enabled = true, Key = "F8" };
+        Assert.NotNull(fixture.Service.Apply(shortcuts, new()));
+        Assert.Equal(original, Assert.Single(fixture.Registry.Items));
+        Assert.Equal("Ctrl+Alt+G", fixture.Data.Settings.Current.Shortcuts.ToggleGameSleep.Describe());
+        fixture.Registry.RejectKey = 0;
+        Assert.Null(fixture.Service.Apply(shortcuts, new()));
+        Assert.Equal(InputAction.None, fixture.Service.ResolveAction(original.Key));
+        var rebound = Assert.Single(fixture.Registry.Items);
+        Assert.Equal(new HotkeyChord(0, 119), rebound.Value);
+        Assert.Equal(InputAction.ToggleGameSleep, fixture.Service.ResolveAction(rebound.Key));
+        shortcuts.ToggleGameSleep = new();
+        Assert.Null(fixture.Service.Apply(shortcuts, new()));
+        Assert.Empty(fixture.Registry.Items);
+        var reload = new SettingsStore(fixture.Data.Settings.FilePath);
+        reload.Load();
+        Assert.False(reload.Current.Shortcuts.ToggleGameSleep.Enabled);
+    }
+
+    private static ShortcutSettings Bound(string key) => new() { ToggleLauncher = new() { Enabled = true, Control = true, Alt = true, Key = key }, NextPage = new(), PreviousPage = new(), ToggleGameSleep = new() };
     private sealed class Registry : IHotkeyRegistry
     {
         public readonly Dictionary<int, HotkeyChord> Items = [];

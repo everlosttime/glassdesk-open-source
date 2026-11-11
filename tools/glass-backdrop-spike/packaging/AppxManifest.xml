@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+         xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+         IgnorableNamespaces="uap uap10 rescap">
+  <Identity Name="GlassDesk.BackdropSpike" Publisher="CN=GlassDesk Backdrop Spike Local Test"
+            Version="0.1.0.0" ProcessorArchitecture="neutral" />
+  <Properties>
+    <DisplayName>GlassDesk Backdrop Technical Probe</DisplayName>
+    <PublisherDisplayName>GlassDesk Local Test</PublisherDisplayName>
+    <Logo>Assets\Logo.png</Logo>
+    <uap10:AllowExternalContent>true</uap10:AllowExternalContent>
+  </Properties>
+  <Resources><Resource Language="zh-CN" /></Resources>
+  <Dependencies><TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.26100.0" MaxVersionTested="10.0.26100.0" /></Dependencies>
+  <Applications>
+    <Application Id="Probe" Executable="GlassBackdropSpike.exe" uap10:TrustLevel="mediumIL" uap10:RuntimeBehavior="win32App">
+      <uap:VisualElements AppListEntry="none" DisplayName="GlassDesk Backdrop Technical Probe"
+          Description="Controlled test of capture-compatible glass; not the production Dock."
+          BackgroundColor="transparent" Square150x150Logo="Assets\Logo.png" Square44x44Logo="Assets\Logo.png" />
+    </Application>
+  </Applications>
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+    <rescap:Capability Name="unvirtualizedResources" />
+    <rescap:Capability Name="graphicsCaptureWithoutBorder" />
+  </Capabilities>
+</Package>

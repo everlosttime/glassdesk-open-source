@@ -37,7 +37,7 @@ public sealed class GlassMaterialSelectionTests
                 Assert.Same(window.PanelBackgroundBrush, Assert.IsType<Border>(window.Content).Background);
                 Assert.False(theme.Appearance.ReduceTransparency);
                 Assert.Null(window.FindName("AppearanceThemeCombo"));
-                Assert.Equal(0, Assert.IsType<ComboBox>(window.FindName("AppearanceMaterialCombo")).SelectedIndex);
+                Assert.Equal(0, Assert.IsType<ComboBox>(window.FindName("LauncherMaterialCombo")).SelectedIndex);
                 Assert.Null(window.FindName("GlassDebugViewCombo"));
                 Assert.Null(window.FindName("GlassPerformanceOverlayCheck"));
                 Assert.Null(window.FindName("GlassFaceScaleSlider"));

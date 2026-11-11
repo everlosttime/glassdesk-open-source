@@ -23,6 +23,7 @@ public sealed class LauncherFolderCancelTests
             try
             {
                 var data = new GlassDeskDataStore(new AppPaths(root)); data.LoadAll();
+                data.Settings.Current.Launcher.GroupModeEnabled = false;
                 for (var i = 0; i < 3; i++) data.Library.Add(new AppEntry { Id = "a" + i, DisplayName = "App " + i, Target = Path.Combine(root, "app" + i) });
                 var layout = LauncherLayoutEditor.AddShortcuts(data.Layouts.Launcher, ["a0", "a1", "a2"], 35);
                 layout = LauncherLayoutEditor.CreateGroup(layout, "a1", "a0", "g", 35);
@@ -30,6 +31,7 @@ public sealed class LauncherFolderCancelTests
                 Assert.True(data.Layouts.CommitLauncher(layout, data.Layouts.LauncherVersion));
                 using var services = new AppServiceHost(data);
                 window = new LauncherWindow(); ((LiquidGlassSurface)window.FindName("GlassSurface")).SetPerformanceSleeping(true);
+                window.ApplySettings(data.Settings.Current.Launcher);
                 window.AttachServices(services, true); window.Show(); window.UpdateLayout();
                 object? Call(string name, params object[] args) => typeof(LauncherWindow).GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, args);
                 Call("OnTileActivated", data.Layouts.Launcher.Pages[0].Slots[0]);

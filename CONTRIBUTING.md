@@ -1,6 +1,6 @@
-# 参与 GlassDesk 1.4.0
+# 参与 GlassDesk 1.6.0
 
-欢迎修改功能、修复 Bug、提交 Issue 和 Pull Request。本源码基线是 1.4.0，不含信息栏；先阅读 README 的构建方式与 docs/LICENSING.md。
+欢迎修改功能、修复 Bug、提交 Issue 和 Pull Request。本源码基线是 1.6.0，不含信息栏；先阅读 README 的构建方式与 docs/LICENSING.md。
 
 - 提交你有权提供的代码和资源，注明第三方来源及其许可，保留现存版权声明。请勿上传 Data、缓存、日志、密钥、安装包或其他个人文件。
 - 除非 PR 事先明确说明并与维护者达成其他安排，提交的原创贡献按本项目适用的 PolyForm Noncommercial License 1.0.0 提供；沿用的 Apache 和第三方部分保留原许可。这不会转让你的版权，也不自动允许维护者把你的非商用贡献用于商业用途。

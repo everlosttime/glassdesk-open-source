@@ -35,7 +35,8 @@ public sealed record ExtractedIcon(int Width, int Height, byte[] Bgra)
 /// <remarks>
 /// 三级降级，按能得到的分辨率从高到低：
 /// <list type="number">
-/// <item><c>IShellItemImageFactory</c>——实测 256×256，带真实 alpha。高 DPI 下不糊，是首选。</item>
+/// <item><c>IShellItemImageFactory</c>——普通外壳项首选。ICO 文件及显式资源索引先直接取图，
+/// 避免 Windows 10 返回 ICO 文件类型的关联图标。</item>
 /// <item><c>ExtractIconEx</c>——按索引取，用于快捷方式图标位置写成
 /// <c>shell32.dll,3</c> 这类「某文件里的第 N 个图标」的情况。实测 32×32。</item>
 /// <item><c>SHGetFileInfo</c>——按扩展名兜底，即使目标不存在也能出图。实测 32×32。</item>
@@ -73,9 +74,12 @@ public static class IconExtractor
             return null;
         }
 
-        // 有明确索引时先按索引取：那条路径给出的正是用户看到的那个图标，
-        // 而 IShellItemImageFactory 只会给这个文件的第 0 个图标。
-        if (index is not null || Path.GetExtension(path).Length == 0)
+        // ICO 是图像资源；Win10 的 IconOnly 外壳请求可能返回文件类型图标，
+        // 即使调用成功、像素也不透明，仍不是文件里的图像。与安装器资源一样先直接取图。
+        // 显式索引也必须先保留，否则外壳只会给出第 0 个图标。
+        var extension = Path.GetExtension(path);
+        if (index is not null || extension.Length == 0
+            || extension.Equals(".ico", StringComparison.OrdinalIgnoreCase))
         {
             var byIndex = ExtractResource(path, index ?? 0) ?? ExtractByIndex(path, index ?? 0);
             if (byIndex is { VisiblePixelCount: > 0 })
@@ -85,6 +89,7 @@ public static class IconExtractor
         }
 
         return ExtractByShellItem(path, PreferredSize)
+            ?? ExtractResource(path, 0)
             ?? ExtractByIndex(path, 0)
             ?? ExtractByFileInfo(path);
     }

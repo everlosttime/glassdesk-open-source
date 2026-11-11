@@ -1,0 +1,1399 @@
+{
+  "passed": false,
+  "checks": [
+    {
+      "kind": "opaque",
+      "phase": "baseline",
+      "repetition": 1,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 102,
+        "Top": 102,
+        "Right": 678,
+        "Bottom": 558,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 150,
+        "Y": 150,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "sceneCaptureMs": 561.6777,
+      "referenceSpanMs": 880.1763,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "opaque",
+      "phase": "baseline",
+      "repetition": 2,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 102,
+        "Top": 102,
+        "Right": 678,
+        "Bottom": 558,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 150,
+        "Y": 150,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "sceneCaptureMs": 363.6966,
+      "referenceSpanMs": 682.4237,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "opaque",
+      "phase": "baseline",
+      "repetition": 3,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 102,
+        "Top": 102,
+        "Right": 678,
+        "Bottom": 558,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 150,
+        "Y": 150,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "sceneCaptureMs": 341.3517,
+      "referenceSpanMs": 654.6132,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "opaque",
+      "phase": "move",
+      "repetition": 1,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 140,
+        "Top": 125,
+        "Right": 716,
+        "Bottom": 581,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 188,
+        "Y": 173,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "sceneCaptureMs": 366.1415,
+      "referenceSpanMs": 685.5862,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "opaque",
+      "phase": "move",
+      "repetition": 2,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 140,
+        "Top": 125,
+        "Right": 716,
+        "Bottom": 581,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 188,
+        "Y": 173,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "sceneCaptureMs": 250.7635,
+      "referenceSpanMs": 571.9332,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "opaque",
+      "phase": "move",
+      "repetition": 3,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 140,
+        "Top": 125,
+        "Right": 716,
+        "Bottom": 581,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 188,
+        "Y": 173,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "sceneCaptureMs": 342.2048,
+      "referenceSpanMs": 657.466,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "opaque",
+      "phase": "resize",
+      "repetition": 1,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 140,
+        "Top": 125,
+        "Right": 836,
+        "Bottom": 521,
+        "Width": 696,
+        "Height": 396
+      },
+      "sourceBounds": {
+        "X": 188,
+        "Y": 173,
+        "Width": 600,
+        "Height": 300
+      },
+      "windowArea": {
+        "Candidates": 45000,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 45000,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 23904,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 23904,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "sceneCaptureMs": 384.3972,
+      "referenceSpanMs": 697.7408,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "opaque",
+      "phase": "resize",
+      "repetition": 2,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 140,
+        "Top": 125,
+        "Right": 836,
+        "Bottom": 521,
+        "Width": 696,
+        "Height": 396
+      },
+      "sourceBounds": {
+        "X": 188,
+        "Y": 173,
+        "Width": 600,
+        "Height": 300
+      },
+      "windowArea": {
+        "Candidates": 45000,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 45000,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 23904,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 23904,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "sceneCaptureMs": 372.9847,
+      "referenceSpanMs": 690.9514,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "opaque",
+      "phase": "resize",
+      "repetition": 3,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 140,
+        "Top": 125,
+        "Right": 836,
+        "Bottom": 521,
+        "Width": 696,
+        "Height": 396
+      },
+      "sourceBounds": {
+        "X": 188,
+        "Y": 173,
+        "Width": 600,
+        "Height": 300
+      },
+      "windowArea": {
+        "Candidates": 45000,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 45000,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 23904,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 23904,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "sceneCaptureMs": 189.9934,
+      "referenceSpanMs": 507.4597,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "opaque",
+      "passed": false,
+      "error": "\u53C2\u6570\u9519\u8BEF\u3002\r\n"
+    },
+    {
+      "kind": "alpha",
+      "phase": "baseline",
+      "repetition": 1,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 102,
+        "Top": 102,
+        "Right": 678,
+        "Bottom": 558,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 150,
+        "Y": 150,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "sceneCaptureMs": 200.4548,
+      "referenceSpanMs": 518.0317,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "alpha",
+      "phase": "baseline",
+      "repetition": 2,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 102,
+        "Top": 102,
+        "Right": 678,
+        "Bottom": 558,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 150,
+        "Y": 150,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "sceneCaptureMs": 378.0159,
+      "referenceSpanMs": 694.8717,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "alpha",
+      "phase": "baseline",
+      "repetition": 3,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 102,
+        "Top": 102,
+        "Right": 678,
+        "Bottom": 558,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 150,
+        "Y": 150,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "sceneCaptureMs": 249.8067,
+      "referenceSpanMs": 565.9992,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "alpha",
+      "phase": "move",
+      "repetition": 1,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 140,
+        "Top": 125,
+        "Right": 716,
+        "Bottom": 581,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 188,
+        "Y": 173,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "sceneCaptureMs": 193.8118,
+      "referenceSpanMs": 511.6956,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "alpha",
+      "phase": "move",
+      "repetition": 2,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 140,
+        "Top": 125,
+        "Right": 716,
+        "Bottom": 581,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 188,
+        "Y": 173,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "sceneCaptureMs": 185.5261,
+      "referenceSpanMs": 510.4299,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "alpha",
+      "phase": "move",
+      "repetition": 3,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 140,
+        "Top": 125,
+        "Right": 716,
+        "Bottom": 581,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 188,
+        "Y": 173,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "sceneCaptureMs": 349.1729,
+      "referenceSpanMs": 667.6623,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "alpha",
+      "phase": "resize",
+      "repetition": 1,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 140,
+        "Top": 125,
+        "Right": 836,
+        "Bottom": 521,
+        "Width": 696,
+        "Height": 396
+      },
+      "sourceBounds": {
+        "X": 188,
+        "Y": 173,
+        "Width": 600,
+        "Height": 300
+      },
+      "windowArea": {
+        "Candidates": 45000,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 45000,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 23904,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 23904,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "sceneCaptureMs": 370.7891,
+      "referenceSpanMs": 679.0516,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "alpha",
+      "phase": "resize",
+      "repetition": 2,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 140,
+        "Top": 125,
+        "Right": 836,
+        "Bottom": 521,
+        "Width": 696,
+        "Height": 396
+      },
+      "sourceBounds": {
+        "X": 188,
+        "Y": 173,
+        "Width": 600,
+        "Height": 300
+      },
+      "windowArea": {
+        "Candidates": 45000,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 45000,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 23904,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 23904,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "sceneCaptureMs": 361.1503,
+      "referenceSpanMs": 678.7588,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "alpha",
+      "phase": "resize",
+      "repetition": 3,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 140,
+        "Top": 125,
+        "Right": 836,
+        "Bottom": 521,
+        "Width": 696,
+        "Height": 396
+      },
+      "sourceBounds": {
+        "X": 188,
+        "Y": 173,
+        "Width": 600,
+        "Height": 300
+      },
+      "windowArea": {
+        "Candidates": 45000,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 45000,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 23904,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 23904,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "sceneCaptureMs": 235.8122,
+      "referenceSpanMs": 548.9514,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "alpha",
+      "passed": false,
+      "error": "\u53C2\u6570\u9519\u8BEF\u3002\r\n"
+    },
+    {
+      "kind": "system",
+      "phase": "baseline",
+      "repetition": 1,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 111,
+        "Top": 102,
+        "Right": 669,
+        "Bottom": 549,
+        "Width": 558,
+        "Height": 447
+      },
+      "sourceBounds": {
+        "X": 159,
+        "Y": 150,
+        "Width": 462,
+        "Height": 351
+      },
+      "windowArea": {
+        "Candidates": 40656,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 40656,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 21840,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 21840,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": true,
+      "sceneCaptureMs": 194.3714,
+      "referenceSpanMs": 515.3046,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "system",
+      "phase": "baseline",
+      "repetition": 2,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 111,
+        "Top": 102,
+        "Right": 669,
+        "Bottom": 549,
+        "Width": 558,
+        "Height": 447
+      },
+      "sourceBounds": {
+        "X": 159,
+        "Y": 150,
+        "Width": 462,
+        "Height": 351
+      },
+      "windowArea": {
+        "Candidates": 40656,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 40656,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 21840,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 21840,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": true,
+      "sceneCaptureMs": 377.14,
+      "referenceSpanMs": 695.5653,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "system",
+      "phase": "baseline",
+      "repetition": 3,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 111,
+        "Top": 102,
+        "Right": 669,
+        "Bottom": 549,
+        "Width": 558,
+        "Height": 447
+      },
+      "sourceBounds": {
+        "X": 159,
+        "Y": 150,
+        "Width": 462,
+        "Height": 351
+      },
+      "windowArea": {
+        "Candidates": 40656,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 40656,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 21840,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 21840,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": true,
+      "sceneCaptureMs": 333.0601,
+      "referenceSpanMs": 649.6616,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "system",
+      "phase": "move",
+      "repetition": 1,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 149,
+        "Top": 125,
+        "Right": 707,
+        "Bottom": 572,
+        "Width": 558,
+        "Height": 447
+      },
+      "sourceBounds": {
+        "X": 197,
+        "Y": 173,
+        "Width": 462,
+        "Height": 351
+      },
+      "windowArea": {
+        "Candidates": 40656,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 40656,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 21840,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 21840,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": true,
+      "sceneCaptureMs": 384.6222,
+      "referenceSpanMs": 703.5628,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "system",
+      "phase": "move",
+      "repetition": 2,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 149,
+        "Top": 125,
+        "Right": 707,
+        "Bottom": 572,
+        "Width": 558,
+        "Height": 447
+      },
+      "sourceBounds": {
+        "X": 197,
+        "Y": 173,
+        "Width": 462,
+        "Height": 351
+      },
+      "windowArea": {
+        "Candidates": 40656,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 40656,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 21840,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 21840,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": true,
+      "sceneCaptureMs": 188.1222,
+      "referenceSpanMs": 503.2332,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "system",
+      "phase": "move",
+      "repetition": 3,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 149,
+        "Top": 125,
+        "Right": 707,
+        "Bottom": 572,
+        "Width": 558,
+        "Height": 447
+      },
+      "sourceBounds": {
+        "X": 197,
+        "Y": 173,
+        "Width": 462,
+        "Height": 351
+      },
+      "windowArea": {
+        "Candidates": 40656,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 40656,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 21840,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 21840,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": true,
+      "sceneCaptureMs": 375.1245,
+      "referenceSpanMs": 690.7295,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "system",
+      "phase": "resize",
+      "repetition": 1,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 149,
+        "Top": 125,
+        "Right": 827,
+        "Bottom": 512,
+        "Width": 678,
+        "Height": 387
+      },
+      "sourceBounds": {
+        "X": 197,
+        "Y": 173,
+        "Width": 582,
+        "Height": 291
+      },
+      "windowArea": {
+        "Candidates": 42486,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 42486,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 23280,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 23280,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": true,
+      "sceneCaptureMs": 389.8656,
+      "referenceSpanMs": 710.93,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "system",
+      "phase": "resize",
+      "repetition": 2,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 149,
+        "Top": 125,
+        "Right": 827,
+        "Bottom": 512,
+        "Width": 678,
+        "Height": 387
+      },
+      "sourceBounds": {
+        "X": 197,
+        "Y": 173,
+        "Width": 582,
+        "Height": 291
+      },
+      "windowArea": {
+        "Candidates": 42486,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 42486,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 23280,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 23280,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": true,
+      "sceneCaptureMs": 198.973,
+      "referenceSpanMs": 523.5576,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "system",
+      "phase": "resize",
+      "repetition": 3,
+      "passed": true,
+      "physicalRegion": {
+        "Left": 149,
+        "Top": 125,
+        "Right": 827,
+        "Bottom": 512,
+        "Width": 678,
+        "Height": 387
+      },
+      "sourceBounds": {
+        "X": 197,
+        "Y": 173,
+        "Width": 582,
+        "Height": 291
+      },
+      "windowArea": {
+        "Candidates": 42486,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 42486,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "outsideWindowRing": {
+        "Candidates": 23280,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 23280,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": true,
+      "sceneCaptureMs": 392.9084,
+      "referenceSpanMs": 706.4683,
+      "borderless": false,
+      "layerCount": 2
+    },
+    {
+      "kind": "system",
+      "passed": false,
+      "error": "\u53C2\u6570\u9519\u8BEF\u3002\r\n"
+    }
+  ],
+  "originalForegroundRestored": true,
+  "note": "Only aggregate statistics saved. Controlled white backing prevents user desktop content entering compared regions. Full physical regions, stable pre/post GDI references, 2px grid, BGR tolerance 2. Body and 48px outside ring checked separately. Default WGC indicator permitted only during this isolated test, then disposed before reference. No borderless product acceptance, no complete glass sample or external recording acceptance. Any repeatable native shadow/corner discrepancy blocks integration."
+}

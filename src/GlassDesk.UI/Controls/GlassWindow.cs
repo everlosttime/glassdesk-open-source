@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using GlassDesk.Core.Geometry;
+using GlassDesk.Core.Models;
 using GlassDesk.Core.Models.Settings;
 using GlassDesk.Platform;
 using GlassDesk.Platform.Displays;
@@ -45,9 +46,29 @@ public enum GlassSurfaceMode
     Justification = "WPF window resources are acquired in OnSourceInitialized and released in OnClosed.")]
 public abstract class GlassWindow : Window
 {
+    public GlassMaterialTarget MaterialTarget { get; set; }
     private CaptureExclusionSession? _captureExclusion;
     private GlassShadow? _shadow;
     private PrimaryDisplaySession? _primaryDisplaySession;
+    private DesktopLayerWatcher? _desktopLayerWatcher;
+    private DesktopWindowAttachment? _desktopAttachment;
+    private System.Windows.Threading.DispatcherOperation? _desktopLayerUpdate;
+    private UIElement? _concealedContent;
+    private Visibility _contentVisibilityBeforeConceal;
+    private double _opacityBeforeConceal = 1;
+    private bool _surfaceConcealed, _pointerTransparentBeforeConceal, _sourceInitializing;
+
+    internal bool IsDesktopAttached => _desktopAttachment?.IsAttached == true;
+    internal nint DesktopAttachmentHandle => _desktopAttachment?.DesktopHandle ?? 0;
+    public bool IsSurfacePresented => IsVisible && !_surfaceConcealed && Opacity > 0;
+
+    /// <summary>Shows the surface and settles its native desktop group before returning.</summary>
+    public new void Show()
+    {
+        base.Show();
+        if (IsDesktopAttached) _desktopAttachment!.Reconcile(presenting: true);
+        _shadow?.Update();
+    }
     /// <summary>
     /// 面板之外留出的空白，DIP。**默认为 0**。
     /// </summary>
@@ -98,7 +119,7 @@ public abstract class GlassWindow : Window
         nameof(DockBuiltinIconBrush), typeof(Brush), typeof(GlassWindow), new PropertyMetadata(null));
 
     public static readonly DependencyProperty LaunchpadIconFilledProperty = DependencyProperty.Register(
-        nameof(LaunchpadIconFilled), typeof(bool), typeof(GlassWindow), new PropertyMetadata(true));
+        nameof(LaunchpadIconFilled), typeof(bool), typeof(GlassWindow), new PropertyMetadata(false));
 
     public static readonly DependencyProperty SecondaryForegroundBrushProperty = DependencyProperty.Register(
         nameof(SecondaryForegroundBrush),
@@ -170,6 +191,18 @@ public abstract class GlassWindow : Window
 
     /// <summary>Only the Launcher opts into the independent text brightness setting.</summary>
     protected virtual bool UseLauncherTextBrightness => false;
+    protected virtual bool UseVisualShadowOpacity => false;
+    protected virtual bool UseNativeIndependentShadow => false;
+    protected void PrewarmIndependentShadow() => _shadow?.PrewarmNative();
+    protected void RetireIndependentShadowResources() => _shadow?.RetireNative();
+    protected void SetIndependentShadowSuppressed(bool suppressed) => _shadow?.SetSuppressed(suppressed);
+    protected virtual bool UseStatusBarTextBrightness => false;
+
+    /// <summary>Only the two desktop bars participate; launchers, settings, and popovers keep their own layers.</summary>
+    protected virtual bool SupportsDesktopLayer => false;
+    protected bool IsFixedDesktopLayer => SupportsDesktopLayer
+        && ThemeService.Current?.Appearance.PinBarsToDesktop == true;
+    internal bool UsesDesktopOnlyBackdrop => IsFixedDesktopLayer;
 
     internal Geometry CreateGlassPanelGeometry(Rect bounds, double radius) =>
         CreatePanelGeometryCore(bounds, radius);
@@ -183,6 +216,10 @@ public abstract class GlassWindow : Window
     /// <summary>Tracks the animated panel shape in the independent, input-transparent shadow.</summary>
     protected void SetTransitionShadowShape(Rect? panelBounds, double radius, double strength = 1) =>
         _shadow?.SetTransitionShape(panelBounds, radius, strength);
+
+    protected void SetTransitionShadowShape(Rect? panelBounds, double radius, double strength,
+        bool reducedDetail) =>
+        _shadow?.SetTransitionShape(panelBounds, radius, strength, reducedDetail);
 
     private Geometry? _sharedPanelClip;
     protected void SetSharedPanelClip(Rect bounds, double radius)
@@ -364,9 +401,9 @@ public abstract class GlassWindow : Window
         }
 
         // Independent candidate only: the compositor source excludes our process.
-        ApplyAppearance();
-
-        _shadow = new GlassShadow(this);
+        _sourceInitializing = true;
+        try { ApplyAppearance(); }
+        finally { _sourceInitializing = false; }
 
         InstallHitTestHook();
 
@@ -400,7 +437,9 @@ public abstract class GlassWindow : Window
     /// </remarks>
     private void InstallHitTestHook()
     {
-        if (PresentationSource.FromVisual(this) is not HwndSource source)
+        // EnsureHandle() raises SourceInitialized before the visual is attached.
+        // Production reveal preparation uses that path; the native source already exists.
+        if (HwndSource.FromHwnd(Handle) is not { } source)
         {
             return;
         }
@@ -410,6 +449,12 @@ public abstract class GlassWindow : Window
 
     private nint OnWindowMessage(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
     {
+        const int WmWindowPosChanging = 0x0046;
+        if (message == WmWindowPosChanging && IsFixedDesktopLayer && !IsDesktopAttached)
+        {
+            WindowStyles.ConstrainToDesktopLayer(lParam);
+        }
+
         const int WmNcHitTest = 0x0084;
         const int HtTransparent = -1;
 
@@ -465,6 +510,12 @@ public abstract class GlassWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _desktopLayerWatcher?.Dispose();
+        _desktopLayerWatcher = null;
+        _desktopLayerUpdate?.Abort();
+        _desktopLayerUpdate = null;
+        _desktopAttachment?.Dispose();
+        _desktopAttachment = null;
         _shadow?.Dispose();
         _shadow = null;
         _captureExclusion?.Dispose();
@@ -478,6 +529,74 @@ public abstract class GlassWindow : Window
         base.OnClosed(e);
     }
 
+    private void QueueDesktopLayerUpdate()
+    {
+        if (Dispatcher.HasShutdownStarted || _desktopLayerUpdate?.Status == System.Windows.Threading.DispatcherOperationStatus.Pending) return;
+        _desktopLayerUpdate = Dispatcher.BeginInvoke(new Action(() =>
+        {
+            _desktopLayerUpdate = null;
+            if (IsFixedDesktopLayer && WindowState != WindowState.Minimized)
+            {
+                _desktopAttachment?.Reconcile();
+                _shadow?.Update();
+            }
+        }));
+    }
+
+    public bool RefreshDesktopAttachment()
+    {
+        Dispatcher.VerifyAccess();
+        if (!IsFixedDesktopLayer || Handle == 0) return false;
+        _desktopAttachment ??= new DesktopWindowAttachment(Handle, owner => new WindowInteropHelper(this).Owner = owner);
+        var attached = _desktopAttachment.TryAttach();
+        _desktopAttachment.Reconcile();
+        _shadow?.Update();
+        return attached;
+    }
+
+    public void HideSurface()
+    {
+        if (!IsDesktopAttached) { Hide(); return; }
+        ConcealPresentation();
+    }
+
+    private void ConcealPresentation()
+    {
+        if (_surfaceConcealed) return;
+        _surfaceConcealed = true;
+        _opacityBeforeConceal = Opacity;
+        _pointerTransparentBeforeConceal = WindowStyles.IsPointerTransparent(Handle);
+        _concealedContent = Content as UIElement;
+        if (_concealedContent is not null)
+        {
+            _contentVisibilityBeforeConceal = _concealedContent.Visibility;
+            _concealedContent.Visibility = Visibility.Hidden;
+        }
+        WindowStyles.SetPointerTransparent(Handle, true);
+        Opacity = 0;
+    }
+
+    public void PrimeSurface()
+    {
+        if (IsVisible) return;
+        _ = new WindowInteropHelper(this).EnsureHandle();
+        ConcealPresentation();
+        Show();
+    }
+
+    public void ShowSurface()
+    {
+        if (_surfaceConcealed)
+        {
+            _surfaceConcealed = false;
+            if (_concealedContent is not null) _concealedContent.Visibility = _contentVisibilityBeforeConceal;
+            _concealedContent = null;
+            WindowStyles.SetPointerTransparent(Handle, _pointerTransparentBeforeConceal);
+            Opacity = _opacityBeforeConceal;
+        }
+        if (!IsVisible) Show();
+    }
+
     /// <summary>
     /// 把当前主题推进窗口，并决定采用哪种玻璃做法。
     /// </summary>
@@ -485,6 +604,27 @@ public abstract class GlassWindow : Window
     {
         var theme = ThemeService.Current;
         var appearance = theme?.Appearance;
+
+        if (SupportsDesktopLayer)
+        {
+            Topmost = !IsFixedDesktopLayer;
+            if (IsFixedDesktopLayer)
+            {
+                _desktopLayerWatcher ??= new DesktopLayerWatcher(QueueDesktopLayerUpdate);
+                // Native ownership is established before first presentation. A mode
+                // change of visible bars is rebuilt by the host, never re-owned live.
+                if (Handle != 0 && (_sourceInitializing || !IsVisible || _desktopAttachment is not null)) RefreshDesktopAttachment();
+            }
+            else
+            {
+                _desktopAttachment?.Dispose();
+                _desktopAttachment = null;
+                _desktopLayerWatcher?.Dispose();
+                _desktopLayerWatcher = null;
+                _desktopLayerUpdate?.Abort();
+                _desktopLayerUpdate = null;
+            }
+        }
 
         var palette = theme?.Palette ?? Palette ?? GlassPalette.Create(true, GlassPalette.DefaultAccent, false);
         if (UseOpaquePanel)
@@ -500,6 +640,17 @@ public abstract class GlassWindow : Window
         ApplySurface(palette);
         ApplyPaletteBrushes(palette);
         UpdateGlassClip();
+        // Plain glass needs only the panel itself. A separate layered shadow HWND
+        // keeps its own compositor surfaces even though backdrop capture is off.
+        if (!UseOpaquePanel && appearance?.GetGlassMaterial(MaterialTarget) == GlassMaterialMode.PlainGlass)
+        {
+            _shadow?.Dispose();
+            _shadow = null;
+        }
+        else if (_shadow is null && Handle != 0)
+        {
+            _shadow = new GlassShadow(this, UseVisualShadowOpacity, UseNativeIndependentShadow);
+        }
         _shadow?.Update();
     }
 
@@ -580,9 +731,10 @@ public abstract class GlassWindow : Window
     /// 用户要求降低透明度、或系统关闭了透明效果时，直接走自绘：那种情况下不该再模糊，
     /// 半透明本身就是用户想去掉的东西。
     /// </remarks>
-    private static GlassSurfaceMode ResolveSurface(ThemeService? theme, AppearanceSettings? appearance)
+    private GlassSurfaceMode ResolveSurface(ThemeService? theme, AppearanceSettings? appearance)
     {
-        if (appearance?.UseSystemBackdrop == false || theme?.UseOpaquePanels == true)
+        if (appearance?.GetGlassMaterial(MaterialTarget) == GlassMaterialMode.PlainGlass
+            || appearance?.UseSystemBackdrop == false || theme?.UseOpaquePanels == true)
         {
             return GlassSurfaceMode.SelfDrawn;
         }
@@ -644,11 +796,11 @@ public abstract class GlassWindow : Window
         PanelBorderBrush = palette.PanelBorderBrush;
         var appearance = ThemeService.Current?.Appearance;
         DockBuiltinIconBrush = MonochromeBrush(appearance?.DockBuiltinIconBrightness ?? 1);
-        LaunchpadIconFilled = appearance?.LaunchpadIconFilled ?? true;
-        var foreground = UseLauncherTextBrightness
-            ? MonochromeBrush(appearance?.LauncherTextBrightness ?? 1) : palette.ForegroundBrush;
+        LaunchpadIconFilled = appearance?.LaunchpadIconFilled ?? false;
+        var foreground = UseStatusBarTextBrightness ? MonochromeBrush(appearance?.StatusBarTextBrightness ?? 1)
+            : UseLauncherTextBrightness ? MonochromeBrush(appearance?.LauncherTextBrightness ?? 1) : palette.ForegroundBrush;
         ForegroundBrush = foreground;
-        SecondaryForegroundBrush = UseLauncherTextBrightness ? foreground : palette.SecondaryForegroundBrush;
+        SecondaryForegroundBrush = UseLauncherTextBrightness || UseStatusBarTextBrightness ? foreground : palette.SecondaryForegroundBrush;
         AccentBrush = palette.AccentBrush;
         Foreground = foreground;
     }

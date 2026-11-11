@@ -25,7 +25,7 @@ public enum TrayEvent
 /// shell 把托盘输入作为普通窗口消息投递，
 /// 所以调用方提供宿主窗口并把它的消息路由给 <see cref="Classify"/>。
 /// 把窗口的所有权放在别处，能保持本类可测试，
-/// 也让宿主可以选择一个从不显示在屏幕上的仅消息窗口。
+/// 宿主应使用隐藏的顶层窗口，才能接收任务栏重建广播。
 ///
 /// 图标句柄归本实例所有，并在 <see cref="Dispose"/> 时销毁。
 /// </remarks>
@@ -34,12 +34,16 @@ public sealed class TrayIcon : IDisposable
     /// <summary>shell 向宿主窗口投递本图标消息时使用的标识。</summary>
     public const int CallbackMessage = Shell32.WmTrayCallback;
 
+    /// <summary>Explorer broadcasts this when the notification area is rebuilt.</summary>
+    public static int TaskbarCreatedMessage { get; } = (int)User32.RegisterWindowMessage("TaskbarCreated");
+
     private readonly nint _ownerWindow;
     private readonly int _id;
 
     private nint _icon;
     private string _tooltip = string.Empty;
     private bool _added;
+    private bool _requestedVisible;
     private bool _disposed;
 
     public TrayIcon(nint ownerWindow, int id = 1)
@@ -66,8 +70,17 @@ public sealed class TrayIcon : IDisposable
 
         TakeOwnership(icon);
         _tooltip = tooltip;
+        _requestedVisible = true;
+        return EnsureVisible();
+    }
 
+    /// <summary>Verify the registration, re-adding it if Explorer has lost it.</summary>
+    public bool EnsureVisible()
+    {
+        if (_disposed || !_requestedVisible || _icon == 0) return false;
         var data = CreateData();
+        // A past success does not prove the Shell still owns the registration.
+        if (Shell32.Shell_NotifyIcon(Shell32.NimModify, ref data)) return _added = true;
         _added = Shell32.Shell_NotifyIcon(Shell32.NimAdd, ref data);
 
         if (_added)
@@ -87,21 +100,13 @@ public sealed class TrayIcon : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        if (!_added)
-        {
-            return Show(icon, tooltip);
-        }
-
-        TakeOwnership(icon);
-        _tooltip = tooltip;
-
-        var data = CreateData();
-        return Shell32.Shell_NotifyIcon(Shell32.NimModify, ref data);
+        return Show(icon, tooltip);
     }
 
     /// <summary>把图标从通知区域移除。</summary>
     public void Hide()
     {
+        _requestedVisible = false;
         if (!_added || _disposed)
         {
             return;

@@ -15,6 +15,23 @@ namespace GlassDesk.Dock.Tests;
 /// </remarks>
 public class DockPlacementCalculatorTests
 {
+    [Fact]
+    public void 纵向停靠左侧并垂直居中()
+    {
+        var area = new PixelRect(-1600, 0, 1600, 2512);
+        var rect = DockPlacementCalculator.Calculate(area, DockPlacement.LeftCenter, 0, 0, 130, 1350, 120);
+        Assert.Equal(area.X, rect.X);
+        Assert.Equal((area.Height - rect.Height) / 2, rect.Y - area.Y);
+    }
+    [Fact]
+    public void 纵向停靠右侧并垂直居中()
+    {
+        var area = new PixelRect(-1600, 0, 1600, 2512);
+        var rect = DockPlacementCalculator.Calculate(area, DockPlacement.RightCenter, 0, 0, 130, 1350, 120);
+        Assert.Equal(area.Right, rect.Right);
+        Assert.Equal((area.Height - rect.Height) / 2, rect.Y - area.Y);
+    }
+
     /// <summary>主屏工作区：2560×1440 @150%，任务栏占掉底部 48 物理像素。</summary>
     private static readonly PixelRect PrimaryWorkArea = new(0, 0, 2560, 1392);
 

@@ -63,6 +63,9 @@ public partial class LauncherWindow
         _displayedFolderId = group.Id;
         _folderClosing = false;
         GroupPanel.Visibility = Visibility.Visible;
+        // Release the global page-wheel binding so the folder's ScrollViewer
+        // receives wheel input throughout the open and close animations.
+        if (opening) NavigationAvailabilityChanged?.Invoke(this, EventArgs.Empty);
         FolderGlass.Source = GlassSurface;
         GroupTitle.Text = group.Name;
         var key = group.Id + "\0" + string.Join("\0", group.ItemIds) + "\0" + _services?.Library.Version;
@@ -106,7 +109,12 @@ public partial class LauncherWindow
 
     private void CloseFolder()
     {
-        if (_displayedFolderId is null) { GroupPanel.Visibility = Visibility.Collapsed; _view.OpenGroupId = null; return; }
+        if (_displayedFolderId is null)
+        {
+            GroupPanel.Visibility = Visibility.Collapsed; _view.OpenGroupId = null;
+            NavigationAvailabilityChanged?.Invoke(this, EventArgs.Empty);
+            return;
+        }
         var tile = TileGrid.Children.OfType<LauncherAppTileButton>().FirstOrDefault(t => Equals(t.Tag, _displayedFolderId));
         if (tile is not null) _folderOrigin = IconBounds(tile, FolderCanvas);
         _folderClosing = true;
@@ -128,6 +136,7 @@ public partial class LauncherWindow
         foreach (var tile in TileGrid.Children.OfType<Button>()) tile.Opacity = 1;
         StopFolderFrames();
         ClearFolderHover(immediate: true);
+        NavigationAvailabilityChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnFolderOutsideDown(object sender, MouseButtonEventArgs e) { if (!_logicalIconDrag) CloseFolder(); e.Handled = true; }
@@ -137,6 +146,18 @@ public partial class LauncherWindow
         if (!_logicalIconDrag && e.Key == Key.Escape && _displayedFolderId is not null)
         { CloseFolder(); e.Handled = true; }
         base.OnPreviewKeyDown(e);
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        // Preview handlers retain folder/drag cancellation. Only an unconsumed
+        // normal Escape reaches the same reversible motion as external dismissal.
+        if (e.Handled || e.Key != Key.Escape || _imeComposing || _logicalIconDrag
+            || _dragEdit is not null || _filterPressedChip is not null
+            || _displayedFolderId is not null || _keepOpenWhileModalCount > 0 || _openContextMenuCount > 0) return;
+        CloseWithTransition();
+        e.Handled = true;
     }
 
     protected override void OnPreviewMouseDown(MouseButtonEventArgs e)
@@ -223,6 +244,7 @@ public partial class LauncherWindow
             // desktop slot stays hidden until FinishIconDrag hands the ghost back.
             foreach (var tile in TileGrid.Children.OfType<Button>())
                 tile.Opacity = _dragOrigin is not null && Equals(tile.Tag, _dragIconId) ? 0 : 1;
+            NavigationAvailabilityChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 }

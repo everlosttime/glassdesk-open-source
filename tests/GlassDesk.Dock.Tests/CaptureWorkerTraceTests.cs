@@ -16,9 +16,9 @@ public sealed class CaptureWorkerTraceTests
         start.ArgumentList.Add("--capture-protocol-fixture"); start.ArgumentList.Add(fault);
         var events = new List<CaptureTrace>();
         var ctor = typeof(IsolatedDesktopSceneCapture).GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic,
-            null, [typeof(ScreenRect), typeof(ProcessStartInfo), typeof(GlassBackdropSource), typeof(Action<CaptureTrace>)], null)!;
+            null, [typeof(ScreenRect), typeof(ProcessStartInfo), typeof(GlassBackdropSource), typeof(Action<CaptureTrace>),typeof(bool),typeof(bool)], null)!;
         using var capture = (IsolatedDesktopSceneCapture)ctor.Invoke([new ScreenRect(0, 0, 2, 2), start,
-            GlassBackdropSource.LiveDesktop, (Action<CaptureTrace>)events.Add]);
+            GlassBackdropSource.LiveDesktop, (Action<CaptureTrace>)events.Add,false,false]);
         if (fault == "native-trace-too-large") Assert.Throws<InvalidDataException>(() => capture.TryRead());
         else
         {

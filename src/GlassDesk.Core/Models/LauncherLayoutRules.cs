@@ -6,6 +6,13 @@ public static class LauncherLayoutRules
     public static bool Equivalent(LauncherLayout left, LauncherLayout right)
     {
         if (left.SchemaVersion != right.SchemaVersion) return false;
+        if (!(left.FlatOrder ?? []).SequenceEqual(right.FlatOrder ?? [], StringComparer.Ordinal)) return false;
+        var leftFilters = left.FilterGroups ?? [];
+        var rightFilters = right.FilterGroups ?? [];
+        if (leftFilters.Count != rightFilters.Count) return false;
+        for (var i = 0; i < leftFilters.Count; i++)
+            if (leftFilters[i].Id != rightFilters[i].Id || leftFilters[i].Name != rightFilters[i].Name
+                || !(leftFilters[i].ItemIds ?? []).SequenceEqual(rightFilters[i].ItemIds ?? [], StringComparer.Ordinal)) return false;
         if (left.SchemaVersion < 2 && !(left.ExcludedAppIds ?? []).SequenceEqual(right.ExcludedAppIds ?? [], StringComparer.Ordinal)) return false;
         var leftPages = left.Pages ?? [];
         var rightPages = right.Pages ?? [];
@@ -33,6 +40,9 @@ public static class LauncherLayoutRules
         {
             SchemaVersion = source.SchemaVersion,
             ExcludedAppIds = [.. source.ExcludedAppIds ?? []],
+            FlatOrder = [.. source.FlatOrder ?? []],
+            FilterGroups = (source.FilterGroups ?? []).Select(group => new LauncherGroup
+            { Id = group.Id, Name = group.Name, ItemIds = [.. group.ItemIds ?? []] }).ToList(),
             Pages = (source.Pages ?? []).Select(page => new LauncherPage
             {
                 Id = page.Id,
@@ -72,38 +82,40 @@ public static class LauncherLayoutRules
             .Distinct(StringComparer.Ordinal).ToList();
         var hidden = excluded.ToHashSet(StringComparer.Ordinal);
         var seen = new HashSet<string>(StringComparer.Ordinal);
-        var slots = new List<LauncherSlot>();
-        foreach (var slot in (source.Pages ?? []).SelectMany(page => page.Slots ?? []))
-        {
-            if (slot.Kind == LauncherSlotKind.App)
-            {
-                if (slot.ItemId is { } id && valid.Contains(id) && !hidden.Contains(id) && seen.Add(id))
-                    slots.Add(new LauncherSlot { Kind = LauncherSlotKind.App, ItemId = id });
-            }
-            else if (slot.Kind == LauncherSlotKind.Group && slot.Group is { } group)
-            {
-                var members = (group.ItemIds ?? []).Where(id => valid.Contains(id) && !hidden.Contains(id) && seen.Add(id)).ToList();
-                if (members.Count == 1)
-                    slots.Add(new LauncherSlot { ItemId = members[0] });
-                else if (members.Count > 1)
-                    slots.Add(new LauncherSlot { Kind = LauncherSlotKind.Group, Group = new LauncherGroup
-                    { Id = group.Id, Name = group.Name, ItemIds = members } });
-            }
-        }
-        if (source.SchemaVersion < 2)
-            foreach (var id in ids)
-                if (!hidden.Contains(id) && seen.Add(id)) slots.Add(new LauncherSlot { Kind = LauncherSlotKind.App, ItemId = id });
-
         var pages = new List<LauncherPage>();
-        for (var i = 0; i < slots.Count; i += capacity)
+        foreach (var sourcePage in source.Pages ?? [])
         {
-            var oldId = (source.Pages ?? []).ElementAtOrDefault(pages.Count)?.Id;
+            var slots = new List<LauncherSlot>();
+            foreach (var slot in sourcePage.Slots ?? [])
+            {
+                if (slot.Kind == LauncherSlotKind.App)
+                {
+                    if (slot.ItemId is { } id && valid.Contains(id) && !hidden.Contains(id) && seen.Add(id))
+                        slots.Add(new LauncherSlot { Kind = LauncherSlotKind.App, ItemId = id });
+                }
+                else if (slot.Kind == LauncherSlotKind.Group && slot.Group is { } group)
+                {
+                    var members = (group.ItemIds ?? []).Where(id => valid.Contains(id) && !hidden.Contains(id) && seen.Add(id)).ToList();
+                    if (members.Count == 1)
+                        slots.Add(new LauncherSlot { ItemId = members[0] });
+                    else if (members.Count > 1)
+                        slots.Add(new LauncherSlot { Kind = LauncherSlotKind.Group, Group = new LauncherGroup
+                        { Id = group.Id, Name = group.Name, ItemIds = members } });
+                }
+            }
             pages.Add(new LauncherPage
             {
-                Id = string.IsNullOrWhiteSpace(oldId) ? $"page-{pages.Count + 1}" : oldId,
-                Slots = slots.Skip(i).Take(capacity).ToList(),
+                Id = string.IsNullOrWhiteSpace(sourcePage.Id) ? $"page-{pages.Count + 1}" : sourcePage.Id,
+                Slots = slots,
             });
         }
-        return new LauncherLayout { Pages = pages, SchemaVersion = 2 };
+        var result = LauncherLayoutEditor.Finish(new LauncherLayout { Pages = pages, SchemaVersion = 2 }, capacity);
+        result = source.SchemaVersion < 2
+            ? LauncherLayoutEditor.AddShortcuts(result, ids.Where(id => !hidden.Contains(id) && !seen.Contains(id)), capacity)
+            : result;
+        result.FlatOrder = [.. source.FlatOrder ?? []];
+        result.FilterGroups = DeepClone(source).FilterGroups;
+        LauncherFilterRules.Normalize(result);
+        return result;
     }
 }

@@ -14,18 +14,24 @@ internal sealed unsafe class SharedDesktopSceneCapture : IDesktopSceneCapture
     private nint[]? _lastExcluded;
     private SceneWindow[]? _lastMembers;
     private long _exclusionBarrier;
+    private long _sceneRevision;
     private long _motionBarrier;
     private long _exclusionGeneration;
     private readonly Action<CaptureTrace>? _trace;
     private readonly int _excludedParentProcess;
     private readonly Func<int[]>? _excludedProcesses;
+    private readonly bool _desktopOnly;
+    private readonly Func<nint> _desktopWindow;
     internal nint CarrierHandle => carrier;
     nint IDesktopSceneCapture.CarrierHandle => CarrierHandle;
-    public long SceneRevision => _exclusionBarrier;
+    public long SceneRevision => _sceneRevision;
     bool IDesktopSceneCapture.UpdateExclusions() => UpdateExclusions();
     CapturePixels? IDesktopSceneCapture.TryRead(TimeSpan wait, CancellationToken cancellation, long notBefore, bool reuse)
         => TryRead(wait, cancellation, notBefore, reuse);
     void IDesktopSceneCapture.ReleaseReadbackBuffers() => ReleaseReadbackBuffers();
+    bool IDesktopSceneCapture.SupportsCroppedReadback => true;
+    CapturePixels? IDesktopSceneCapture.TryReadCropped(PixelBounds crop,TimeSpan wait,CancellationToken cancellation,long notBefore,bool reuse)
+        => TryReadCore(wait,cancellation,notBefore,reuse,crop);
     // Controlled isolation fixture only; never enabled by the candidate feed.
     internal bool DiagnosticFreezeExclusions {get;set;}
     internal void DiagnosticRecommitExclusions(bool commit=true) => ApplyExclusions(_lastExcluded!,commit);
@@ -83,10 +89,16 @@ internal sealed unsafe class SharedDesktopSceneCapture : IDesktopSceneCapture
     }
     internal SharedDesktopSceneCapture(ScreenRect region,bool diagnosticOnScreen=false,Action<CaptureTrace>? trace=null,
         int isolatedParentProcess=0,Func<int[]>? excludedProcesses=null)
+        : this(region, diagnosticOnScreen, trace, isolatedParentProcess, excludedProcesses, false) { }
+
+    internal SharedDesktopSceneCapture(ScreenRect region,bool diagnosticOnScreen,Action<CaptureTrace>? trace,
+        int isolatedParentProcess,Func<int[]>? excludedProcesses,bool desktopOnly,Func<nint>? desktopWindow=null)
     {
         _trace=trace;
         _excludedParentProcess=isolatedParentProcess;
         _excludedProcesses=excludedProcesses;
+        _desktopOnly=desktopOnly;
+        _desktopWindow=desktopWindow ?? GetShellWindow;
         if(Environment.OSVersion.Version.Build!=26100 && isolatedParentProcess<=0)
             throw new NotSupportedException("Private ABI probe is restricted to the inspected local OS build.");
         if(GlassDesk.Platform.WindowsCapabilities.BuildNumber<22000)
@@ -126,7 +138,7 @@ internal sealed unsafe class SharedDesktopSceneCapture : IDesktopSceneCapture
             Check(((delegate* unmanaged[Stdcall]<nint,nint*,int>)(*(nint**)composition)[6])(composition,&createdRoot));
             _rootVisual=createdRoot;
             if(_desktopVisual!=0) AddChild(_desktopVisual,false,0);
-            AddChild(visual,true,_desktopVisual);
+            if(visual!=0) AddChild(visual,true,_desktopVisual);
             nint createdTarget=0;
             Check(((delegate* unmanaged[Stdcall]<nint,nint,int,nint*,int>)(*(nint**)composition)[24])(composition,carrier,0,&createdTarget));
             target=createdTarget;
@@ -152,7 +164,7 @@ internal sealed unsafe class SharedDesktopSceneCapture : IDesktopSceneCapture
         // The multi-window visual omits the shell background. Its transparent holes are
         // valid content, not missing frames. Supply the live shell visual underneath,
         // including wallpaper-provider child surfaces; never replace it with a still image.
-        var shell=GetShellWindow();
+        var shell=_desktopWindow();
         if(shell==0) throw new InvalidOperationException("Desktop shell is temporarily unavailable.");
         var bounds=WgcWindowCapture.ReadScreenBounds(shell);
         var properties=new ThumbnailProperties
@@ -169,10 +181,14 @@ internal sealed unsafe class SharedDesktopSceneCapture : IDesktopSceneCapture
         _shellWindow=shell;
     }
     internal CapturePixels? TryRead(TimeSpan waitForFrame=default,CancellationToken cancellation=default,long sourceNotBeforeTicks=0,bool reusePixels=false)
+        => TryReadCore(waitForFrame,cancellation,sourceNotBeforeTicks,reusePixels,null);
+    private CapturePixels? TryReadCore(TimeSpan waitForFrame,CancellationToken cancellation,long sourceNotBeforeTicks,bool reusePixels,PixelBounds? crop)
     {
         UpdateExclusions();
         var barrier=_exclusionBarrier;
-        var frame=_capture!.TryRead(Math.Max(Math.Max(barrier,_motionBarrier),sourceNotBeforeTicks),waitForFrame,cancellation,reusePixels);
+        var notBefore=Math.Max(Math.Max(barrier,_motionBarrier),sourceNotBeforeTicks);
+        var frame=crop is {} area ? _capture!.TryReadCropped(area,notBefore,waitForFrame,cancellation,reusePixels)
+            : _capture!.TryRead(notBefore,waitForFrame,cancellation,reusePixels);
         // Reject acquisition across own exclusions or external scene membership changes.
         var changed=UpdateExclusions() || barrier!=_exclusionBarrier;
         _trace?.Invoke(new("Scene",changed ? "SceneWindowsChanged" : frame is null ? "Unavailable" : "Delivered",
@@ -182,7 +198,7 @@ internal sealed unsafe class SharedDesktopSceneCapture : IDesktopSceneCapture
     }
     internal bool UpdateExclusions()
     {
-        if (_desktopThumbnail != 0 && GetShellWindow() != _shellWindow)
+        if (_desktopThumbnail != 0 && _desktopWindow() != _shellWindow)
             throw new InvalidOperationException("Desktop shell changed; the capture scene must be recreated.");
         if(DiagnosticFreezeExclusions) return false;
         var snapshotStart=System.Diagnostics.Stopwatch.GetTimestamp();
@@ -195,15 +211,16 @@ internal sealed unsafe class SharedDesktopSceneCapture : IDesktopSceneCapture
         {
             // This live shared visual follows the same HWNDs' DWM transforms.
             // Replacing it for every bounds change blocks acquisition needlessly.
-            // Hidden/closed HWNDs also stop contributing to this live visual.
-            // Track every removal/bounds change and retire pre-change frames;
+            // Track bounds changes and retire pre-change frames;
             // maximize/restore can replace a foreign redirected surface while keeping
-            // its HWND. Rebind those transitions, as well as additions/z-order/exclusions.
+            // its HWND. Hidden windows can retain redirected surfaces (for example
+            // closing WeChat to the tray). Rebind removals as well as additions,
+            // maximize/restore, z-order and exclusions, even if the HWND still exists.
             _lastMembers = snapshot.Members;
             _motionBarrier=System.Diagnostics.Stopwatch.GetTimestamp();
             _capture?.RetireQueuedFramesAtSceneBoundary(_motionBarrier);
-            _trace?.Invoke(new("SceneMotion","BoundsOrRemoval",_motionBarrier,BarrierTicks:_motionBarrier));
-            // DWM follows transforms/removals on this live visual. Preserve the
+            _trace?.Invoke(new("SceneMotion","Bounds",_motionBarrier,BarrierTicks:_motionBarrier));
+            // DWM follows transforms on this live visual. Preserve the
             // hard scene epoch so the parent can publish a fresh acquired frame
             // while motion continues; the next read still requires fresh pixels.
             return false;
@@ -226,13 +243,21 @@ internal sealed unsafe class SharedDesktopSceneCapture : IDesktopSceneCapture
         }
         // Updating an attached shared visual causes observed blank capture textures.
         // Build a replacement root, retaining the carrier/device/WGC pool and cadence.
+        var foreignSceneChanged = _lastMembers is null || !CanFollowLiveWindows(_lastMembers, snapshot.Members);
         if(target!=0) ReplaceVisual(excluded,snapshot.Members);
         else {ApplyExclusions(excluded);_lastMembers=snapshot.Members;}
-        return true;
+        // Own popovers change the exclusion list, not the foreign desktop pixels.
+        // Still advance the acquisition barrier to reject frames from before the
+        // exclusion update, while allowing the parent to retain its valid glass.
+        if (foreignSceneChanged) _sceneRevision = _exclusionBarrier;
+        return foreignSceneChanged;
     }
     internal void ReleaseReadbackBuffers() => _capture?.ReleaseReadbackBuffers();
     private static bool CanFollowLiveWindows(SceneWindow[] previous, SceneWindow[] current)
     {
+        // Removal is a hard scene boundary: fresh WGC timestamps alone cannot
+        // prove a retained foreign redirected surface has left the shared visual.
+        if (previous.Length != current.Length) return false;
         var index = 0;
         foreach (var window in current)
         {
@@ -249,10 +274,13 @@ internal sealed unsafe class SharedDesktopSceneCapture : IDesktopSceneCapture
         var exclusions=new List<nint>();
         var members=new List<SceneWindow>();
         var family=_excludedProcesses?.Invoke() ?? [];
+        var desktop = _desktopOnly ? _desktopWindow() : 0;
+        var includeDesktopHosts = _desktopOnly && desktop == GetShellWindow();
         if(!EnumWindows((hwnd,_)=>
         {
             GetWindowThreadProcessId(hwnd,out var pid);
-            if(pid==Environment.ProcessId || pid==_excludedParentProcess || family.Contains((int)pid)) exclusions.Add(hwnd);
+            if(pid==Environment.ProcessId || pid==_excludedParentProcess || family.Contains((int)pid)
+                || _desktopOnly && hwnd != desktop && !(includeDesktopHosts && IsDesktopHost(hwnd))) exclusions.Add(hwnd);
             else if(pid!=0 && IsWindowVisible(hwnd) && !IsIconic(hwnd)
                 && !(DwmGetWindowAttribute(hwnd,14,out int cloaked,sizeof(int))>=0 && cloaked!=0)
                 && GetWindowRect(hwnd,out var rect)
@@ -266,6 +294,12 @@ internal sealed unsafe class SharedDesktopSceneCapture : IDesktopSceneCapture
         },0))
             throw new InvalidOperationException("Own-process HWND enumeration failed.");
         return (exclusions.Order().ToArray(),members.ToArray());
+    }
+    private static bool IsDesktopHost(nint window)
+    {
+        var name = new System.Text.StringBuilder(128);
+        GetClassName(window, name, name.Capacity);
+        return name.ToString() is "Progman" or "WorkerW";
     }
     private void ApplyExclusions(nint[] excluded,bool commit=true)
     {

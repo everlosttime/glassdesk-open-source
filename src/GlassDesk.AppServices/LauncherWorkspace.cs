@@ -29,11 +29,18 @@ public sealed class LauncherWorkspace
     public LauncherEditSession BeginEdit()
         => new(_host.Layouts.LauncherVersion, _host.Library.Version, LauncherLayoutRules.DeepClone(Layout));
 
+    public LauncherEditSession BeginGroupModeEdit(string? groupId, int capacity)
+        => new(_host.Layouts.LauncherVersion, _host.Library.Version, LauncherFilterRules.Project(Layout, groupId, capacity))
+        { IsGroupMode = true, FilterGroupId = groupId, Capacity = capacity };
+
     public bool Commit(LauncherEditSession session)
     {
         ArgumentNullException.ThrowIfNull(session);
-        if (_host.Library.Version != session.LibraryVersion) return false;
-        return _host.Layouts.CommitLauncher(session.Draft, session.LayoutVersion);
+        if (_host.Library.Version != session.LibraryVersion || _host.Layouts.LauncherVersion != session.LayoutVersion) return false;
+        var draft = session.IsGroupMode
+            ? LauncherFilterRules.ApplyProjection(Layout, session.Draft, session.FilterGroupId, session.Capacity)
+            : session.Draft;
+        return _host.Layouts.CommitLauncher(draft, session.LayoutVersion);
     }
 }
 
@@ -43,4 +50,7 @@ public sealed class LauncherEditSession(long layoutVersion, long libraryVersion,
     public long LayoutVersion { get; } = layoutVersion;
     public long LibraryVersion { get; } = libraryVersion;
     public LauncherLayout Draft { get; set; } = draft;
+    internal bool IsGroupMode { get; init; }
+    internal string? FilterGroupId { get; init; }
+    internal int Capacity { get; init; }
 }

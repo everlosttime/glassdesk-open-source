@@ -38,6 +38,13 @@ public static class ShellExecutor
 {
     /// <summary>打开一个文件、文件夹或网址。</summary>
     public static ShellLaunchOutcome Open(string target, string? arguments = null, string? workingDirectory = null)
+        => Execute(target, arguments, workingDirectory, null);
+
+    /// <summary>用户显式请求管理员启动时交由 Windows 显示标准 UAC 提示。</summary>
+    public static ShellLaunchOutcome RunAsAdministrator(string target, string? arguments = null, string? workingDirectory = null)
+        => Execute(target, arguments, workingDirectory, "runas");
+
+    private static ShellLaunchOutcome Execute(string target, string? arguments, string? workingDirectory, string? verb)
     {
         if (string.IsNullOrWhiteSpace(target))
         {
@@ -47,6 +54,7 @@ public static class ShellExecutor
         var filePointer = Marshal.StringToHGlobalUni(target);
         var argumentsPointer = string.IsNullOrEmpty(arguments) ? 0 : Marshal.StringToHGlobalUni(arguments);
         var directoryPointer = string.IsNullOrWhiteSpace(workingDirectory) ? 0 : Marshal.StringToHGlobalUni(workingDirectory);
+        var verbPointer = verb is null ? 0 : Marshal.StringToHGlobalUni(verb);
 
         try
         {
@@ -66,6 +74,7 @@ public static class ShellExecutor
 
                 // Verb 留空 = 让外壳按关联决定动作。
                 File = filePointer,
+                Verb = verbPointer,
                 Parameters = argumentsPointer,
                 Directory = directoryPointer,
                 Show = 1,
@@ -95,6 +104,7 @@ public static class ShellExecutor
             FreeIfAllocated(filePointer);
             FreeIfAllocated(argumentsPointer);
             FreeIfAllocated(directoryPointer);
+            FreeIfAllocated(verbPointer);
         }
     }
 

@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using GlassDesk.Platform.Interop;
 
 namespace GlassDesk.Platform;
@@ -15,11 +16,50 @@ public static class WindowStyles
     private const uint SwpNoSize = 0x0001;
     private const uint SwpNoMove = 0x0002;
     private const uint SwpNoActivate = 0x0010;
+    private const uint SwpNoZOrder = 0x0004;
+    private const uint SwpNoOwnerZOrder = 0x0200;
+
+    /// <summary>Keep a desktop bar behind application windows without activating or moving it.</summary>
+    public static bool SendToDesktopLayer(nint window) => window != 0 && Dpi32.SetWindowPos(
+        window, new nint(1), 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate | SwpNoOwnerZOrder);
+
+    /// <summary>Constrain a WM_WINDOWPOSCHANGING request, including native raises and WPF Show().</summary>
+    public static void ConstrainToDesktopLayer(nint windowPosition)
+    {
+        if (windowPosition == 0) return;
+        var position = Marshal.PtrToStructure<WindowPosition>(windowPosition);
+        if ((position.Flags & SwpNoZOrder) != 0) return;
+        position.InsertAfter = new nint(1); // HWND_BOTTOM also removes WS_EX_TOPMOST.
+        position.Flags |= SwpNoActivate | SwpNoOwnerZOrder;
+        Marshal.StructureToPtr(position, windowPosition, false);
+    }
+
+    public static bool IsPointerTransparent(nint window) => window != 0
+        && (User32.GetWindowLong(window, User32.GwlExStyle) & 0x20) != 0;
+
+    public static void SetPointerTransparent(nint window, bool transparent)
+    {
+        if (window == 0) return;
+        var style = User32.GetWindowLong(window, User32.GwlExStyle);
+        _ = User32.SetWindowLong(window, User32.GwlExStyle, transparent ? style | 0x20 : style & ~0x20);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WindowPosition
+    {
+        public nint Window, InsertAfter;
+        public int X, Y, Width, Height;
+        public uint Flags;
+    }
 
     /// <summary>Raise an existing topmost window without changing focus, position, or size.</summary>
     public static bool BringToTopWithoutActivation(nint window)
     {
         if (window == 0) return false;
+        // The Shell controls the entire desktop-owned group during Show Desktop.
+        // Reject our own raise requests here rather than rewriting Shell messages.
+        var desktop = DesktopWindowAttachment.FindDesktopHost();
+        if (desktop != 0 && User32.GetWindow(window, 4) == desktop) return true;
 
         try
         {

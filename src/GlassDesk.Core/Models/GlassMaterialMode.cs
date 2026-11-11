@@ -5,4 +5,5 @@ public enum GlassMaterialMode
     AndroidLiquidGlass,
     PhysicalGlass,
     FrostedGlass,
+    PlainGlass,
 }

@@ -1,3 +1,4 @@
+// Public 1.6.0 adaptation: information-bar-specific implementation is excluded.
 using System.Windows;
 using System.Windows.Threading;
 using GlassDesk.Platform.Shell;
@@ -6,7 +7,7 @@ namespace GlassDesk.App;
 
 internal sealed partial class AppHost
 {
-    private static readonly TimeSpan LauncherWarmRetention = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan LauncherWarmRetention = TimeSpan.FromSeconds(10);
     private PerformanceCoordinator? _performance;
     private PerformanceFullscreenMonitor? _performanceFullscreen;
     private DispatcherTimer? _performanceDeadlineTimer;
@@ -40,6 +41,7 @@ internal sealed partial class AppHost
         var now = DateTimeOffset.UtcNow;
         _performance = new PerformanceCoordinator(now);
         _performance.SetAutoSuspend(_data!.Settings.Current.Performance.AutoSuspendWhenFullscreen, now);
+        _performance.SetDesktopLayerPinned(_data.Settings.Current.Appearance.PinBarsToDesktop, now);
         _launcherHiddenSince = _launcher?.IsVisible == true ? null : now;
         // Fullscreen/sleep admission must run even while Normal/Render work and
         // input polling keep the lower Background queue busy.
@@ -48,7 +50,6 @@ internal sealed partial class AppHost
         _dock!.PerformanceSurfaceVisibilityChanged += OnPerformanceVisibilityChanged;
         _dock.IsVisibleChanged += OnPerformanceWindowVisibilityChanged;
         _launcher!.IsVisibleChanged += OnPerformanceWindowVisibilityChanged;
-        _settings!.PerformanceSettingsChanged += OnPerformanceSettingsChanged;
         _performanceFullscreen = new PerformanceFullscreenMonitor(OnPerformanceForegroundObserved);
         ReconcilePerformance();
     }
@@ -63,6 +64,15 @@ internal sealed partial class AppHost
             if (observation.IsFullscreen is { } fullscreen)
                 _performance.ObserveForeground(fullscreen, observation.BelongsToCurrentProcess, DateTimeOffset.UtcNow);
             ReconcilePerformance();
+            // The desktop scene can change before the next scheduled surface frame when
+            // a foreign foreground window closes or minimizes. GlassDesk popovers already
+            // refresh their own surface; treating their activation or resize as an external
+            // scene change would needlessly invalidate every visible glass component.
+            if (!observation.BelongsToCurrentProcess)
+            {
+                _dock?.RequestGlassRefresh();
+                _launcher?.RequestGlassRefresh();
+            }
         }));
     }
 
@@ -77,6 +87,7 @@ internal sealed partial class AppHost
     private void OnPerformanceSettingsChanged(object? sender, EventArgs e)
     {
         _performance?.SetAutoSuspend(_data!.Settings.Current.Performance.AutoSuspendWhenFullscreen, DateTimeOffset.UtcNow);
+        _performance?.SetDesktopLayerPinned(_data!.Settings.Current.Appearance.PinBarsToDesktop, DateTimeOffset.UtcNow);
         ReconcilePerformance();
     }
 
@@ -108,7 +119,7 @@ internal sealed partial class AppHost
 
     private void ReconcilePerformance()
     {
-        if (_performance is null || _disposed || _shuttingDown) return;
+        if (_performance is null || _disposed || _shuttingDown || _recreatingDesktopBars) return;
         if (_applyingPerformance) { _performanceApplyPending = true; return; }
         _applyingPerformance = true;
         try
@@ -124,7 +135,9 @@ internal sealed partial class AppHost
                 var suppressed = _performance.IsSuppressionRequested;
                 var temporary = _performance.IsTemporaryActivation;
 
+                ReconcileNaiwa();
                 _dock?.SetPerformanceSleeping(suppressed);
+                _nearbyPanel?.SetRefreshSuppressed(suppressed);
                 _dock?.SetBackgroundCaptureSleeping(sleeping && !suppressed);
                 if (sleeping && suppressed && _launcher?.IsVisible == true && !_launcher.IsClosingContainer) HideLauncher();
 
@@ -132,12 +145,14 @@ internal sealed partial class AppHost
                 _performancePointerInputSuppressed = suppressed && !launcherVisible;
                 var launcherShouldSleep = !launcherVisible && !temporary
                     && (suppressed || _launcherHiddenSince is { } hidden && now >= hidden + LauncherWarmRetention);
+                var launcherStillWarming = !launcherVisible && _launcherHiddenSince is { } hiddenSince
+                    && now < hiddenSince + LauncherWarmRetention;
                 if (_launcherPerformanceSleeping != launcherShouldSleep)
                 {
                     _launcherPerformanceSleeping = launcherShouldSleep;
                     _launcher?.SetPerformanceSleeping(launcherShouldSleep);
                 }
-                _launcher?.SetBackgroundWorkSuspended(!launcherVisible && !temporary || sleeping && suppressed);
+                _launcher?.SetBackgroundWorkSuspended((!launcherVisible && !temporary && !launcherStillWarming) || sleeping && suppressed);
                 _services?.Running.SetSuspended(sleeping || state == PerformanceState.WarmHidden || suppressed && !launcherVisible);
                 if (!sleeping && _libraryDirtyWhileSleeping)
                 {

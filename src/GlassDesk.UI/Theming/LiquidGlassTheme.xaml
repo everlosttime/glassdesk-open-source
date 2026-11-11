@@ -285,17 +285,24 @@
         <ControlTemplate TargetType="MenuItem">
           <Grid>
             <controls:PhoneBorder x:Name="ItemChrome" Background="Transparent" CornerRadius="9" Padding="{TemplateBinding Padding}">
-              <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" />
+              <DockPanel>
+                <Path x:Name="SubmenuArrow" DockPanel.Dock="Right" Margin="12,0,0,0" VerticalAlignment="Center"
+                      Data="M 0,0 L 4,4 0,8" Stroke="{TemplateBinding Foreground}" Visibility="Collapsed" />
+                <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" />
+              </DockPanel>
             </controls:PhoneBorder>
             <Popup x:Name="PART_Popup" Placement="Right" Focusable="False" AllowsTransparency="True"
                    IsOpen="{TemplateBinding IsSubmenuOpen}">
               <controls:PhoneBorder Background="{StaticResource LiquidControlPopup}" BorderBrush="{StaticResource LiquidControlEdge}"
                       BorderThickness="1" CornerRadius="14" Padding="6">
-                <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" CanContentScroll="True">
+                  <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                </ScrollViewer>
               </controls:PhoneBorder>
             </Popup>
           </Grid>
           <ControlTemplate.Triggers>
+            <Trigger Property="HasItems" Value="True"><Setter TargetName="SubmenuArrow" Property="Visibility" Value="Visible" /></Trigger>
             <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="ItemChrome" Property="Background" Value="#35FFFFFF" /></Trigger>
             <Trigger Property="IsEnabled" Value="False"><Setter TargetName="ItemChrome" Property="Opacity" Value="0.4" /></Trigger>
           </ControlTemplate.Triggers>

@@ -55,6 +55,7 @@ internal sealed class LatestBackdropState : IDisposable
     private long generation;
     private long NextGeneration() => generation=Interlocked.Increment(ref nextGeneration);
     private long contentRevision;
+    private long contentChangedAt;
     private bool disposed;
     private bool resumed;
     private long sourceNotBeforeTicks;
@@ -80,6 +81,11 @@ internal sealed class LatestBackdropState : IDisposable
         }
     }
     internal BackdropRequest? CurrentRequest { get { lock(gate) return disposed ? null : current; } }
+    internal bool IsContentIdle(long now)
+    {
+        lock(gate) return latest is not null && latest.Request == current && contentChangedAt != 0
+            && now - contentChangedAt >= System.Diagnostics.Stopwatch.Frequency / 2;
+    }
     internal void InvalidateScene()
     {
         lock(gate)
@@ -118,8 +124,10 @@ internal sealed class LatestBackdropState : IDisposable
             TraceObserved?.Invoke(new("Publish",reason,System.Diagnostics.Stopwatch.GetTimestamp(),frame.SourceTicks,
                 frame.EndTicks,Generation:frame.Request.Generation));
             if(reason!="Delivered") {if(!ReferenceEquals(latest,frame)) frame.Dispose();return false;}
-            frame.ContentRevision=latest is not null && latest.Source==frame.Source && latest.Request==frame.Request
-                && latest.Pixels.Span.SequenceEqual(frame.Pixels.Span) ? latest.ContentRevision : ++contentRevision;
+            var unchanged=latest is not null && latest.Source==frame.Source && latest.Request==frame.Request
+                && latest.Pixels.Span.SequenceEqual(frame.Pixels.Span);
+            frame.ContentRevision=unchanged ? latest!.ContentRevision : ++contentRevision;
+            if(!unchanged) contentChangedAt=System.Diagnostics.Stopwatch.GetTimestamp();
             if(!ReferenceEquals(latest,frame)) ClearLatest();
             latest=frame; return true;
         }
@@ -131,10 +139,15 @@ internal sealed class LatestBackdropState : IDisposable
             frame=null;
             var reason=disposed ? "WorkerStopped" : latest is null ? "NoFrame" : latest.Request!=current ? "GeometryMismatch"
                 : now<latest.EndTicks ? "FutureReadback" : maximumAgeTicks<0 ? "InvalidAgeBudget"
-                : !latest.IsStatic && now-latest.EndTicks>maximumAgeTicks ? "ExpiredReadback" : now<latest.SourceTicks ? "FutureSource"
-                : !latest.IsStatic && now-latest.SourceTicks>maximumAgeTicks ? "ExpiredSource" : "Delivered";
+                : now<latest.SourceTicks ? "FutureSource" : "Delivered";
             TraceObserved?.Invoke(new("Consumer",reason,now,latest?.SourceTicks ?? 0,latest?.EndTicks ?? 0,Generation:generation));
             if(reason!="Delivered") return false;
+            // The request generation is the freshness authority. Window movement,
+            // foreground changes, resume and geometry changes all clear or replace the
+            // current generation before a reader can receive the old pixels. WGC is
+            // allowed to stop emitting frames when a scene is visually static, so wall
+            // clock age alone must not turn a valid desktop sample into the gray basic
+            // background. A failed worker still disposes this state and clears latest.
             frame=latest!.Acquire(); return true;
         }
     }

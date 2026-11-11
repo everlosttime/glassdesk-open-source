@@ -20,6 +20,29 @@ public partial class LauncherWindow
     public Func<PixelRect?>? ContainerAnchorProvider { get; set; }
     public bool IsClosingContainer => _transformActive && _transformEndTimeline == 0;
 
+    /// <summary>Prepares the next Dock-to-launchpad reveal while the launcher is hidden.</summary>
+    public void PrewarmNextRevealMaterial()
+    {
+        if (IsVisible || _transformActive || _panelPixelBounds is not { Width: > 0, Height: > 0 }) return;
+        var display = TransformDisplay;
+        var source = ContainerAnchorProvider?.Invoke();
+        if (display is null || source is not { Width: > 0, Height: > 0 }
+            || !display.Bounds.Contains(source.Value.X + source.Value.Width / 2, source.Value.Y + source.Value.Height / 2)) return;
+
+        _ = new WindowInteropHelper(this).EnsureHandle();
+        PositionOnDisplay(display);
+        _transformSourceBounds = source.Value;
+        _transformDestinationBounds = _panelPixelBounds;
+        _transformSourceRadiusPixels = Math.Min(_transformSourceBounds.Width, _transformSourceBounds.Height) / 3.0;
+        _transformDestinationRadiusPixels = PanelCornerRadius.TopLeft * display.Dpi / 96.0;
+        _transformDipPerPixel = 96.0 / Math.Max(1, display.Dpi);
+        _panelDipPerPixel = _transformDipPerPixel;
+        ExpandTransformHost();
+        PrepareTransitionBackdrop();
+        PrepareRevealMaterial();
+        PrewarmIndependentShadow();
+    }
+
     private PixelRect _transformSourceBounds;
     private PixelRect _transformDestinationBounds;
     private double _transformDipPerPixel = 1;
@@ -27,12 +50,16 @@ public partial class LauncherWindow
     private double _transformDestinationRadiusPixels;
     private double _transformEndTimeline;
     private long _transformStartedAt;
+    private bool _transformAwaitingFirstFrame;
+    private long _transformMaterialWaitAt;
     private ContainerMorphMotion? _containerMotion;
     private bool _transformActive;
     private bool _hasTransformPath;
     private bool _preserveExpandedHostOnHide;
+    private readonly bool _retainRevealGrid = Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_RETAIN_REVEAL_GRID") == "1";
     private readonly MatrixTransform _glyphRenderTransform = new();
     private TimeSpan _lastTransformRenderingTime = TimeSpan.MinValue;
+    private readonly bool _useDisplayAnimationCadence = Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_DISPLAY_CADENCE") == "1";
 
     private DisplayInfo? TransformDisplay => PrimaryDisplaySession is { } session
         ? session.IsAvailable ? session.Display : null
@@ -41,6 +68,8 @@ public partial class LauncherWindow
     /// <summary>Show the launcher, optionally morphing from a live Dock-button rectangle.</summary>
     public void ShowWithTransition(PixelRect? sourceBounds)
     {
+        StartAnimationRequest(opening: true);
+        var preparationStarted = _showRequestedAt;
         sourceBounds = ContainerAnchorProvider?.Invoke() ?? sourceBounds;
         if (PrimaryDisplaySession is { IsAvailable: false }) return;
         var primary = TransformDisplay;
@@ -48,6 +77,7 @@ public partial class LauncherWindow
             && !primary.Bounds.Contains(suppliedSource.X + suppliedSource.Width / 2,
                 suppliedSource.Y + suppliedSource.Height / 2))
             sourceBounds = null;
+        MarkPreparationTiming("resolve-anchor-and-display", ref preparationStarted);
         if (IsVisible)
         {
             if (_transformActive)
@@ -80,15 +110,12 @@ public partial class LauncherWindow
             return;
         }
 
-        PositionOnWorkingArea();
-        if (sourceBounds is { Width: > 0, Height: > 0 })
-            PositionOnDisplay(TransformDisplay);
-        PrepareToShow();
+        PositionOnDisplayCore(primary, deferHostPlacement: true);
+        MarkPreparationTiming("initial-placement", ref preparationStarted);
 
         var handle = new WindowInteropHelper(this).EnsureHandle();
-        if (sourceBounds is { Width: > 0, Height: > 0 })
-            PositionOnDisplay(TransformDisplay);
-        else PositionOnWorkingArea();
+        PositionOnDisplayCore(primary, deferHostPlacement: true);
+        MarkPreparationTiming("native-host-placement", ref preparationStarted);
         var destination = _panelPixelBounds.Width > 0 && _panelPixelBounds.Height > 0
             ? _panelPixelBounds
             : DisplayService.GetWindowPixelBounds(handle);
@@ -111,6 +138,7 @@ public partial class LauncherWindow
             _hasTransformPath = false;
             _containerMotion = null;
             if (destination is { } finalBounds) SetPixelBounds(finalBounds);
+            PrepareToShow();
             SetFinalVisualState();
             PrepareRevealMaterial();
             Show();
@@ -127,11 +155,25 @@ public partial class LauncherWindow
         _containerMotion = new ContainerMorphMotion(_transformSourceBounds, _transformDestinationBounds,
             _transformSourceRadiusPixels, _transformDestinationRadiusPixels);
         ExpandTransformHost();
+        MarkPreparationTiming("expand-host", ref preparationStarted);
+        // Restore the retired HWND while its tile tree is still empty. WPF
+        // synchronizes its render channel on resize; rebuilding tiles first
+        // puts that cold rendering work inside the synchronous resize.
+        PrepareToShow();
+        MarkPreparationTiming("library-and-tiles", ref preparationStarted);
         PrepareTransitionBackdrop();
+        MarkPreparationTiming("transition-capture-bounds", ref preparationStarted);
         LauncherContent.IsHitTestVisible = false;
-        ApplyContainerTransformFrame(_containerMotion.CurrentFrame);
+        // Establish WPF geometry for material/layout without constructing an
+        // independent shadow that unified presentation will immediately replace.
+        ApplyContainerTransformFrameCore(_containerMotion.CurrentFrame, updateOutput: false);
+        MarkPreparationTiming("prepare-morph-geometry", ref preparationStarted);
         PrepareRevealMaterial();
+        MarkPreparationTiming("prepare-reveal-material", ref preparationStarted);
+        PrepareUnifiedTransition();
+        MarkPreparationTiming("prepare-unified-transition", ref preparationStarted);
         Show();
+        MarkPreparationTiming("show-window", ref preparationStarted);
         BeginContainerTransform(1);
     }
 
@@ -139,8 +181,11 @@ public partial class LauncherWindow
     public void CloseWithTransition()
     {
         if (!IsVisible) return;
-        StopPageSlide();
         if (_transformActive && _transformEndTimeline <= 0) return;
+        StartAnimationRequest(opening: false);
+        var preparationStarted = _animationRequestStartedAt;
+        StopFilterTransition();
+        StopPageSlide();
         if (!_hasTransformPath || ThemeService.Current?.AnimationsEnabled == false)
         {
             StopContainerTransform();
@@ -152,19 +197,30 @@ public partial class LauncherWindow
         RefreshContainerAnchor();
         ExpandTransformHost();
         LauncherContent.IsHitTestVisible = false;
+        MarkPreparationTiming("close-anchor-and-host", ref preparationStarted);
         BeginContainerTransform(0);
     }
 
     private void BeginContainerTransform(double targetTimeline)
     {
         if (!_hasTransformPath || _containerMotion is null) return;
+        var preparationStarted = Stopwatch.GetTimestamp();
         StopPageSlide();
         PrepareTransitionBackdrop();
         AdvanceContainerMotion();
-        StopContainerTransform();
+        StopContainerTransform("reversed");
         _transformEndTimeline = Math.Clamp(targetTimeline, 0, 1);
+        if (_transformEndTimeline >= 1) _unifiedClosingMaterial = null;
         _containerMotion.Retarget(_transformEndTimeline >= 1, _transformSourceBounds);
-        ApplyContainerTransformFrame(_containerMotion.CurrentFrame);
+        CancelUnifiedTransfer();
+        MarkPreparationTiming("begin-retarget", ref preparationStarted);
+        if (!_unifiedActive) PrepareUnifiedTransition();
+        MarkPreparationTiming("begin-unified", ref preparationStarted);
+        // Preparation (or the reversal advance) already submitted this frame.
+        // A duplicate synchronous Present consumes another swapchain admission
+        // before the clock can begin the first moving frame.
+        ApplyContainerTransformFrameCore(_containerMotion.CurrentFrame, updateOutput: !_unifiedActive || !_unifiedFrameSubmitted);
+        MarkPreparationTiming("begin-first-frame", ref preparationStarted);
         if (_containerMotion.IsSettled)
         {
             CompleteContainerTransform(_transformEndTimeline);
@@ -172,9 +228,16 @@ public partial class LauncherWindow
         }
 
         _transformStartedAt = Stopwatch.GetTimestamp();
+        _transformMaterialWaitAt = _transformEndTimeline >= 1 && !GlassSurface.IsCurrentRevealMaterialReady
+            ? _transformStartedAt : 0;
+        _transformAwaitingFirstFrame = true;
         _transformActive = true;
+        if (_useDisplayAnimationCadence)
+            GlassSurface.SetContainerAnimationCadence(UseHighRefreshCapture, DisplayService.RefreshForWindow(Handle)?.Hertz);
+        else GlassSurface.SetContainerAnimationActive(UseHighRefreshCapture);
+        BeginAnimationTrace(_transformEndTimeline >= 1);
         _lastTransformRenderingTime = TimeSpan.MinValue;
-        CompositionTarget.Rendering += OnContainerTransformRendering;
+        if (!StartUnifiedClock()) CompositionTarget.Rendering += OnContainerTransformRendering;
         NavigationAvailabilityChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -187,10 +250,11 @@ public partial class LauncherWindow
             if (rendering.RenderingTime == _lastTransformRenderingTime) return;
             _lastTransformRenderingTime = rendering.RenderingTime;
         }
+        var frameStarted = Stopwatch.GetTimestamp();
         RefreshContainerAnchor();
-
         AdvanceContainerMotion();
-        if (_containerMotion?.IsSettled == true)
+        _animationTrace?.Record(frameStarted, _frameWorkTiming);
+        if (_containerMotion?.IsSettled == true && (!_unifiedActive || _unifiedFrameSubmitted))
             CompleteContainerTransform(_transformEndTimeline);
     }
 
@@ -198,13 +262,46 @@ public partial class LauncherWindow
     {
         if (!_transformActive || _containerMotion is null) return;
         var now = Stopwatch.GetTimestamp();
-        _containerMotion.Advance(Stopwatch.GetElapsedTime(_transformStartedAt, now).TotalSeconds);
+        if (_transformEndTimeline >= 1 && _unifiedSourceWaitAt != 0 && _transformMaterialWaitAt == 0)
+            _transformMaterialWaitAt = now;
+        if (_transformMaterialWaitAt != 0)
+        {
+            var ready = GlassSurface.IsCurrentRevealMaterialReady;
+            if (!ready && Stopwatch.GetElapsedTime(_transformMaterialWaitAt, now).TotalSeconds < 3)
+            {
+                // TransparentWhileLoading intentionally paints no glass until a
+                // current source arrives. Do not spend the opening off screen.
+                _transformAwaitingFirstFrame = true;
+                _transformStartedAt = now;
+                if (!_unifiedActive) ApplyContainerTransformFrame(_containerMotion.CurrentFrame);
+                return;
+            }
+            _transformMaterialWaitAt = 0;
+            if (ready && !_unifiedActive)
+            {
+                PrepareUnifiedTransition();
+                if (!_unifiedClockDriving && StartUnifiedClock())
+                    CompositionTarget.Rendering -= OnContainerTransformRendering;
+            }
+            _transformAwaitingFirstFrame = true;
+            now = Stopwatch.GetTimestamp();
+        }
+        // Start the timeline at the first render callback. Cold WPF/driver wake
+        // can delay dispatch long enough to consume the whole opening unseen.
+        if (!_transformAwaitingFirstFrame)
+            _containerMotion.Advance(Stopwatch.GetElapsedTime(_transformStartedAt, now).TotalSeconds);
+        _transformAwaitingFirstFrame = false;
         _transformStartedAt = now;
         ApplyContainerTransformFrame(_containerMotion.CurrentFrame);
     }
 
-    private void ApplyContainerTransformFrame(ContainerMorphFrame frame)
+    private void ApplyContainerTransformFrame(ContainerMorphFrame frame) => ApplyContainerTransformFrameCore(frame, true);
+
+    private void ApplyContainerTransformFrameCore(ContainerMorphFrame frame, bool updateOutput)
     {
+        _panelLayoutCurrent = false;
+        var timed = _animationTrace is not null;
+        var started = timed ? Stopwatch.GetTimestamp() : 0;
         var boundsInHost = new Rect(
             (frame.Bounds.X - _transformHostBounds.X) * _transformDipPerPixel,
             (frame.Bounds.Y - _transformHostBounds.Y) * _transformDipPerPixel,
@@ -216,11 +313,16 @@ public partial class LauncherWindow
         var panelGeometry = SquircleGlassGeometry.CreateCompact(boundsInHost, radiusInHost);
         ContainerTransformClipRoot.Clip = panelGeometry;
         SetSharedPanelGeometry(panelGeometry);
-        GlassSurface.SetPanelShape(boundsInHost, radiusInHost, panelGeometry);
-        SetTransitionShadowShape(boundsInHost, radiusInHost, .35 + .65 * frame.GlassStrength);
+        var geometryEnd = timed ? Stopwatch.GetTimestamp() : 0;
+        GlassSurface.SetTransitionFrame(boundsInHost, radiusInHost, panelGeometry, frame.GlassStrength, frame.BlurRadius);
+        var glassEnd = timed ? Stopwatch.GetTimestamp() : 0;
+        if (updateOutput && (!_unifiedActive || !TryDrawUnifiedFrame(frame)))
+        {
+            if (_unifiedShadowOnly && _unifiedPresenter is not null) DrawUnifiedShadow(.35 + .65 * frame.GlassStrength);
+            else SetTransitionShadowShape(boundsInHost, radiusInHost, .35 + .65 * frame.GlassStrength, reducedDetail: true);
+        }
+        var shadowEnd = timed ? Stopwatch.GetTimestamp() : 0;
         Opacity = 1;
-        GlassSurface.TransitionProgress = frame.GlassStrength;
-        GlassSurface.TransitionBlurRadius = frame.BlurRadius;
         ApplyContentReveal(frame.ContentOpacity);
         var glyphSize = Math.Min(64, Math.Min(boundsInHost.Width, boundsInHost.Height));
         _glyphRenderTransform.Matrix = new Matrix(glyphSize / 48, 0, 0, glyphSize / 48,
@@ -228,16 +330,26 @@ public partial class LauncherWindow
             boundsInHost.Y + (boundsInHost.Height - glyphSize) / 2);
         CollapsedGlyph.RenderTransform = _glyphRenderTransform;
         CollapsedGlyph.Opacity = frame.GlyphOpacity;
+        if (timed) _frameWorkTiming = new(
+            Stopwatch.GetElapsedTime(started, geometryEnd).TotalMilliseconds,
+            Stopwatch.GetElapsedTime(geometryEnd, glassEnd).TotalMilliseconds,
+            Stopwatch.GetElapsedTime(glassEnd, shadowEnd).TotalMilliseconds,
+            Stopwatch.GetElapsedTime(shadowEnd).TotalMilliseconds, !_unifiedActive || _unifiedFrameSubmitted);
     }
 
     private void CompleteContainerTransform(double timeline)
     {
+        var trace = _animationTrace;
+        _animationTrace = null;
+        var finalizationStarted = trace is null ? 0 : Stopwatch.GetTimestamp();
         StopContainerTransform();
         if (_containerMotion is not null)
         {
+            var presented = _containerMotion.CurrentFrame;
             _containerMotion.Retarget(timeline >= 1, _transformSourceBounds);
             _containerMotion.SnapToTarget();
-            ApplyContainerTransformFrame(_containerMotion.CurrentFrame);
+            if (!_unifiedActive || !_unifiedFrameSubmitted || presented != _containerMotion.CurrentFrame)
+                ApplyContainerTransformFrame(_containerMotion.CurrentFrame);
         }
 
         if (timeline >= 1)
@@ -249,15 +361,19 @@ public partial class LauncherWindow
             // handoff, and closing would switch back a second time.
             ClearContainerTransformShape(keepBackdrop: RenderCapability.IsPixelShaderVersionSupported(3, 0));
             LauncherContent.IsHitTestVisible = true;
+            CompleteUnifiedTransition(opening: true);
             NavigationAvailabilityChanged?.Invoke(this, EventArgs.Empty);
+            trace?.Finish(GlassSurface.InspectPerformance(), "completed", Stopwatch.GetElapsedTime(finalizationStarted).TotalMilliseconds);
             return;
         }
 
         _preserveExpandedHostOnHide = true;
+        CompleteUnifiedTransition(opening: false);
         Hide();
         SetFinalVisualState(collapseHost: false);
         _hasTransformPath = false;
         _containerMotion = null;
+        trace?.Finish(GlassSurface.InspectPerformance(), "completed", Stopwatch.GetElapsedTime(finalizationStarted).TotalMilliseconds);
     }
 
     private void SetPixelBounds(PixelRect bounds)
@@ -266,16 +382,19 @@ public partial class LauncherWindow
         if (display is null) return;
         if (PrimaryDisplaySession is { } session) bounds = session.ClampWindowToWorkArea(bounds);
         var dipPerPixel = 96.0 / Math.Max(1, display.Dpi);
+        // Move the HWND in one physical operation. Setting Width then Height
+        // first forces two synchronous WPF/DWM surface resizes after retirement.
+        if (Handle != 0) _ = DisplayService.MoveWindowToPixelRect(Handle, bounds);
         Width = bounds.Width * dipPerPixel;
         Height = bounds.Height * dipPerPixel;
-        _ = DisplayService.MoveWindowToPixelRect(Handle, bounds);
         _transformHostBounds = bounds;
     }
 
     private void SetFinalVisualState(bool collapseHost = true)
     {
         if (collapseHost) CollapseTransformHost();
-        ClearContainerTransformShape();
+        ClearContainerTransformShape(keepBackdrop: _retainRevealGrid && !collapseHost
+            && RenderCapability.IsPixelShaderVersionSupported(3, 0));
         Opacity = 1;
         PanelCornerRadius = new CornerRadius(Math.Max(80, ThemeService.Current?.Appearance.LauncherCornerRadius ?? 80));
         GlassSurface.TransitionProgress = 1;
@@ -287,8 +406,12 @@ public partial class LauncherWindow
         ApplyContentReveal(1);
     }
 
-    private void StopContainerTransform()
+    private void StopContainerTransform(string outcome = "cancelled")
     {
+        _transformMaterialWaitAt = 0;
+        StopUnifiedClock();
+        GlassSurface.SetContainerAnimationActive(false);
+        FinishAnimationTrace(outcome);
         if (_transformActive)
             CompositionTarget.Rendering -= OnContainerTransformRendering;
         _transformActive = false;
@@ -296,7 +419,10 @@ public partial class LauncherWindow
 
     private void AbortContainerTransform()
     {
+        ClearUnifiedOutput();
         StopContainerTransform();
+        var keepBackdrop = _retainRevealGrid && _preserveExpandedHostOnHide
+            && RenderCapability.IsPixelShaderVersionSupported(3, 0);
         if (_preserveExpandedHostOnHide)
         {
             _preserveExpandedHostOnHide = false;
@@ -308,7 +434,7 @@ public partial class LauncherWindow
         }
         _hasTransformPath = false;
         _containerMotion = null;
-        ClearContainerTransformShape();
+        ClearContainerTransformShape(keepBackdrop);
         Opacity = 1;
         GlassSurface.TransitionProgress = 1;
         GlassSurface.TransitionBlurRadius = 0;
@@ -327,8 +453,16 @@ public partial class LauncherWindow
     private void PrepareTransitionBackdrop() => GlassSurface.SetContainerTransitionBounds(new Rect(0, 0,
         _transformHostBounds.Width * _transformDipPerPixel, _transformHostBounds.Height * _transformDipPerPixel));
 
-    private void PrepareRevealMaterial() => GlassSurface.PrepareRevealMaterial(_transformHostBounds, _panelPixelBounds,
-        Math.Max(96, TransformDisplay?.Dpi ?? 96));
+    private void PrepareRevealMaterial()
+    {
+        var started = Stopwatch.GetTimestamp();
+        try
+        {
+            GlassSurface.PrepareRevealMaterial(_transformHostBounds, _panelPixelBounds,
+                Math.Max(96, TransformDisplay?.Dpi ?? 96));
+        }
+        finally { _lastRevealPreparationMilliseconds = Stopwatch.GetElapsedTime(started).TotalMilliseconds; }
+    }
 
     private void RefreshContainerAnchor()
     {
@@ -351,6 +485,11 @@ public partial class LauncherWindow
         // while the live silhouette overshoots and settles inside it.
         var paddingX = (int)Math.Ceiling(_transformDestinationBounds.Width * .04);
         var paddingY = (int)Math.Ceiling(_transformDestinationBounds.Height * .04);
+        if (_unifiedRequested || Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_RESERVE_SHADOW") == "1")
+        {
+            var shadowPadding = (int)Math.Ceiling(42 / _transformDipPerPixel);
+            paddingX += shadowPadding; paddingY += shadowPadding;
+        }
         var requiredHost = new PixelRect(path.X - paddingX, path.Y - paddingY,
             path.Width + paddingX * 2, path.Height + paddingY * 2);
         if (PrimaryDisplaySession is { } session)

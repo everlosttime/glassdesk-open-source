@@ -6,6 +6,51 @@ namespace GlassDesk.AppServices.Tests;
 
 public class ShortcutIconCompatibilityTests
 {
+    [Theory]
+    [InlineData("application.ico")]
+    [InlineData("application.ICO")]
+    public void IconFileWithoutExplicitIndexUsesItsImage(string name)
+    {
+        using var workspace = new TempWorkspace();
+        var iconPath = WriteIcon(workspace, name, 256);
+
+        var extracted = IconExtractor.Extract(iconPath);
+
+        Assert.NotNull(extracted);
+        Assert.Equal(256, extracted.Width);
+        Assert.Equal(256, extracted.Height);
+        var center = ((128 * extracted.Width) + 128) * 4;
+        Assert.Equal(new byte[] { 220, 80, 30, 255 }, extracted.Bgra.AsSpan(center, 4).ToArray());
+    }
+
+    [Theory]
+    [InlineData("installer-resource-v3")]
+    [InlineData("icon-file-resource-v4")]
+    public void OldLowResolutionIconCacheIsRebuiltWithoutDeletingUserIcons(string cacheVersion)
+    {
+        using var workspace = new TempWorkspace();
+        var iconPath = WriteIcon(workspace, "application.ico", 256);
+        var legacyIdentity = cacheVersion + "\0" + iconPath.ToLowerInvariant();
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(legacyIdentity));
+        var legacyPath = Path.Combine(workspace.DataPaths.IconCacheDirectory,
+            Convert.ToHexString(hash.AsSpan(0, 16)).ToLowerInvariant() + ".png");
+        Directory.CreateDirectory(workspace.DataPaths.IconCacheDirectory);
+        var wrongImage = PngWriter.EncodeBgra(new byte[] { 0, 0, 255, 255 }, 1, 1);
+        File.WriteAllBytes(legacyPath, wrongImage);
+        var customPath = Path.Combine(workspace.DataPaths.IconCacheDirectory, "custom-user.png");
+        File.WriteAllBytes(customPath, wrongImage);
+
+        var cached = new IconCache(workspace.DataPaths).EnsureFor(iconPath);
+
+        Assert.NotNull(cached);
+        Assert.True(cached.CreatedFile);
+        Assert.NotEqual(legacyPath, cached.Path);
+        Assert.True(cached.Width > 1);
+        Assert.NotEqual(wrongImage, File.ReadAllBytes(cached.Path));
+        Assert.Equal(wrongImage, File.ReadAllBytes(legacyPath));
+        Assert.Equal(wrongImage, File.ReadAllBytes(customPath));
+    }
+
     [Fact]
     public void ExtensionlessInstallerIconUsesEmbeddedImage()
     {

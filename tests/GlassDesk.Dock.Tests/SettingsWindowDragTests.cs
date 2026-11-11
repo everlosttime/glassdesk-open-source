@@ -31,7 +31,7 @@ public class SettingsWindowDragTests
                     Assert.True(HasDragSurfaceAncestor(hit), $"No header drag surface at {point}; hit {hit}");
                 }
 
-                foreach (var name in new[] { "SettingsPageList", "AppearanceMaterialCombo",
+                foreach (var name in new[] { "SettingsPageList", "LauncherMaterialCombo",
                     "DockTransparencySlider", "ResetPageButton" })
                 {
                     var control = Assert.IsAssignableFrom<FrameworkElement>(window.FindName(name));

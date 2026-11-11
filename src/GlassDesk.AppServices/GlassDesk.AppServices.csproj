@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GlassDesk.Core\GlassDesk.Core.csproj" />
+    <ProjectReference Include="..\GlassDesk.Nearby\GlassDesk.Nearby.csproj" />
     <ProjectReference Include="..\GlassDesk.Platform\GlassDesk.Platform.csproj" />
     <EmbeddedResource Include="Resources\unihan-mandarin-17.txt" />
   </ItemGroup>

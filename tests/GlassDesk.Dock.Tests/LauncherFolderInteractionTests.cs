@@ -4,11 +4,14 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using GlassDesk.AppServices;
 using GlassDesk.Core.Models;
+using GlassDesk.Core.Input;
 using GlassDesk.Core.Storage;
 using GlassDesk.Launcher;
 using GlassDesk.UI.Controls;
@@ -17,6 +20,81 @@ namespace GlassDesk.Dock.Tests;
 
 public sealed class LauncherFolderInteractionTests
 {
+    [Theory]
+    [InlineData(2, 120)]
+    [InlineData(2, -120)]
+    [InlineData(19, 120)]
+    [InlineData(19, -120)]
+    public void FolderWheelPassesThroughPageHotkeysAndScrollsOnlyItsMembers(int members, int delta)
+    {
+        StaTest.Run(() =>
+        {
+            using var fixture = new Fixture(60);
+            fixture.MakeGroup(members);
+            var cachedAvailability = fixture.Window.CanNavigatePages;
+            fixture.Window.NavigationAvailabilityChanged += (_, _) => cachedAvailability = fixture.Window.CanNavigatePages;
+            using var registry = new NativeHotkeyRegistry(new WindowInteropHelper(fixture.Window).Handle, _ => cachedAvailability);
+            Assert.True(registry.TryRegister(43, new HotkeyChord(0, 0x100), out _));
+            Assert.True(registry.TryRegister(44, new HotkeyChord(0, 0x101), out _));
+            fixture.OpenGroup();
+            Assert.False(cachedAvailability);
+            Pump(650);
+            var scroll = (ScrollViewer)fixture.Window.FindName("GroupScroll");
+            var panel = (Grid)fixture.Window.FindName("GroupPanel");
+            var items = (UniformGrid)fixture.Window.FindName("GroupItems");
+            var view = Get<LauncherViewState>(fixture.Window, "_view");
+            var page = view.Page;
+            if (delta > 0) { scroll.ScrollToBottom(); Pump(50); }
+            var before = scroll.VerticalOffset;
+
+            // This is the cached availability consumed by the production global
+            // wheel hook; a routed wheel reaches the list only if it passes through.
+            Assert.False(registry.DispatchWheel(delta, 0));
+            items.RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, Environment.TickCount, delta)
+                { RoutedEvent = Mouse.MouseWheelEvent });
+            Pump(80);
+            if (members > 4)
+                Assert.True(delta > 0 ? scroll.VerticalOffset < before : scroll.VerticalOffset > before);
+            else Assert.Equal(0, scroll.VerticalOffset);
+            Assert.Equal("g", view.OpenGroupId);
+            Assert.Equal(page, view.Page);
+            Assert.Equal(Visibility.Visible, panel.Visibility);
+
+            // At either end, and outside the card, wheel input still must not
+            // become a page command and dismiss the folder.
+            if (delta > 0) scroll.ScrollToTop(); else scroll.ScrollToBottom();
+            Pump(50);
+            Assert.False(registry.DispatchWheel(delta, 0));
+            fixture.Window.RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, Environment.TickCount, delta)
+                { RoutedEvent = Mouse.MouseWheelEvent });
+            Assert.Equal("g", view.OpenGroupId);
+
+            Call(fixture.Window, "CloseFolder");
+            Assert.False(cachedAvailability);
+            Pump(700);
+            Assert.True(cachedAvailability);
+            Assert.True(registry.DispatchWheel(delta, 0));
+            fixture.Window.NavigatePage(1);
+            Assert.Equal(1, view.Page);
+            fixture.Window.NavigatePage(-1);
+            fixture.OpenGroup();
+            Assert.False(cachedAvailability);
+        });
+    }
+
+    [Fact]
+    public void AlreadyQueuedPageCommandCannotDismissAnOpenFolder()
+    {
+        StaTest.Run(() =>
+        {
+            using var fixture = new Fixture(60); fixture.MakeGroup(19); fixture.OpenGroup();
+            fixture.Window.NavigatePage(1);
+            Assert.Equal("g", Get<LauncherViewState>(fixture.Window, "_view").OpenGroupId);
+            Assert.Equal(0, Get<LauncherViewState>(fixture.Window, "_view").Page);
+            Assert.Equal(Visibility.Visible, ((Grid)fixture.Window.FindName("GroupPanel")).Visibility);
+        });
+    }
+
     [Fact]
     public void ApproachingIconCenterDoesNotSortAwayTheFolderTarget()
     {
@@ -444,6 +522,7 @@ public sealed class LauncherFolderInteractionTests
         public Fixture(int count = 6)
         {
             var data = new GlassDeskDataStore(new AppPaths(_root)); data.LoadAll();
+            data.Settings.Current.Launcher.GroupModeEnabled = false;
             for (var i = 0; i < count; i++)
             {
                 var icon = Path.Combine(_root, $"custom-{i}.png");
@@ -454,6 +533,7 @@ public sealed class LauncherFolderInteractionTests
             Assert.True(Services.Layouts.CommitLauncher(
                 LauncherLayoutEditor.AddShortcuts(Services.Layouts.Launcher, Enumerable.Range(0, count).Select(i => "a" + i), 35), Services.Layouts.LauncherVersion));
             Window = new LauncherWindow { ShowActivated = false };
+            Window.ApplySettings(data.Settings.Current.Launcher);
             ((LiquidGlassSurface)Window.FindName("GlassSurface")).SetPerformanceSleeping(true);
             Window.AttachServices(Services, true); Window.Show(); Window.UpdateLayout();
         }

@@ -1,3 +1,4 @@
+<!-- Public 1.6.0 adaptation: information-bar-specific implementation is excluded. -->
 <controls:GlassWindow
     x:Class="GlassDesk.Settings.SettingsWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -14,95 +15,11 @@
     Height="560">
 
   <controls:GlassWindow.Resources>
-    <sys:Double x:Key="{x:Static SystemParameters.VerticalScrollBarWidthKey}">12</sys:Double>
-    <sys:Double x:Key="{x:Static SystemParameters.HorizontalScrollBarHeightKey}">12</sys:Double>
-    <Style x:Key="ScrollPageButton" TargetType="RepeatButton">
-      <Setter Property="Focusable" Value="False" />
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="RepeatButton">
-            <Border Background="Transparent" />
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
-    <Style x:Key="SlimScrollThumb" TargetType="Thumb">
-      <Setter Property="MinHeight" Value="24" />
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="Thumb">
-            <Grid Background="Transparent">
-              <Border x:Name="Grip" Width="6" HorizontalAlignment="Center"
-                      CornerRadius="3" Background="{TemplateBinding Background}" Opacity="0.5" />
-            </Grid>
-            <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="Grip" Property="Opacity" Value="0.75" />
-              </Trigger>
-              <Trigger Property="IsDragging" Value="True">
-                <Setter TargetName="Grip" Property="Opacity" Value="1" />
-              </Trigger>
-              <DataTrigger Binding="{Binding Orientation, RelativeSource={RelativeSource AncestorType=ScrollBar}}" Value="Horizontal">
-                <Setter TargetName="Grip" Property="Width" Value="Auto" />
-                <Setter TargetName="Grip" Property="Height" Value="6" />
-                <Setter TargetName="Grip" Property="HorizontalAlignment" Value="Stretch" />
-                <Setter TargetName="Grip" Property="VerticalAlignment" Value="Center" />
-              </DataTrigger>
-            </ControlTemplate.Triggers>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-      <Style.Triggers>
-        <DataTrigger Binding="{Binding Orientation, RelativeSource={RelativeSource AncestorType=ScrollBar}}" Value="Horizontal">
-          <Setter Property="MinHeight" Value="0" />
-          <Setter Property="MinWidth" Value="24" />
-        </DataTrigger>
-      </Style.Triggers>
-    </Style>
-    <Style TargetType="ScrollBar">
-      <Setter Property="Width" Value="12" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="Foreground" Value="{Binding AccentBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
-      <Setter Property="SnapsToDevicePixels" Value="True" />
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="ScrollBar">
-            <Grid Background="Transparent">
-              <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}" IsDirectionReversed="True"
-                     Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
-                     ViewportSize="{TemplateBinding ViewportSize}"
-                     Value="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
-                <Track.DecreaseRepeatButton>
-                  <RepeatButton x:Name="PageBefore" Command="{x:Static ScrollBar.PageUpCommand}" Style="{StaticResource ScrollPageButton}" />
-                </Track.DecreaseRepeatButton>
-                <Track.Thumb>
-                  <Thumb Style="{StaticResource SlimScrollThumb}" Background="{TemplateBinding Foreground}" />
-                </Track.Thumb>
-                <Track.IncreaseRepeatButton>
-                  <RepeatButton x:Name="PageAfter" Command="{x:Static ScrollBar.PageDownCommand}" Style="{StaticResource ScrollPageButton}" />
-                </Track.IncreaseRepeatButton>
-              </Track>
-            </Grid>
-            <ControlTemplate.Triggers>
-              <Trigger Property="Orientation" Value="Horizontal">
-                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False" />
-                <Setter TargetName="PageBefore" Property="Command" Value="{x:Static ScrollBar.PageLeftCommand}" />
-                <Setter TargetName="PageAfter" Property="Command" Value="{x:Static ScrollBar.PageRightCommand}" />
-              </Trigger>
-              <Trigger Property="IsEnabled" Value="False">
-                <Setter Property="Opacity" Value="0.3" />
-              </Trigger>
-            </ControlTemplate.Triggers>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-      <Style.Triggers>
-        <Trigger Property="Orientation" Value="Horizontal">
-          <Setter Property="Width" Value="Auto" />
-          <Setter Property="Height" Value="12" />
-        </Trigger>
-      </Style.Triggers>
-    </Style>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Controls/SlimScrollBars.xaml"/>
+      </ResourceDictionary.MergedDictionaries>
+      </ResourceDictionary>
   </controls:GlassWindow.Resources>
 
   <Border
@@ -111,7 +28,8 @@
       CornerRadius="{Binding PanelCornerRadius, RelativeSource={RelativeSource AncestorType=Window}}"
       SnapsToDevicePixels="True">
 
-    <Grid>
+    <AdornerDecorator>
+    <Grid x:Name="SettingsGuideRoot">
     <Grid x:Name="SettingsContentLayer" Margin="28">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
@@ -135,13 +53,18 @@
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <StackPanel Grid.Column="0" AutomationProperties.Name="设置页面">
+        <Grid Grid.Column="0" AutomationProperties.Name="设置页面">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
           <TextBlock
               Margin="0,0,0,8"
               FontSize="12"
               Foreground="{Binding SecondaryForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}"
               Text="设置分类" />
-          <ListBox x:Name="SettingsPageList" SelectedIndex="1" SelectionChanged="OnSettingsPageSelected"
+          <ListBox x:Name="SettingsPageList" Grid.Row="1" SelectedIndex="1" SelectionChanged="OnSettingsPageSelected"
+                   ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                    ItemsSource="{Binding PlannedPages, RelativeSource={RelativeSource AncestorType=Window}}">
             <ListBox.ItemTemplate>
               <DataTemplate>
@@ -153,7 +76,7 @@
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
-        </StackPanel>
+        </Grid>
 
         <controls:PhoneBorder
             Grid.Column="1"
@@ -167,13 +90,28 @@
             <StackPanel>
               <TextBlock x:Name="AppearanceSectionHeading" FontSize="16" FontWeight="SemiBold" Text="外观"
                          Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
-              <TextBlock Margin="0,12,0,4" Text="玻璃效果" />
-              <ComboBox x:Name="AppearanceMaterialCombo" AutomationProperties.Name="玻璃效果"
+              <TextBlock Margin="0,12,0,4" Text="启动台玻璃效果" />
+              <ComboBox x:Name="LauncherMaterialCombo" AutomationProperties.Name="启动台玻璃效果"
                         SelectionChanged="OnAppearanceControlChanged">
                 <ComboBoxItem Content="液态玻璃" />
                 <ComboBoxItem Content="磨砂玻璃" />
+                <ComboBoxItem Content="普通透明玻璃（低占用）" />
               </ComboBox>
-              <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Text="液态玻璃保留折射与边缘光泽；磨砂玻璃柔化背景，不产生折射。切换同时应用到 Dock 和启动台。" />
+              <TextBlock Margin="0,12,0,4" Text="Dock 栏玻璃效果" />
+              <ComboBox x:Name="DockMaterialCombo" AutomationProperties.Name="Dock 栏玻璃效果"
+                        SelectionChanged="OnAppearanceControlChanged">
+                <ComboBoxItem Content="液态玻璃" />
+                <ComboBoxItem Content="磨砂玻璃" />
+                <ComboBoxItem Content="普通透明玻璃（低占用）" />
+              </ComboBox>
+              <TextBlock Margin="0,12,0,4" Text="窗口层级模式" />
+              <ComboBox x:Name="DesktopLayerModeCombo" AutomationProperties.Name="窗口层级模式"
+                        SelectionChanged="OnAppearanceControlChanged">
+                <ComboBoxItem Content="普通模式" />
+                <ComboBoxItem Content="固定桌面层" />
+              </ComboBox>
+              <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                         Text="固定桌面层：Dock 保持位于应用窗口下方，仍遵循 Dock 的“常驻显示 / 自动隐藏”设置，不因遮挡单独收起。玻璃背景只读取桌面和壁纸，不读取应用窗口；鼠标唤出后仍位于应用窗口下方，手动休眠仍可暂停。" />
               <TextBlock Margin="0,12,0,4" Text="Dock 透明度" />
               <DockPanel>
                 <TextBlock x:Name="DockTransparencyValue" DockPanel.Dock="Right" Width="48" TextAlignment="Right" />
@@ -196,7 +134,15 @@
                 <TextBlock DockPanel.Dock="Left" Text="不透明" />
                 <TextBlock Text="透明" TextAlignment="Right" />
               </DockPanel>
-              <TextBlock Margin="0,6,0,0" Text="分别调节 Dock 和启动台的玻璃透明度。默认 Dock 90%、启动台 20%。" TextWrapping="Wrap" />
+              <DockPanel Margin="0,4,0,0">
+                <TextBlock DockPanel.Dock="Left" Text="不透明" />
+                <TextBlock Text="透明" TextAlignment="Right" />
+              </DockPanel>
+              <TextBlock Margin="0,12,0,4" Text="控制中心透明度（含日历弹窗）" />
+              <DockPanel Margin="0,4,0,0">
+                <TextBlock DockPanel.Dock="Left" Text="不透明" />
+                <TextBlock Text="透明" TextAlignment="Right" />
+              </DockPanel>
               <TextBlock Margin="0,12,0,4" Text="启动台图标样式" />
               <ComboBox x:Name="LaunchpadIconStyleCombo" AutomationProperties.Name="启动台图标样式"
                         SelectionChanged="OnAppearanceControlChanged">
@@ -241,15 +187,15 @@
                 <ComboBoxItem Content="自动隐藏" />
               </ComboBox>
               <TextBlock Margin="0,4,0,8" TextWrapping="Wrap"
-                         Text="自动隐藏：鼠标移到 Dock 原来的位置时唤出，移开约 300 毫秒后收起。使用菜单、拖动图标或打开启动台时保持显示。" />
-              <TextBlock Margin="0,12,0,4" Text="左侧固定图标" />
+                         Text="自动隐藏：鼠标移到 Dock 原来的位置时唤出，移开约 300 毫秒后收起。使用菜单、拖动图标或打开启动台时保持显示。此设置同样适用于固定桌面层。" />
+              <TextBlock Margin="0,12,0,4" Text="内置固定图标" />
               <CheckBox x:Name="ShowLauncherEntryCheckBox" Content="显示启动台" Margin="0,4"
                         AutomationProperties.Name="Dock 显示启动台" Checked="OnDockControlChanged" Unchecked="OnDockControlChanged" />
               <CheckBox x:Name="ShowThisPcEntryCheckBox" Content="显示此电脑" Margin="0,4"
                         AutomationProperties.Name="Dock 显示此电脑" Checked="OnDockControlChanged" Unchecked="OnDockControlChanged" />
               <CheckBox x:Name="ShowDesktopIconsEntryCheckBox" Content="显示切换桌面图标" Margin="0,4"
                         AutomationProperties.Name="Dock 显示切换桌面图标" Checked="OnDockControlChanged" Unchecked="OnDockControlChanged" />
-              <TextBlock Margin="0,4,0,10" TextWrapping="Wrap" Text="按启动台、此电脑、切换桌面图标的顺序固定在左侧。切换桌面图标用于显示或隐藏桌面上的图标。" />
+              <TextBlock Margin="0,4,0,10" TextWrapping="Wrap" Text="按启动台、此电脑、切换桌面图标的顺序排列在应用图标之前。切换桌面图标用于显示或隐藏桌面上的图标。" />
               <TextBlock Margin="0,12,0,4" Text="整体大小" />
               <Slider x:Name="DockScaleSlider" Minimum="0.6666666666666666" Maximum="1.5"
                       SmallChange="0.05" LargeChange="0.1" IsMoveToPointEnabled="True"
@@ -271,6 +217,8 @@
                 <ComboBoxItem Content="底部左侧" />
                 <ComboBoxItem Content="底部右侧" />
                 <ComboBoxItem Content="顶部居中" />
+                <ComboBoxItem Content="左侧居中（纵向）" />
+                <ComboBoxItem Content="右侧居中（纵向）" />
               </ComboBox>
               <TextBlock Margin="0,10,0,4" Text="水平偏移"
                          Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
@@ -295,12 +243,25 @@
               <Slider x:Name="LauncherColumnsSlider" Minimum="2" Maximum="12" TickFrequency="1"
                       IsSnapToTickEnabled="True" AutomationProperties.Name="启动台列数"
                       ValueChanged="OnLauncherControlChanged" />
+              <TextBlock Text="图标整理模式" Margin="0,12,0,4" />
+              <ComboBox x:Name="LauncherModeCombo" AutomationProperties.Name="启动台整理模式"
+                        SelectionChanged="OnLauncherControlChanged" HorizontalAlignment="Left" MinWidth="210">
+                <ComboBoxItem Content="文件夹模式" />
+                <ComboBoxItem Content="分组模式（平铺图标）" />
+              </ComboBox>
+              <TextBlock Text="分组模式通过搜索框下方的按钮筛选图标，拖动不会合并文件夹。切换模式会保留原有文件夹和分组。"
+                         TextWrapping="Wrap" Opacity="0.65" Margin="0,6,0,8" />
               <CheckBox x:Name="LauncherFocusSearchCheck" Margin="0,8,0,0" Content="打开时聚焦搜索"
                         AutomationProperties.Name="打开时聚焦搜索"
                         Checked="OnLauncherControlChanged" Unchecked="OnLauncherControlChanged" />
               <CheckBox x:Name="LauncherRememberPageCheck" Margin="0,8,0,0" Content="记住当前浏览页"
                         AutomationProperties.Name="记住启动台页码"
                         Checked="OnLauncherControlChanged" Unchecked="OnLauncherControlChanged" />
+              <CheckBox x:Name="LauncherHighRefreshCheck" Margin="0,8,0,0" Content="启动台高刷新模式（120Hz 目标）"
+                        AutomationProperties.Name="启动台高刷新模式"
+                        Checked="OnLauncherControlChanged" Unchecked="OnLauncherControlChanged" />
+              <TextBlock Margin="0,4,0,0" TextWrapping="Wrap"
+                         Text="适合高刷新率屏幕，切换后下次展开生效。可能增加资源占用，实际流畅度取决于设备。" />
               <TextBlock x:Name="LauncherSettingsStatus" Margin="0,10,0,16" TextWrapping="Wrap"
                          Foreground="{Binding SecondaryForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
               <Separator Margin="0,4,0,14" />
@@ -308,11 +269,12 @@
                          Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
               <TextBlock Margin="0,6,0,10" TextWrapping="Wrap" Text="点击当前快捷键即可录制键盘组合、标点键、鼠标侧键或滚轮方向，录制后自动保存。Esc 取消，Backspace / Delete 清除绑定。" />
               <UniformGrid Columns="2">
-                <TextBlock Margin="0,7" Text="打开/关闭启动台" /><settings:ShortcutRecorder x:Name="ToggleLauncherHotkeyBox" AutomationProperties.Name="打开/关闭启动台快捷键"  RecordingCompleted="OnShortcutRecordingCompleted" />
-                <TextBlock Margin="0,7" Text="下一页" /><settings:ShortcutRecorder x:Name="NextPageHotkeyBox" AutomationProperties.Name="下一页快捷键"  RecordingCompleted="OnShortcutRecordingCompleted" />
-                <TextBlock Margin="0,7" Text="上一页" /><settings:ShortcutRecorder x:Name="PreviousPageHotkeyBox" AutomationProperties.Name="上一页快捷键"  RecordingCompleted="OnShortcutRecordingCompleted" />
-                <TextBlock Margin="0,7" Text="切换桌面图标" /><settings:ShortcutRecorder x:Name="ToggleDesktopIconsHotkeyBox" AutomationProperties.Name="切换桌面图标快捷键"  RecordingCompleted="OnShortcutRecordingCompleted" />
-                <TextBlock Margin="0,7" Text="锁定 Dock 遮挡唤出" /><settings:ShortcutRecorder x:Name="ToggleDockRevealLockHotkeyBox" AutomationProperties.Name="切换 Dock 遮挡唤出锁定快捷键"  RecordingCompleted="OnShortcutRecordingCompleted" />
+                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="打开/关闭启动台" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleLauncherHelp" HelpTitle="打开/关闭启动台" Description="切换启动台的显示与收起。打开后可搜索、浏览和启动应用；再次按同一快捷键收起，也可以点击启动台外面关闭。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleLauncherHotkeyBox" AutomationProperties.Name="打开/关闭启动台快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
+                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="下一页" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="NextPageHelp" HelpTitle="下一页" Description="启动台打开时切换到下一页，也适用于搜索结果分页。到最后一页后停止；启动台关闭、打开文件夹、正在中文输入或展开动画期间，不执行翻页。"/></StackPanel><settings:ShortcutRecorder x:Name="NextPageHotkeyBox" AutomationProperties.Name="下一页快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
+                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="上一页" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="PreviousPageHelp" HelpTitle="上一页" Description="启动台打开时切换到上一页，也适用于搜索结果分页。到第一页后停止；启动台关闭、打开文件夹、正在中文输入或展开动画期间，不执行翻页。"/></StackPanel><settings:ShortcutRecorder x:Name="PreviousPageHotkeyBox" AutomationProperties.Name="上一页快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
+                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="切换桌面图标" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleDesktopIconsHelp" HelpTitle="切换桌面图标" Description="显示或隐藏 Windows 桌面上的图标。只改变图标可见性，不会删除文件，也不会移除 Dock 或启动台入口；再次按下即可切换回来。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleDesktopIconsHotkeyBox" AutomationProperties.Name="切换桌面图标快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
+                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="阻止Dock遮挡唤出" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleDockRevealLockHelp" HelpTitle="阻止 Dock遮挡唤出" Description="同时切换 Dock的遮挡唤出锁。锁定后，被窗口覆盖或全屏遮挡时，鼠标靠近边缘也不会将它们唤出；再次按下解除。未被遮挡时仍按原显示设置工作，仅本次运行有效。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleDockRevealLockHotkeyBox" AutomationProperties.Name="阻止Dock遮挡唤出快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
+                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="开关游戏休眠模式" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleGameSleepHelp" HelpTitle="开关游戏休眠模式" Description="手动开启或关闭游戏休眠。开启后隐藏桌面组件并暂停部分背景处理，减少游戏时的干扰；程序仍在运行。再次按下同一快捷键可解除手动休眠，托盘菜单也可切换；若仍有全屏应用，自动休眠可能继续生效。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleGameSleepHotkeyBox" AutomationProperties.Name="开关游戏休眠模式快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
               </UniformGrid>
               <TextBlock x:Name="InteractionSettingsStatus" Margin="0,8,0,14" TextWrapping="Wrap"
                          AutomationProperties.Name="快捷操作设置状态" />
@@ -326,14 +288,72 @@
               <TextBlock x:Name="PerformanceSettingsStatus" Margin="0,8,0,14" TextWrapping="Wrap"
                          AutomationProperties.Name="性能设置状态" />
               <Separator Margin="0,4,0,14" />
-              <TextBlock x:Name="DesktopSectionHeading" FontSize="16" FontWeight="SemiBold" Text="桌面"
+              <TextBlock x:Name="NaiwaSectionHeading" FontSize="16" FontWeight="SemiBold" Text="回收站"
                          Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
-              <TextBlock Margin="0,8,0,10" TextWrapping="Wrap" Text="桌面图标显示状态由 Windows 管理。使用下方按钮可请求切换；不支持时按钮会停用。" />
-              <StackPanel Orientation="Horizontal">
-                <Button x:Name="DesktopIconsToggleButton" Padding="10,7" Content="切换桌面图标显示"
-                        AutomationProperties.Name="切换桌面图标显示" Click="OnDesktopIconsToggleClick" />
+              <CheckBox x:Name="NaiwaEnabledCheck" Content="启用黄色回收站" Margin="0,10,0,4"
+                        AutomationProperties.Name="启用黄色回收站" Checked="OnNaiwaEnabledChanged" Unchecked="OnNaiwaEnabledChanged" />
+              <TextBlock Text="随 GlassDesk 启动，游戏休眠期间隐藏。" TextWrapping="Wrap" Margin="0,0,0,8" />
+              <TextBlock Margin="0,6,0,4" Text="大小" />
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Width="48" TextAlignment="Right"
+                           Text="{Binding ElementName=NaiwaScaleSlider, Path=Value, StringFormat={}{0:0}%}" />
+                <Slider x:Name="NaiwaScaleSlider" Minimum="50" Maximum="150" Value="50"
+                        TickFrequency="1" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True"
+                        SmallChange="1" LargeChange="10" AutomationProperties.Name="回收站大小"
+                        ValueChanged="OnNaiwaOptionsChanged" />
+              </DockPanel>
+              <TextBlock Margin="0,12,0,4" Text="音量" />
+              <DockPanel>
+                <Button x:Name="NaiwaMuteButton" DockPanel.Dock="Right" MinWidth="72" Margin="8,0,0,0"
+                        Padding="6,3" Content="静音" Click="OnNaiwaMuteClick" />
+                <TextBlock DockPanel.Dock="Right" Width="48" TextAlignment="Right" VerticalAlignment="Center"
+                           Text="{Binding ElementName=NaiwaVolumeSlider, Path=Value, StringFormat={}{0:0}%}" />
+                <Slider x:Name="NaiwaVolumeSlider" Minimum="0" Maximum="100" Value="100" VerticalAlignment="Center"
+                        TickFrequency="1" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True"
+                        SmallChange="1" LargeChange="5" AutomationProperties.Name="回收站音量"
+                        ValueChanged="OnNaiwaOptionsChanged" />
+              </DockPanel>
+              <CheckBox x:Name="NaiwaSoundCheck" Content="声音" Margin="0,12,0,4"
+                        AutomationProperties.Name="回收站声音" Checked="OnNaiwaOptionsChanged" Unchecked="OnNaiwaOptionsChanged" />
+              <CheckBox x:Name="NaiwaRecycleCheck" Content="拖放文件移入回收站" Margin="0,4"
+                        Checked="OnNaiwaOptionsChanged" Unchecked="OnNaiwaOptionsChanged" />
+              <CheckBox x:Name="NaiwaAutoHideCheck" Content="全屏时自动隐藏" Margin="0,4"
+                        AutomationProperties.Name="全屏时自动隐藏回收站" Checked="OnNaiwaOptionsChanged" Unchecked="OnNaiwaOptionsChanged" />
+              <WrapPanel Margin="0,8,0,0">
+                <Button x:Name="NaiwaHungryButton" Content="饿一点" Tag="hungry" Click="OnNaiwaActionClick" Padding="10,6" Margin="0,0,8,0"
+                        IsEnabled="{Binding ElementName=NaiwaEnabledCheck, Path=IsChecked}" />
+                <Button x:Name="NaiwaStopButton" Content="退出本次" Tag="stop" Click="OnNaiwaActionClick" Padding="10,6"
+                        IsEnabled="{Binding ElementName=NaiwaEnabledCheck, Path=IsChecked}" />
+              </WrapPanel>
+              <TextBlock x:Name="NaiwaStatus" Margin="0,8,0,0" TextWrapping="Wrap"
+                         AutomationProperties.Name="回收站运行状态" />
+              <TextBlock x:Name="NaiwaSettingsStatus" Margin="0,4,0,14" TextWrapping="Wrap"
+                         AutomationProperties.Name="回收站设置状态" />
+              <StackPanel x:Name="NaiwaInteractionGuide" Margin="0,0,0,12">
+                <TextBlock Text="互动动作" FontWeight="SemiBold" Margin="0,0,0,6" />
+                <TextBlock TextWrapping="Wrap" Margin="0,0,0,5"><Bold>双击肚子</Bold> → 大笑</TextBlock>
+                <TextBlock TextWrapping="Wrap" Margin="0,0,0,5"><Bold>单击 / 拖动</Bold> → 举起来（惊恐脸），松手后受重力下落，也可以向上抛。</TextBlock>
+                <TextBlock TextWrapping="Wrap" Margin="0,0,0,5"><Bold>上抛落地</Bold> → 哭泣</TextBlock>
+                <TextBlock TextWrapping="Wrap"><Bold>双击头部</Bold> → 起势 → 愤怒 → 打电话。随后炸开变成 6 只小奶蛙，在各自的窗口落地跳舞并播放音乐。</TextBlock>
               </StackPanel>
-              <TextBlock x:Name="DesktopSettingsStatus" Margin="0,8,0,14" TextWrapping="Wrap" AutomationProperties.Name="桌面图标显示状态" />
+              <Separator Margin="0,4,0,14" />
+              <TextBlock x:Name="NearbySectionHeading" FontSize="16" FontWeight="SemiBold" Text="附近传输"
+                         Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+              <TextBlock Margin="0,8,0,8" TextWrapping="Wrap" Text="与手机连接同一局域网，并打开 LocalSend。图片、视频按原文件传输，每次来件均需确认。" />
+              <CheckBox x:Name="NearbyEnabledCheck" Content="开启附近传输，随 GlassDesk 后台待命" Margin="0,4,0,8"/>
+              <TextBlock Text="通过 Dock 的附近传输入口打开传输面板。" Margin="0,0,0,8" TextWrapping="Wrap"/>
+              <TextBlock Text="关闭控制中心或传输面板不会停止接收；关闭功能会取消活动任务。" TextWrapping="Wrap" Margin="0,0,0,8"/>
+              <TextBlock Text="设备名称"/>
+              <TextBox x:Name="NearbyDeviceNameBox" MaxLength="80" Margin="0,4,0,8" AutomationProperties.Name="附近传输设备名称"/>
+              <TextBlock Text="接收目录（留空使用系统下载目录下的 GlassDesk）" TextWrapping="Wrap"/>
+              <TextBox x:Name="NearbyReceiveDirectoryBox" Margin="0,4,0,8" AutomationProperties.Name="附近传输接收目录"/>
+              <StackPanel Orientation="Horizontal">
+                <Button x:Name="SaveNearbyButton" Content="保存并应用" Click="OnSaveNearbyClick" Padding="12,6" Margin="0,0,8,0"/>
+                <Button Content="选择目录" Click="OnChooseNearbyDirectory" Padding="12,6" Margin="0,0,8,0"/>
+                <Button Content="打开面板" Click="OnOpenNearbyClick" Padding="12,6"/>
+              </StackPanel>
+              <TextBlock x:Name="NearbySettingsStatus" Text="未开启；不监听网络。" Margin="0,8,0,14" TextWrapping="Wrap" AutomationProperties.Name="附近传输服务状态"/>
+              <TextBlock x:Name="NearbyServiceStatus" Text="后台服务未启动。" Margin="0,0,0,14" TextWrapping="Wrap" AutomationProperties.Name="附近传输后台运行状态"/>
               <Separator Margin="0,4,0,14" />
               <TextBlock x:Name="BackupSectionHeading" FontSize="16" FontWeight="SemiBold" Text="备份与恢复"
                          Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
@@ -380,22 +400,29 @@
                          Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
               <TextBlock x:Name="ProductVersionText" Margin="0,10,0,6" FontSize="14" FontWeight="SemiBold"
                          AutomationProperties.Name="GlassDesk 当前版本" />
-              <Button x:Name="CheckUpdateButton" Width="132" HorizontalAlignment="Left" Padding="10,7"
-                      Content="检查更新" AutomationProperties.Name="检查 GlassDesk 更新" Click="OnCheckUpdateClick" />
+              <Button x:Name="ReplayOnboardingButton" Content="重新查看新手教学" HorizontalAlignment="Left"
+                      Padding="12,8" Margin="0,0,0,12" Click="OnReplayOnboardingClick"
+                      AutomationProperties.Name="重新查看 GlassDesk 新手教学" />
+              <WrapPanel>
+                <Button x:Name="CheckUpdateButton" Width="132" Padding="10,7" Margin="0,0,10,6"
+                        Content="检查更新" AutomationProperties.Name="检查 GlassDesk 更新" Click="OnCheckUpdateClick" />
+                <Button x:Name="CloudDownloadButton" Width="132" Padding="10,7" Margin="0,0,0,6"
+                        Content="下载入口" AutomationProperties.Name="下载入口" Click="OnCloudDownloadClick" />
+              </WrapPanel>
               <TextBlock x:Name="UpdateStatusText" Margin="0,6,0,12" TextWrapping="Wrap"
-                         AutomationProperties.Name="GlassDesk 更新状态" Text="启动时会自动检查新版本，也可以手动检查。" />
+                         AutomationProperties.Name="GlassDesk 更新状态" Text="可检查新版本，或直接选择网盘转存、下载安装包。" />
               <CheckBox
                   x:Name="AutostartCheck"
                   Margin="0,12,0,0"
-                  Content="登录时启动 GlassDesk（仅当前用户）"
-                  AutomationProperties.Name="登录时启动 GlassDesk，仅当前用户"
+                  Content="开机自启动 GlassDesk"
+                  AutomationProperties.Name="开机自启动 GlassDesk"
                   IsEnabled="False"
                   Click="OnAutostartClick" />
               <TextBlock
                   x:Name="AutostartStatus"
                   Margin="0,4,0,0"
                   TextWrapping="Wrap"
-                  AutomationProperties.Name="登录启动注册状态" />
+                  AutomationProperties.Name="开机自启动注册状态" />
               <TextBlock
                   x:Name="AutostartExecutableText"
                   Margin="0,2,0,12"
@@ -435,6 +462,7 @@
       </StackPanel>
     </Grid>
     </Grid>
+    </AdornerDecorator>
   </Border>
 
 </controls:GlassWindow>

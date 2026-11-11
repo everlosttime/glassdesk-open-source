@@ -1,7 +1,8 @@
 <Project>
-  <!-- Keep the SDK projection for newer optional APIs while accepting every Win11 build. -->
+  <!-- Keep newer SDK APIs; Win10 2004+ uses the documented capture provider. -->
   <PropertyGroup Condition="$([System.String]::Copy('$(TargetFramework)').Contains('-windows'))">
-    <SupportedOSPlatformVersion>10.0.22000.0</SupportedOSPlatformVersion>
-    <TargetPlatformMinVersion>10.0.22000.0</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <DefineConstants Condition="'$(GlassDeskCompatibilityPreview)' == 'true'">$(DefineConstants);GLASSDESK_COMPATIBILITY_PREVIEW</DefineConstants>
   </PropertyGroup>
 </Project>

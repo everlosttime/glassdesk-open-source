@@ -285,7 +285,7 @@ internal static class FullscreenProbe
                 else if (recorded.Length == 0)
                 {
                     failures++;
-                    report.AppendLine("      ✗ 钩子装了但没收到任何变化，事件链路有问题（判定最多滞后 120 毫秒的事件合并窗口）。");
+                    report.AppendLine("      ✗ 钩子装了但没收到任何变化，事件链路有问题（判定最多滞后 40 毫秒的事件合并窗口）。");
                 }
                 else if (recorded[0])
                 {

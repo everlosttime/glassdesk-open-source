@@ -12,6 +12,9 @@ namespace GlassDesk.Platform.Interop;
 /// </remarks>
 internal static unsafe partial class User32
 {
+    [LibraryImport("user32.dll", EntryPoint = "RegisterWindowMessageW", StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial uint RegisterWindowMessage(string name);
+
     /// <summary><c>GetWindowLong</c> 的样式索引。</summary>
     internal const int GwlStyle = -16;
 
@@ -104,6 +107,9 @@ internal static unsafe partial class User32
     /// <summary>外壳的桌面窗口（<c>Progman</c>）。</summary>
     [LibraryImport("user32.dll")]
     internal static partial nint GetShellWindow();
+
+    [LibraryImport("user32.dll", EntryPoint = "FindWindowExW", StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial nint FindWindowEx(nint parent, nint after, string className, string? title);
 
     /// <summary>最底层的桌面窗口。</summary>
     [LibraryImport("user32.dll")]

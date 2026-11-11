@@ -46,6 +46,17 @@ public static class TaskbarEdgeInterception
 /// <summary>Documented folder flags; acquires a fresh desktop COM view on each operation.</summary>
 public sealed class DesktopIconSession : IDisposable
 {
+    private readonly Func<bool> read;
+    private readonly Action<bool> write;
+    private readonly bool showOnDispose;
+    public DesktopIconSession() : this(false) { }
+    public DesktopIconSession(bool showOnDispose) : this(DesktopFolderView.Read, DesktopFolderView.Write, showOnDispose) { }
+    internal DesktopIconSession(Func<bool> read, Action<bool> write, bool showOnDispose)
+    {
+        this.read=read ?? throw new ArgumentNullException(nameof(read));
+        this.write=write ?? throw new ArgumentNullException(nameof(write));
+        this.showOnDispose=showOnDispose;
+    }
     private bool? original, lastWritten;
     private bool disposed;
     public bool IsSupported => !disposed && AreIconsVisible().HasValue;
@@ -55,7 +66,7 @@ public sealed class DesktopIconSession : IDisposable
         if (disposed) return null;
         try
         {
-            bool visible = DesktopFolderView.Read();
+            bool visible = read();
             if (lastWritten.HasValue && lastWritten != visible) { original = null; lastWritten = null; }
             Status = "桌面 IFolderView2 状态可读"; return visible;
         }
@@ -72,7 +83,7 @@ public sealed class DesktopIconSession : IDisposable
             // Preserve the original before readback; a failed RPC may already have applied the write.
             original ??= current;
             lastWritten = visible;
-            DesktopFolderView.Write(visible);
+            write(visible);
             var readback = AreIconsVisible();
             if (readback != visible) { error = "桌面图标写入后的状态核对失败"; return false; }
             return true;
@@ -88,10 +99,16 @@ public sealed class DesktopIconSession : IDisposable
     public void Dispose()
     {
         if (disposed) return;
+        if (showOnDispose)
+        {
+            TrySetVisible(true, out _);
+            disposed = true;
+            return;
+        }
         var current = AreIconsVisible();
         if (original.HasValue && lastWritten.HasValue && current == lastWritten)
         {
-            try { DesktopFolderView.Write(original.Value); } catch { /* Explorer may have exited. */ }
+            try { write(original.Value); } catch { /* Explorer may have exited. */ }
         }
         disposed = true;
     }

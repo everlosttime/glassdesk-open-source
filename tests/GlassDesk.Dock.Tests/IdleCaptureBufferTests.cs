@@ -7,6 +7,17 @@ namespace GlassDesk.Dock.Tests;
 public sealed class IdleCaptureBufferTests
 {
     [Fact]
+    public void HiddenSurfacesReleaseTheirCaptureOwnerWithinTwelveSeconds()
+    {
+        IdleCapture? capture = null;
+        using var feed = new SharedBackdropFeed((bounds, _, _) => capture = new IdleCapture(bounds));
+        using (Read(feed, new PixelRect(50, 50, 320, 240))) { }
+        feed.Suspend();
+        Assert.True(SpinWait.SpinUntil(() => capture!.Disposed, TimeSpan.FromSeconds(12)),
+            "A hidden glass surface retained its helper and native textures beyond the idle memory budget.");
+    }
+
+    [Fact]
     public void OrdinaryHideStaysWarmPastFiveSecondsWithoutCaptureWorkButGameSleepRetiresImmediately()
     {
         IdleCapture? capture = null;

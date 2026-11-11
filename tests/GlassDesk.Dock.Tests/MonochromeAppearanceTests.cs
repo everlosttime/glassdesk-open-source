@@ -25,7 +25,7 @@ public sealed class MonochromeAppearanceTests
     {
         StaTest.Run(() =>
         {
-            var glyph = new LaunchpadGlyph { Width = 48, Height = 48, OutlineBrush = Brushes.White };
+            var glyph = new LaunchpadGlyph { Width = 48, Height = 48, OutlineBrush = Brushes.White, IsFilled = true };
             glyph.Measure(new Size(48, 48)); glyph.Arrange(new Rect(0, 0, 48, 48));
             var width = (int)(48 * dpi / 96);
             var bitmap = new RenderTargetBitmap(width, width, dpi, dpi, PixelFormats.Pbgra32); bitmap.Render(glyph);
@@ -76,10 +76,10 @@ public sealed class MonochromeAppearanceTests
                 icons.Value = 0; text.Value = .5;
                 Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.SystemIdle);
 
-                var glyph = Assert.IsType<LaunchpadGlyph>(Assert.IsType<PhoneBorder>(dock.FindName("LaunchpadTile")).Child);
+                var glyph = Assert.IsType<LaunchpadGlyph>(dock.FindName("LauncherDefaultGlyph"));
                 AssertColor(Colors.Black, glyph.OutlineBrush);
-                AssertColor(Colors.Black, ((System.Windows.Shapes.Path)((Canvas)((Viewbox)dock.FindName("ThisPcTile")).Child).Children[0]).Stroke);
-                foreach (System.Windows.Shapes.Path path in ((Canvas)((Viewbox)dock.FindName("DesktopIconsTile")).Child).Children)
+                AssertColor(Colors.Black, ((System.Windows.Shapes.Path)((Canvas)dock.FindName("ThisPcDefaultGlyph")).Children[0]).Stroke);
+                foreach (System.Windows.Shapes.Path path in ((Canvas)dock.FindName("DesktopIconsDefaultGlyph")).Children)
                     AssertColor(Colors.Black, path.Stroke ?? path.Fill);
                 var tiles = (UniformGrid)launcher.FindName("TileGrid");
                 Assert.NotEmpty(tiles.Children.Cast<UIElement>());
@@ -95,13 +95,13 @@ public sealed class MonochromeAppearanceTests
                 Assert.Equal(((LinearGradientBrush)panelColor!).GradientStops.Select(stop => (stop.Offset, stop.Color)),
                     ((LinearGradientBrush)dock.PanelBackgroundBrush!).GradientStops.Select(stop => (stop.Offset, stop.Color)));
 
-                ((ComboBox)settings.FindName("AppearanceMaterialCombo")).SelectedIndex = 1;
+                ((ComboBox)settings.FindName("DockMaterialCombo")).SelectedIndex = 1;
                 ((Slider)settings.FindName("DockTransparencySlider")).Value = .64;
                 var reloaded = new GlassDeskDataStore(data.Paths); reloaded.LoadAll();
                 settings.AttachDataStore(reloaded, null);
                 Assert.Equal(0, icons.Value); Assert.Equal(.5, text.Value);
                 Assert.Equal(.64, reloaded.Settings.Current.Appearance.DockGlassTransparency);
-                Assert.Equal(GlassMaterialMode.FrostedGlass, reloaded.Settings.Current.Appearance.GlassMaterial);
+                Assert.Equal(GlassMaterialMode.FrostedGlass, reloaded.Settings.Current.Appearance.DockGlassMaterial);
                 text.Value = 0; icons.Value = 1;
                 Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.SystemIdle);
                 AssertColor(Colors.Black, title.Foreground); AssertColor(Colors.White, glyph.OutlineBrush);

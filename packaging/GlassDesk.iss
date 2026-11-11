@@ -24,6 +24,7 @@ AppVerName=GlassDesk {#ProductVersion}
 DefaultDirName={localappdata}\Programs\GlassDesk
 DefaultGroupName=GlassDesk
 DisableProgramGroupPage=yes
+DisableDirPage=no
 PrivilegesRequired=lowest
 SetupArchitecture=x64
 ArchitecturesAllowed=x64os
@@ -58,3 +59,10 @@ Name: "{autodesktop}\GlassDesk"; Filename: "{app}\GlassDesk.exe"; WorkingDir: "{
 
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Uninstall\{#AppIdValue}_is1"; ValueName: "InstallLocation"; ValueType: string; ValueData: "{app}"; Flags: uninsdeletevalue
+
+[UninstallRun]
+Filename: "{app}\GlassDesk.exe"; Parameters: "--exit"; Flags: runhidden waituntilterminated skipifdoesntexist; RunOnceId: "GlassDesk.Exit"
+Filename: "{app}\GlassDesk.exe"; Parameters: "--restore-desktop-icons"; Flags: runhidden waituntilterminated skipifdoesntexist; RunOnceId: "GlassDesk.RestoreDesktopIcons"
+
+[Code]
+#include "InstallerUpgrade.iss"

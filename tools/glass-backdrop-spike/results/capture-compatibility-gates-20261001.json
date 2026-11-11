@@ -1,0 +1,216 @@
+{
+  "sourceBudgetPassed": true,
+  "sourceRuns": [
+    {
+      "cadenceMs": 33,
+      "meanSourceIntervalMs": 33.30720920177382,
+      "captureP95Ms": 23.3877,
+      "consumerNewFramesPerSecond": 21.17024020321297,
+      "cleanStop": true
+    },
+    {
+      "cadenceMs": 40,
+      "meanSourceIntervalMs": 40.27708429530197,
+      "captureP95Ms": 22.6905,
+      "consumerNewFramesPerSecond": 21.06922798248174,
+      "cleanStop": true
+    }
+  ],
+  "ordinarySceneChecksPassed": 27,
+  "completeScenePassed": false,
+  "popupChecks": [
+    {
+      "kind": "opaque",
+      "phase": "popup",
+      "repetition": 1,
+      "stableValidPixels": 65664,
+      "mismatches": 108,
+      "cornerMismatches": 108,
+      "nativeRegionResult": 0,
+      "maximumChannelError": 255.0
+    },
+    {
+      "kind": "opaque",
+      "phase": "popup",
+      "repetition": 2,
+      "stableValidPixels": 65664,
+      "mismatches": 108,
+      "cornerMismatches": 108,
+      "nativeRegionResult": 0,
+      "maximumChannelError": 255.0
+    },
+    {
+      "kind": "opaque",
+      "phase": "popup",
+      "repetition": 3,
+      "stableValidPixels": 65664,
+      "mismatches": 108,
+      "cornerMismatches": 108,
+      "nativeRegionResult": 0,
+      "maximumChannelError": 255.0
+    },
+    {
+      "kind": "opaque",
+      "phase": "popup-outside",
+      "repetition": 1,
+      "stableValidPixels": 65664,
+      "mismatches": 54,
+      "cornerMismatches": 54,
+      "nativeRegionResult": 0,
+      "maximumChannelError": 255.0
+    },
+    {
+      "kind": "opaque",
+      "phase": "popup-outside",
+      "repetition": 2,
+      "stableValidPixels": 65664,
+      "mismatches": 54,
+      "cornerMismatches": 54,
+      "nativeRegionResult": 0,
+      "maximumChannelError": 255.0
+    },
+    {
+      "kind": "opaque",
+      "phase": "popup-outside",
+      "repetition": 3,
+      "stableValidPixels": 65664,
+      "mismatches": 54,
+      "cornerMismatches": 54,
+      "nativeRegionResult": 0,
+      "maximumChannelError": 255.0
+    },
+    {
+      "kind": "alpha",
+      "phase": "popup",
+      "repetition": 1,
+      "stableValidPixels": 65664,
+      "mismatches": 108,
+      "cornerMismatches": 108,
+      "nativeRegionResult": 0,
+      "maximumChannelError": 255.0
+    },
+    {
+      "kind": "alpha",
+      "phase": "popup",
+      "repetition": 2,
+      "stableValidPixels": 65664,
+      "mismatches": 108,
+      "cornerMismatches": 108,
+      "nativeRegionResult": 0,
+      "maximumChannelError": 255.0
+    },
+    {
+      "kind": "alpha",
+      "phase": "popup",
+      "repetition": 3,
+      "stableValidPixels": 65664,
+      "mismatches": 108,
+      "cornerMismatches": 108,
+      "nativeRegionResult": 0,
+      "maximumChannelError": 255.0
+    },
+    {
+      "kind": "alpha",
+      "phase": "popup-outside",
+      "repetition": 1,
+      "stableValidPixels": 65664,
+      "mismatches": 54,
+      "cornerMismatches": 54,
+      "nativeRegionResult": 0,
+      "maximumChannelError": 255.0
+    },
+    {
+      "kind": "alpha",
+      "phase": "popup-outside",
+      "repetition": 2,
+      "stableValidPixels": 65664,
+      "mismatches": 54,
+      "cornerMismatches": 54,
+      "nativeRegionResult": 0,
+      "maximumChannelError": 255.0
+    },
+    {
+      "kind": "alpha",
+      "phase": "popup-outside",
+      "repetition": 3,
+      "stableValidPixels": 65664,
+      "mismatches": 54,
+      "cornerMismatches": 54,
+      "nativeRegionResult": 0,
+      "maximumChannelError": 255.0
+    },
+    {
+      "kind": "system",
+      "phase": "popup",
+      "repetition": 1,
+      "stableValidPixels": 62496,
+      "mismatches": 87,
+      "cornerMismatches": 87,
+      "nativeRegionResult": 0,
+      "maximumChannelError": 255.0
+    },
+    {
+      "kind": "system",
+      "phase": "popup",
+      "repetition": 2,
+      "stableValidPixels": 62496,
+      "mismatches": 87,
+      "cornerMismatches": 87,
+      "nativeRegionResult": 0,
+      "maximumChannelError": 255.0
+    },
+    {
+      "kind": "system",
+      "phase": "popup",
+      "repetition": 3,
+      "stableValidPixels": 62496,
+      "mismatches": 87,
+      "cornerMismatches": 87,
+      "nativeRegionResult": 0,
+      "maximumChannelError": 255.0
+    },
+    {
+      "kind": "system",
+      "phase": "popup-outside",
+      "repetition": 1,
+      "stableValidPixels": 62496,
+      "mismatches": 44,
+      "cornerMismatches": 44,
+      "nativeRegionResult": 0,
+      "maximumChannelError": 255.0
+    },
+    {
+      "kind": "system",
+      "phase": "popup-outside",
+      "repetition": 2,
+      "stableValidPixels": 62496,
+      "mismatches": 44,
+      "cornerMismatches": 44,
+      "nativeRegionResult": 0,
+      "maximumChannelError": 255.0
+    },
+    {
+      "kind": "system",
+      "phase": "popup-outside",
+      "repetition": 3,
+      "stableValidPixels": 62496,
+      "mismatches": 44,
+      "cornerMismatches": 44,
+      "nativeRegionResult": 0,
+      "maximumChannelError": 255.0
+    }
+  ],
+  "nativeShadowCoverageAccepted": false,
+  "realGlassSampleTested": false,
+  "externalScreenshotRecordingTested": false,
+  "productIntegrated": false,
+  "originalForegroundRestored": true,
+  "pixelsSaved": false,
+  "conclusion": "Desktop root remains viable. Complete scene candidate failed repeatable popup fidelity. Stop before product integration. Source budget is not animation or presented FPS acceptance. GetWindowRgn result 0 is not an available explicit clipping region; exact raster or clipping cause remains unproven.",
+  "evidenceFiles": [
+    "async-backdrop-precise-wait-20261001.json",
+    "scene-reference-full-region-20261001.json",
+    "scene-secondary-windows-20261001.json",
+    "scene-popup-printwindow-region-20261001.json"
+  ]
+}

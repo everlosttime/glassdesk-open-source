@@ -32,7 +32,7 @@ internal static class StaTest
 
         if (failure is not null)
         {
-            throw failure;
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
         }
     }
 }

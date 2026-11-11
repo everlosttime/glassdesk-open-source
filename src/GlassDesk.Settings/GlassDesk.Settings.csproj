@@ -13,12 +13,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GlassDesk.Core\GlassDesk.Core.csproj" />
+    <ProjectReference Include="..\GlassDesk.Nearby\GlassDesk.Nearby.csproj" />
     <ProjectReference Include="..\GlassDesk.UI\GlassDesk.UI.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Assets\Sponsorship\*.png;Assets\Sponsorship\*.jpg"
                       LogicalName="GlassDesk.Settings.Sponsorship.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Assets\Downloads\website-qr.png" LogicalName="GlassDesk.Settings.Downloads.WebsiteQr.png" />
   </ItemGroup>
 
 </Project>

@@ -12,6 +12,7 @@ namespace GlassDesk.Platform.Shell;
 /// </remarks>
 public static class KnownFolders
 {
+    public static string? Downloads => Resolve(new Guid("374DE290-123F-4565-9164-39C4925E467B"));
     /// <summary>所有用户的「开始」菜单程序目录。</summary>
     public static string? CommonPrograms => Resolve(Shell32.FolderIdCommonPrograms);
 

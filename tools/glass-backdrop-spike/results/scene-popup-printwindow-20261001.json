@@ -1,0 +1,1015 @@
+{
+  "passed": false,
+  "checks": [
+    {
+      "kind": "opaque",
+      "phase": "popup",
+      "repetition": 1,
+      "passed": false,
+      "physicalRegion": {
+        "Left": 102,
+        "Top": 102,
+        "Right": 678,
+        "Bottom": 558,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 150,
+        "Y": 150,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 108,
+        "MaxBgrError": [
+          0,
+          255,
+          0
+        ],
+        "Passed": false
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "observedNeutralRingPixels": 0,
+      "popupCornerMismatches": 108,
+      "shadowEvidence": "controlled-ring-compared",
+      "sceneCaptureMs": 645.5045,
+      "referenceSpanMs": 963.7124,
+      "borderless": false,
+      "includeSecondaryWindows": false,
+      "printPopup": true,
+      "layerCount": 3
+    },
+    {
+      "kind": "opaque",
+      "phase": "popup",
+      "repetition": 2,
+      "passed": false,
+      "physicalRegion": {
+        "Left": 102,
+        "Top": 102,
+        "Right": 678,
+        "Bottom": 558,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 150,
+        "Y": 150,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 108,
+        "MaxBgrError": [
+          0,
+          255,
+          0
+        ],
+        "Passed": false
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "observedNeutralRingPixels": 0,
+      "popupCornerMismatches": 108,
+      "shadowEvidence": "controlled-ring-compared",
+      "sceneCaptureMs": 377.1026,
+      "referenceSpanMs": 693.731,
+      "borderless": false,
+      "includeSecondaryWindows": false,
+      "printPopup": true,
+      "layerCount": 3
+    },
+    {
+      "kind": "opaque",
+      "phase": "popup",
+      "repetition": 3,
+      "passed": false,
+      "physicalRegion": {
+        "Left": 102,
+        "Top": 102,
+        "Right": 678,
+        "Bottom": 558,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 150,
+        "Y": 150,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 108,
+        "MaxBgrError": [
+          0,
+          255,
+          0
+        ],
+        "Passed": false
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "observedNeutralRingPixels": 0,
+      "popupCornerMismatches": 108,
+      "shadowEvidence": "controlled-ring-compared",
+      "sceneCaptureMs": 355.5787,
+      "referenceSpanMs": 667.87,
+      "borderless": false,
+      "includeSecondaryWindows": false,
+      "printPopup": true,
+      "layerCount": 3
+    },
+    {
+      "kind": "opaque",
+      "phase": "popup-outside",
+      "repetition": 1,
+      "passed": false,
+      "physicalRegion": {
+        "Left": 102,
+        "Top": 102,
+        "Right": 678,
+        "Bottom": 558,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 150,
+        "Y": 150,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 54,
+        "MaxBgrError": [
+          0,
+          255,
+          0
+        ],
+        "Passed": false
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "observedNeutralRingPixels": 0,
+      "popupCornerMismatches": 54,
+      "shadowEvidence": "controlled-ring-compared",
+      "sceneCaptureMs": 371.702,
+      "referenceSpanMs": 685.7594,
+      "borderless": false,
+      "includeSecondaryWindows": false,
+      "printPopup": true,
+      "layerCount": 3
+    },
+    {
+      "kind": "opaque",
+      "phase": "popup-outside",
+      "repetition": 2,
+      "passed": false,
+      "physicalRegion": {
+        "Left": 102,
+        "Top": 102,
+        "Right": 678,
+        "Bottom": 558,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 150,
+        "Y": 150,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 54,
+        "MaxBgrError": [
+          0,
+          255,
+          0
+        ],
+        "Passed": false
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "observedNeutralRingPixels": 0,
+      "popupCornerMismatches": 54,
+      "shadowEvidence": "controlled-ring-compared",
+      "sceneCaptureMs": 194.8449,
+      "referenceSpanMs": 517.9803,
+      "borderless": false,
+      "includeSecondaryWindows": false,
+      "printPopup": true,
+      "layerCount": 3
+    },
+    {
+      "kind": "opaque",
+      "phase": "popup-outside",
+      "repetition": 3,
+      "passed": false,
+      "physicalRegion": {
+        "Left": 102,
+        "Top": 102,
+        "Right": 678,
+        "Bottom": 558,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 150,
+        "Y": 150,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 54,
+        "MaxBgrError": [
+          0,
+          255,
+          0
+        ],
+        "Passed": false
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "observedNeutralRingPixels": 0,
+      "popupCornerMismatches": 54,
+      "shadowEvidence": "controlled-ring-compared",
+      "sceneCaptureMs": 244.878,
+      "referenceSpanMs": 564.0293,
+      "borderless": false,
+      "includeSecondaryWindows": false,
+      "printPopup": true,
+      "layerCount": 3
+    },
+    {
+      "kind": "alpha",
+      "phase": "popup",
+      "repetition": 1,
+      "passed": false,
+      "physicalRegion": {
+        "Left": 102,
+        "Top": 102,
+        "Right": 678,
+        "Bottom": 558,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 150,
+        "Y": 150,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 108,
+        "MaxBgrError": [
+          127,
+          255,
+          127
+        ],
+        "Passed": false
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "observedNeutralRingPixels": 0,
+      "popupCornerMismatches": 108,
+      "shadowEvidence": "controlled-ring-compared",
+      "sceneCaptureMs": 373.6443,
+      "referenceSpanMs": 683.8667,
+      "borderless": false,
+      "includeSecondaryWindows": false,
+      "printPopup": true,
+      "layerCount": 3
+    },
+    {
+      "kind": "alpha",
+      "phase": "popup",
+      "repetition": 2,
+      "passed": false,
+      "physicalRegion": {
+        "Left": 102,
+        "Top": 102,
+        "Right": 678,
+        "Bottom": 558,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 150,
+        "Y": 150,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 108,
+        "MaxBgrError": [
+          127,
+          255,
+          127
+        ],
+        "Passed": false
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "observedNeutralRingPixels": 0,
+      "popupCornerMismatches": 108,
+      "shadowEvidence": "controlled-ring-compared",
+      "sceneCaptureMs": 257.9227,
+      "referenceSpanMs": 573.9097,
+      "borderless": false,
+      "includeSecondaryWindows": false,
+      "printPopup": true,
+      "layerCount": 3
+    },
+    {
+      "kind": "alpha",
+      "phase": "popup",
+      "repetition": 3,
+      "passed": false,
+      "physicalRegion": {
+        "Left": 102,
+        "Top": 102,
+        "Right": 678,
+        "Bottom": 558,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 150,
+        "Y": 150,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 108,
+        "MaxBgrError": [
+          127,
+          255,
+          127
+        ],
+        "Passed": false
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "observedNeutralRingPixels": 0,
+      "popupCornerMismatches": 108,
+      "shadowEvidence": "controlled-ring-compared",
+      "sceneCaptureMs": 209.6081,
+      "referenceSpanMs": 518.4552,
+      "borderless": false,
+      "includeSecondaryWindows": false,
+      "printPopup": true,
+      "layerCount": 3
+    },
+    {
+      "kind": "alpha",
+      "phase": "popup-outside",
+      "repetition": 1,
+      "passed": false,
+      "physicalRegion": {
+        "Left": 102,
+        "Top": 102,
+        "Right": 678,
+        "Bottom": 558,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 150,
+        "Y": 150,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 54,
+        "MaxBgrError": [
+          127,
+          255,
+          127
+        ],
+        "Passed": false
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "observedNeutralRingPixels": 0,
+      "popupCornerMismatches": 54,
+      "shadowEvidence": "controlled-ring-compared",
+      "sceneCaptureMs": 372.8175,
+      "referenceSpanMs": 682.2611,
+      "borderless": false,
+      "includeSecondaryWindows": false,
+      "printPopup": true,
+      "layerCount": 3
+    },
+    {
+      "kind": "alpha",
+      "phase": "popup-outside",
+      "repetition": 2,
+      "passed": false,
+      "physicalRegion": {
+        "Left": 102,
+        "Top": 102,
+        "Right": 678,
+        "Bottom": 558,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 150,
+        "Y": 150,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 54,
+        "MaxBgrError": [
+          127,
+          255,
+          127
+        ],
+        "Passed": false
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "observedNeutralRingPixels": 0,
+      "popupCornerMismatches": 54,
+      "shadowEvidence": "controlled-ring-compared",
+      "sceneCaptureMs": 194.1829,
+      "referenceSpanMs": 507.5855,
+      "borderless": false,
+      "includeSecondaryWindows": false,
+      "printPopup": true,
+      "layerCount": 3
+    },
+    {
+      "kind": "alpha",
+      "phase": "popup-outside",
+      "repetition": 3,
+      "passed": false,
+      "physicalRegion": {
+        "Left": 102,
+        "Top": 102,
+        "Right": 678,
+        "Bottom": 558,
+        "Width": 576,
+        "Height": 456
+      },
+      "sourceBounds": {
+        "X": 150,
+        "Y": 150,
+        "Width": 480,
+        "Height": 360
+      },
+      "windowArea": {
+        "Candidates": 43200,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 43200,
+        "Mismatched": 54,
+        "MaxBgrError": [
+          127,
+          255,
+          127
+        ],
+        "Passed": false
+      },
+      "outsideWindowRing": {
+        "Candidates": 22464,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 22464,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": false,
+      "observedNeutralRingPixels": 0,
+      "popupCornerMismatches": 54,
+      "shadowEvidence": "controlled-ring-compared",
+      "sceneCaptureMs": 202.3385,
+      "referenceSpanMs": 529.0961,
+      "borderless": false,
+      "includeSecondaryWindows": false,
+      "printPopup": true,
+      "layerCount": 3
+    },
+    {
+      "kind": "system",
+      "phase": "popup",
+      "repetition": 1,
+      "passed": false,
+      "physicalRegion": {
+        "Left": 111,
+        "Top": 102,
+        "Right": 669,
+        "Bottom": 549,
+        "Width": 558,
+        "Height": 447
+      },
+      "sourceBounds": {
+        "X": 159,
+        "Y": 150,
+        "Width": 462,
+        "Height": 351
+      },
+      "windowArea": {
+        "Candidates": 40656,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 40656,
+        "Mismatched": 53,
+        "MaxBgrError": [
+          200,
+          255,
+          200
+        ],
+        "Passed": false
+      },
+      "outsideWindowRing": {
+        "Candidates": 21840,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 21840,
+        "Mismatched": 34,
+        "MaxBgrError": [
+          255,
+          255,
+          255
+        ],
+        "Passed": false
+      },
+      "sourceIsForeground": true,
+      "observedNeutralRingPixels": 0,
+      "popupCornerMismatches": 87,
+      "shadowEvidence": "native-shadow-not-observed",
+      "sceneCaptureMs": 372.1407,
+      "referenceSpanMs": 685.633,
+      "borderless": false,
+      "includeSecondaryWindows": false,
+      "printPopup": true,
+      "layerCount": 3
+    },
+    {
+      "kind": "system",
+      "phase": "popup",
+      "repetition": 2,
+      "passed": false,
+      "physicalRegion": {
+        "Left": 111,
+        "Top": 102,
+        "Right": 669,
+        "Bottom": 549,
+        "Width": 558,
+        "Height": 447
+      },
+      "sourceBounds": {
+        "X": 159,
+        "Y": 150,
+        "Width": 462,
+        "Height": 351
+      },
+      "windowArea": {
+        "Candidates": 40656,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 40656,
+        "Mismatched": 53,
+        "MaxBgrError": [
+          200,
+          255,
+          200
+        ],
+        "Passed": false
+      },
+      "outsideWindowRing": {
+        "Candidates": 21840,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 21840,
+        "Mismatched": 34,
+        "MaxBgrError": [
+          255,
+          255,
+          255
+        ],
+        "Passed": false
+      },
+      "sourceIsForeground": true,
+      "observedNeutralRingPixels": 0,
+      "popupCornerMismatches": 87,
+      "shadowEvidence": "native-shadow-not-observed",
+      "sceneCaptureMs": 194.3211,
+      "referenceSpanMs": 503.0348,
+      "borderless": false,
+      "includeSecondaryWindows": false,
+      "printPopup": true,
+      "layerCount": 3
+    },
+    {
+      "kind": "system",
+      "phase": "popup",
+      "repetition": 3,
+      "passed": false,
+      "physicalRegion": {
+        "Left": 111,
+        "Top": 102,
+        "Right": 669,
+        "Bottom": 549,
+        "Width": 558,
+        "Height": 447
+      },
+      "sourceBounds": {
+        "X": 159,
+        "Y": 150,
+        "Width": 462,
+        "Height": 351
+      },
+      "windowArea": {
+        "Candidates": 40656,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 40656,
+        "Mismatched": 53,
+        "MaxBgrError": [
+          200,
+          255,
+          200
+        ],
+        "Passed": false
+      },
+      "outsideWindowRing": {
+        "Candidates": 21840,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 21840,
+        "Mismatched": 34,
+        "MaxBgrError": [
+          255,
+          255,
+          255
+        ],
+        "Passed": false
+      },
+      "sourceIsForeground": true,
+      "observedNeutralRingPixels": 0,
+      "popupCornerMismatches": 87,
+      "shadowEvidence": "native-shadow-not-observed",
+      "sceneCaptureMs": 196.6017,
+      "referenceSpanMs": 506.6797,
+      "borderless": false,
+      "includeSecondaryWindows": false,
+      "printPopup": true,
+      "layerCount": 3
+    },
+    {
+      "kind": "system",
+      "phase": "popup-outside",
+      "repetition": 1,
+      "passed": false,
+      "physicalRegion": {
+        "Left": 111,
+        "Top": 102,
+        "Right": 669,
+        "Bottom": 549,
+        "Width": 558,
+        "Height": 447
+      },
+      "sourceBounds": {
+        "X": 159,
+        "Y": 150,
+        "Width": 462,
+        "Height": 351
+      },
+      "windowArea": {
+        "Candidates": 40656,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 40656,
+        "Mismatched": 44,
+        "MaxBgrError": [
+          0,
+          255,
+          0
+        ],
+        "Passed": false
+      },
+      "outsideWindowRing": {
+        "Candidates": 21840,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 21840,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": true,
+      "observedNeutralRingPixels": 0,
+      "popupCornerMismatches": 44,
+      "shadowEvidence": "native-shadow-not-observed",
+      "sceneCaptureMs": 372.6847,
+      "referenceSpanMs": 687.0958,
+      "borderless": false,
+      "includeSecondaryWindows": false,
+      "printPopup": true,
+      "layerCount": 3
+    },
+    {
+      "kind": "system",
+      "phase": "popup-outside",
+      "repetition": 2,
+      "passed": false,
+      "physicalRegion": {
+        "Left": 111,
+        "Top": 102,
+        "Right": 669,
+        "Bottom": 549,
+        "Width": 558,
+        "Height": 447
+      },
+      "sourceBounds": {
+        "X": 159,
+        "Y": 150,
+        "Width": 462,
+        "Height": 351
+      },
+      "windowArea": {
+        "Candidates": 40656,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 40656,
+        "Mismatched": 44,
+        "MaxBgrError": [
+          0,
+          255,
+          0
+        ],
+        "Passed": false
+      },
+      "outsideWindowRing": {
+        "Candidates": 21840,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 21840,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": true,
+      "observedNeutralRingPixels": 0,
+      "popupCornerMismatches": 44,
+      "shadowEvidence": "native-shadow-not-observed",
+      "sceneCaptureMs": 382.1115,
+      "referenceSpanMs": 690.5975,
+      "borderless": false,
+      "includeSecondaryWindows": false,
+      "printPopup": true,
+      "layerCount": 3
+    },
+    {
+      "kind": "system",
+      "phase": "popup-outside",
+      "repetition": 3,
+      "passed": false,
+      "physicalRegion": {
+        "Left": 111,
+        "Top": 102,
+        "Right": 669,
+        "Bottom": 549,
+        "Width": 558,
+        "Height": 447
+      },
+      "sourceBounds": {
+        "X": 159,
+        "Y": 150,
+        "Width": 462,
+        "Height": 351
+      },
+      "windowArea": {
+        "Candidates": 40656,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 40656,
+        "Mismatched": 44,
+        "MaxBgrError": [
+          0,
+          255,
+          0
+        ],
+        "Passed": false
+      },
+      "outsideWindowRing": {
+        "Candidates": 21840,
+        "Occluded": 0,
+        "Unstable": 0,
+        "Valid": 21840,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": true
+      },
+      "sourceIsForeground": true,
+      "observedNeutralRingPixels": 0,
+      "popupCornerMismatches": 44,
+      "shadowEvidence": "native-shadow-not-observed",
+      "sceneCaptureMs": 193.9195,
+      "referenceSpanMs": 507.3431,
+      "borderless": false,
+      "includeSecondaryWindows": false,
+      "printPopup": true,
+      "layerCount": 3
+    }
+  ],
+  "originalForegroundRestored": true,
+  "note": "Only aggregate statistics saved. Controlled white backing prevents user desktop content entering compared regions. Full physical regions, stable pre/post GDI references, 2px grid, BGR tolerance 2. Body and 48px outside ring checked separately. Default WGC indicator permitted only during this isolated test, then disposed before reference. No borderless product acceptance, no complete glass sample or external recording acceptance. Any repeatable native shadow/corner discrepancy blocks integration."
+}

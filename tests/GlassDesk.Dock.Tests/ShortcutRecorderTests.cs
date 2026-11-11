@@ -94,6 +94,41 @@ public sealed class ShortcutRecorderTests
     }
 
     [Fact]
+    public void GameSleepRecorderLoadsDefaultAndRetainsChangesWhenOtherShortcutsAreEdited()
+    {
+        StaTest.Run(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "GlassDesk-game-recorder-" + Guid.NewGuid().ToString("N"));
+            var data = new GlassDeskDataStore(new AppPaths(root));
+            data.LoadAll();
+            var window = new SettingsWindow();
+            try
+            {
+                window.AttachDataStore(data, null);
+                window.InteractionSettingsApply = (shortcuts, display) =>
+                {
+                    data.Settings.Current.Shortcuts = shortcuts;
+                    data.Settings.Save();
+                    return null;
+                };
+                var recorder = Assert.IsType<ShortcutRecorder>(window.FindName("ToggleGameSleepHotkeyBox"));
+                Assert.Equal("Ctrl+Alt+G", recorder.Text);
+                recorder.BeginRecording();
+                recorder.CaptureKey(Key.F8, ModifierKeys.None);
+                var other = Assert.IsType<ShortcutRecorder>(window.FindName("ToggleLauncherHotkeyBox"));
+                other.BeginRecording(); other.CaptureKey(Key.F4, ModifierKeys.None);
+                var reload = new SettingsStore(data.Settings.FilePath);
+                reload.Load();
+                Assert.Equal("F8", reload.Current.Shortcuts.ToggleGameSleep.Describe());
+                window.InteractionSettingsApply = (_, _) => "快捷键已被占用";
+                recorder.BeginRecording(); recorder.CaptureKey(Key.F9, ModifierKeys.None);
+                Assert.Equal("F8", recorder.Text);
+            }
+            finally { window.Close(); Directory.Delete(root, true); }
+        });
+    }
+
+    [Fact]
     public void SettingsRecordsAndSavesImmediatelyAndRestoresBindingOnFailure()
     {
         StaTest.Run(() =>

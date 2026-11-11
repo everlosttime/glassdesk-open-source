@@ -11,6 +11,7 @@ internal sealed class PerformanceCoordinator
     private bool _observedFullscreen, _stableFullscreen;
     private bool _dockVisible = true, _launcherVisible, _temporaryActivation;
     private bool _sessionSuspended;
+    private bool _desktopLayerPinned;
     private DateTimeOffset? _fullscreenDeadline, _hiddenSince;
 
     public PerformanceCoordinator(DateTimeOffset now) { }
@@ -19,7 +20,8 @@ internal sealed class PerformanceCoordinator
     public long Generation { get; private set; }
     public bool AutoSuspend { get; private set; } = true;
     public bool ManualSleep { get; private set; }
-    public bool IsSuppressionRequested => ManualSleep || _sessionSuspended || AutoSuspend && _stableFullscreen;
+    public bool IsSuppressionRequested => ManualSleep || _sessionSuspended
+        || AutoSuspend && _stableFullscreen && !_desktopLayerPinned;
     public bool IsTemporaryActivation => _temporaryActivation;
     public DateTimeOffset? NextTransitionAt
     {
@@ -49,6 +51,12 @@ internal sealed class PerformanceCoordinator
     public void SetAutoSuspend(bool enabled, DateTimeOffset now)
     {
         AutoSuspend = enabled;
+        Advance(now);
+    }
+
+    public void SetDesktopLayerPinned(bool pinned, DateTimeOffset now)
+    {
+        _desktopLayerPinned = pinned;
         Advance(now);
     }
 

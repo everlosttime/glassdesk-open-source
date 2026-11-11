@@ -1,0 +1,49 @@
+{
+  "completed": true,
+  "iconsVisibleBefore": false,
+  "iconsVisibleAfter": false,
+  "statistics": {
+    "physicalScreenBounds": {
+      "Left": 0,
+      "Top": 0,
+      "Right": 2560,
+      "Bottom": 1600,
+      "Width": 2560,
+      "Height": 1600
+    },
+    "targetHz": 60,
+    "targetBudgetMs": 16.666666666666668,
+    "requestedSeconds": 30,
+    "elapsedSeconds": 30.0166685,
+    "frames": 856,
+    "achievedFps": 28.517488541408248,
+    "missedSlots": 945,
+    "frameAcquisition": {
+      "meanMs": 19.93271670560747,
+      "p50Ms": 19.7149,
+      "p95Ms": 23.6147,
+      "p99Ms": 24.99,
+      "maxMs": 27.1564,
+      "framesOverTargetBudget": 843
+    },
+    "printWindowAndFlush": {
+      "meanMs": 19.085803504672906,
+      "p50Ms": 18.8803,
+      "p95Ms": 22.8,
+      "p99Ms": 24.1265,
+      "maxMs": 26.2652,
+      "framesOverTargetBudget": 774
+    },
+    "bytesPerFrame": 16384000,
+    "readbackMiBPerSecond": 445.5857584595039,
+    "probeCpuMs": 5062.5,
+    "explorerCpuMs": 406.25,
+    "peakProbePrivateMiB": 46.71875,
+    "gcCollections": [
+      0,
+      0,
+      0
+    ],
+    "note": "30-second isolated in-process PrintWindow \u002B BGRA readback, reusable DIB and byte buffer, 10 warmup frames. 60Hz is a measurement target, not a changed product parameter. No blur, GPU upload, Dock/Launcher composition, screenshot or recording included; performance acceptance for integration remains unverified."
+  }
+}

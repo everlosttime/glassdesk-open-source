@@ -6,8 +6,13 @@ using GlassDesk.UI;
 // Independent sample; owns all native resources on a single background STA.
 internal sealed class SharedBackdropFeed : IDisposable
 {
-    private const int CaptureCadenceMilliseconds=16;
-    private readonly TimeSpan _idleBufferRetention=TimeSpan.FromSeconds(30);
+    private double _captureCadenceMilliseconds = 16;
+    private int _interactionActive = 1;
+    internal void SetInteractionActive(bool active) => Volatile.Write(ref _interactionActive, active ? 1 : 0);
+    internal void SetAnimationActive(bool active, double? targetHertz = null) =>
+        Volatile.Write(ref _captureCadenceMilliseconds, active
+            ? 1000d / (targetHertz is >= 1 and <= 1000 ? targetHertz.Value : 120) : 16);
+    private readonly TimeSpan _idleBufferRetention=TimeSpan.FromSeconds(10);
     private readonly object _gate=new();
     private LatestBackdropState? _state;
     private Thread? _thread;
@@ -24,6 +29,8 @@ internal sealed class SharedBackdropFeed : IDisposable
     {
         lock(_gate) return new
         {
+            captureIntervalMilliseconds=Volatile.Read(ref _captureCadenceMilliseconds),
+            interactionActive=Volatile.Read(ref _interactionActive)!=0,
             captureAcquisitions=Interlocked.Read(ref _captureAcquisitions),sceneUpdates=Interlocked.Read(ref _sceneUpdates),
             resizes=Interlocked.Read(ref _resizes),publishedFrames=Interlocked.Read(ref _publishedFrames),
             skippedForReaders=Interlocked.Read(ref _skippedForReaders),ownersRetired=Interlocked.Read(ref _ownersRetired),
@@ -103,7 +110,7 @@ internal sealed class SharedBackdropFeed : IDisposable
         catch(Exception error)
         {
             Volatile.Write(ref _failure,error.Message);
-            TraceObserved?.Invoke(new("CaptureFailure", error.GetType().Name, Stopwatch.GetTimestamp(), ErrorCode:error.HResult));
+            TraceObserved?.Invoke(new("CaptureFailure", error.GetType().Name, Stopwatch.GetTimestamp(), ErrorCode:error.HResult, Detail:error.Message));
             Trace.WriteLine("Compatible sample worker failed: "+error.Message);
         }
         finally
@@ -120,7 +127,7 @@ internal sealed class SharedBackdropFeed : IDisposable
     }
     internal void Suspend(bool deep=false)
     {
-        // Warm hide keeps the native session for thirty seconds, then the owner fully
+        // Warm hide keeps the native session for ten seconds, then the owner fully
         // retires it. Game sleep bypasses retention and cancels immediately.
         // Resume advances the generation, rejecting hidden or in-flight results.
         lock(_gate)
@@ -131,6 +138,7 @@ internal sealed class SharedBackdropFeed : IDisposable
     }
     internal void SetPerformanceSleeping(bool sleeping)
     {
+        if (sleeping) SetAnimationActive(false);
         lock(_gate) { _performanceSleeping=sleeping;if(sleeping) Suspend(deep:true); }
     }
     private void Run(LatestBackdropState state,CancellationToken stop)
@@ -176,6 +184,12 @@ internal sealed class SharedBackdropFeed : IDisposable
                 }
                 idleSince=0;
                 var start=Stopwatch.GetTimestamp();
+                var captureCadenceMilliseconds=Volatile.Read(ref _captureCadenceMilliseconds);
+                if(captureCadenceMilliseconds>=16 && Volatile.Read(ref _interactionActive)==0) captureCadenceMilliseconds=1000d/30;
+                // Static scenes still need bounded scene/pixel checks, but no 60 Hz
+                // pipe traffic or readback. A changed frame immediately restores live
+                // cadence; geometry changes wake the slow wait through state.Changed.
+                if(captureCadenceMilliseconds>=16 && state.IsContentIdle(start)) captureCadenceMilliseconds=100;
                 if(capture is null || !Contains(bounds,request.Region))
                 {
                     // Reserve the small gap from resting Dock capture to the physical
@@ -208,12 +222,12 @@ internal sealed class SharedBackdropFeed : IDisposable
                 {
                     TraceObserved?.Invoke(new("Publish","ReadersBusy",Stopwatch.GetTimestamp()));
                     Interlocked.Increment(ref _skippedForReaders);
-                    wait.Wait(CaptureCadenceMilliseconds,stop);continue;
+                    wait.Wait(captureCadenceMilliseconds,stop);continue;
                 }
                 var acquiredRequest=request;
                 var crop=new PixelBounds(request.Region.Left-bounds.Left,request.Region.Top-bounds.Top,
                     request.Region.Right-bounds.Left,request.Region.Bottom-bounds.Top);
-                var budget=TimeSpan.FromMilliseconds(Math.Max(0,CaptureCadenceMilliseconds-Stopwatch.GetElapsedTime(start).TotalMilliseconds));
+                var budget=TimeSpan.FromMilliseconds(Math.Max(0,captureCadenceMilliseconds-Stopwatch.GetElapsedTime(start).TotalMilliseconds));
                 var sampledInHelper=capture.SupportsSampling && CaptureObserved is null;
                 var frame=sampledInHelper
                     ? capture.TryReadSampled(crop,request.Width,request.Height,lease.Pixels,budget,stop,request.SourceNotBeforeTicks)
@@ -264,15 +278,20 @@ internal sealed class SharedBackdropFeed : IDisposable
                     }
                 }
                 Program.Pump(TimeSpan.FromMilliseconds(1));
-                var remaining=CaptureCadenceMilliseconds-Stopwatch.GetElapsedTime(start).TotalMilliseconds;
-                if(remaining>0) wait.Wait(remaining,stop);
+                // Publication may have just ended the idle period.
+                captureCadenceMilliseconds=Volatile.Read(ref _captureCadenceMilliseconds);
+                if(captureCadenceMilliseconds>=16 && Volatile.Read(ref _interactionActive)==0) captureCadenceMilliseconds=1000d/30;
+                if(captureCadenceMilliseconds>=16 && state.IsContentIdle(Stopwatch.GetTimestamp())) captureCadenceMilliseconds=100;
+                var remaining=captureCadenceMilliseconds-Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+                if(remaining>=30) WaitHandle.WaitAny(signals,(int)Math.Ceiling(remaining));
+                else if(remaining>0) wait.Wait(remaining,stop);
             }
         }
         catch(OperationCanceledException) when(stop.IsCancellationRequested) { }
         catch(Exception error)
         {
             Volatile.Write(ref _failure,error.Message);
-            TraceObserved?.Invoke(new("CaptureFailure", error.GetType().Name, Stopwatch.GetTimestamp(), ErrorCode:error.HResult));
+            TraceObserved?.Invoke(new("CaptureFailure", error.GetType().Name, Stopwatch.GetTimestamp(), ErrorCode:error.HResult, Detail:error.Message));
             Trace.WriteLine("Compatible sample source failed: "+error.Message);state.Dispose();
         }
         finally
@@ -318,11 +337,11 @@ internal sealed unsafe class NativeFrameResize : IDisposable
             throw new ArgumentException("Invalid sample resize extent.");
         if(crop.Left<0 || crop.Top<0 || crop.Right>frame.Width || crop.Bottom>frame.Height || crop.Width<=0 || crop.Height<=0)
             throw new ArgumentOutOfRangeException(nameof(crop));
-        var size=(frame.Width,frame.Height,width,height);
+        var size=(crop.Width,crop.Height,width,height);
         if(_size!=size)
         {
             Dispose();_sourceDc=CreateCompatibleDC(0);_destDc=CreateCompatibleDC(0);
-            var source=new Info {Size=40,Width=frame.Width,Height=-frame.Height,Planes=1,Bits=32};
+            var source=new Info {Size=40,Width=crop.Width,Height=-crop.Height,Planes=1,Bits=32};
             var dest=new Info {Size=40,Width=width,Height=-height,Planes=1,Bits=32};
             _sourceBitmap=CreateDIBSection(_sourceDc,ref source,0,out _sourceBits,0,0);
             _destBitmap=CreateDIBSection(_destDc,ref dest,0,out _destBits,0,0);
@@ -332,16 +351,33 @@ internal sealed unsafe class NativeFrameResize : IDisposable
             if(SetStretchBltMode(_destDc,3)==0) throw new InvalidOperationException("Sample resize mode failed.");
             _size=size;
         }
-        // Compare against our retained native DIB, which still contains the previous
-        // raw frame even when the capture worker reuses its CPU buffer. Crop changes
-        // must resample; identical output remains immutable across publications.
-        var unchanged=_sampleReady && _crop==crop
-            && frame.Pixels.AsSpan().SequenceEqual(new ReadOnlySpan<byte>((void*)_sourceBits,frame.Pixels.Length));
+        // Retain only pixels used by this crop, including their original alpha.
+        // The capture buffer can be reused; compare rows against independently
+        // owned native storage before deciding whether the sample is unchanged.
+        var rowBytes=checked(crop.Width*4);
+        var unchanged=_sampleReady && _crop==crop;
+        var contiguous=crop.Left==0 && crop.Width==frame.Width;
+        if(unchanged && contiguous)
+            unchanged=frame.Pixels.AsSpan(checked(crop.Top*rowBytes),checked(crop.Height*rowBytes)).SequenceEqual(
+                new ReadOnlySpan<byte>((void*)_sourceBits,checked(crop.Height*rowBytes)));
+        else if(unchanged)
+            for(var row=0;row<crop.Height;row++)
+            {
+                var offset=checked(((row+crop.Top)*frame.Width+crop.Left)*4);
+                if(!frame.Pixels.AsSpan(offset,rowBytes).SequenceEqual(
+                    new ReadOnlySpan<byte>((byte*)_sourceBits+row*rowBytes,rowBytes)))
+                {unchanged=false;break;}
+            }
         if(unchanged && destination is null && _lastPixels is not null) return _lastPixels;
         if(!unchanged)
         {
-            Marshal.Copy(frame.Pixels,0,_sourceBits,frame.Pixels.Length);
-            if(!StretchBlt(_destDc,0,0,width,height,_sourceDc,crop.Left,crop.Top,crop.Width,crop.Height,0x00CC0020))
+            if(contiguous)
+                Marshal.Copy(frame.Pixels,checked(crop.Top*rowBytes),_sourceBits,checked(crop.Height*rowBytes));
+            else
+                for(var row=0;row<crop.Height;row++)
+                    frame.Pixels.AsSpan(checked(((row+crop.Top)*frame.Width+crop.Left)*4),rowBytes).CopyTo(
+                        new Span<byte>((byte*)_sourceBits+row*rowBytes,rowBytes));
+            if(!StretchBlt(_destDc,0,0,width,height,_sourceDc,0,0,crop.Width,crop.Height,0x00CC0020))
                 throw new InvalidOperationException("Sample resize failed.");
             GdiFlush();_sampleReady=true;_lastPixels=null;
         }

@@ -21,20 +21,29 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
     private AndroidLiquidGlassRenderer _androidGlass = new();
     private readonly GlassFrameWorker _worker = new();
     private readonly DispatcherTimer _timer;
+    private readonly DispatcherTimer _presentationIdleTimer;
     private TimeSpan _refreshInterval = GlassBackgroundLayer.LiveFrameInterval;
     private bool _renderClockAttached;
     private TimeSpan _lastRenderingTime = TimeSpan.MinValue;
     private long _lastRenderingTicks;
+    private long _contentChangedAt;
+    private bool _containerAnimationActive;
+    private TimeSpan _containerFrameInterval = GlassBackgroundLayer.LiveFrameInterval;
     private bool _renderFrameQueued;
     private DispatcherOperation? _renderFrameOperation;
     private DispatcherOperation? _refreshOperation;
     private bool _performanceSleeping;
+    private bool _hiddenPresentationRetired;
     private long _lastRenderTicks, _renderCount;
     private bool? _firstVisibleRenderMaterialReady;
+    private long _firstVisibleRenderTicks;
     private bool _lastRenderMaterialReady;
     private long _lifecycleGeneration;
     private long _lastCaptureSequence, _lastCaptureGeneration, _lastCaptureSourceTicks;
+    private long _compatibilitySourceTicks;
+    internal bool RequireFreshRetainedReveal { get; set; }
     private long _revealCaptureUntil;
+    private long _relocationHandoffUntil;
     private int _renderFrameSignals;
     private readonly TransitionGlassLayer _transitionLayer = new();
     private readonly TransitionGlassLayer _compatibilityLayer = new();
@@ -49,9 +58,13 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
         bool Dark, double Clarity, bool Launchpad, LiquidGlassSamplingParameters Sampling,
         LiquidGlassWeightParameters Weights, LiquidGlassLodParameters Lod,
         LiquidGlassFinishingParameters Finishing, LiquidGlassBrdfParameters Brdf,
-        LiquidGlassDispersionParameters Dispersion, long RecoveryGeneration);
+        LiquidGlassDispersionParameters Dispersion, long RecoveryGeneration, bool DesktopOnly);
     private ThemeService? _theme;
     private double _observedBackgroundClarity = .5;
+    // Compatibility with the specialised Dock panels added by the experimental build.
+    // These panels need a local material/clarity without changing the shared setting.
+    private bool _useFrostedMaterial;
+    private double _backgroundClarityOverride = double.NaN;
     private double _transitionBlurRadius;
     private Rect? _panelShape;
     private double _panelRadius;
@@ -80,6 +93,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
     private bool _refreshPending;
     private GlassBackdropScene? _backdropScene;
     private GlassBackdropScene? _frameScene, _transitionBackdropScene;
+    private GlassBackdropScene? _lastCaptureScene;
     private long _materialRetentionUntil;
     private static int _nextDiagnosticId;
     private readonly int _diagnosticId = Interlocked.Increment(ref _nextDiagnosticId);
@@ -90,23 +104,88 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
     private bool _compatibilityIsDesktopSnapshot;
     private Point? _revealOrigin;
     private PixelRect? _revealHost;
+    private DpiScale? _revealDpi;
     private int _preparedDesktopSnapshots;
+    private double _lastRevealCaptureMilliseconds, _lastRevealRemapMilliseconds, _lastRevealFilterMilliseconds;
+    private double _lastRevealLayoutMilliseconds, _lastRevealSceneMilliseconds, _lastRevealPrimeMilliseconds;
+    private double _maximumSceneQueryMilliseconds, _maximumUiPreparationMilliseconds;
     private string? _firstVisibleMaterialSource;
     internal string? RevealMaterialInvalidationReason { get; private set; }
     public Func<bool>? IsBackdropActive { get; set; }
+    private bool DesktopOnlyBackdrop => (Window.GetWindow(this) as GlassWindow)?.UsesDesktopOnlyBackdrop == true;
     /// <summary>Large launchpad profile; Dock retains its compact material.</summary>
     public bool UseLaunchpadOptics { get; set; }
     /// <summary>Selects launcher transparency independently of the shared optical material.</summary>
     public bool UseLauncherTransparency { get; set; }
-    private double BackgroundClarity => AndroidLiquidGlassRenderer.NormalizeBackgroundClarity(
-        UseLauncherTransparency
-            ? ThemeService.Current?.Appearance.LauncherGlassTransparency ?? AppearanceSettings.DefaultLauncherGlassTransparency
-            : ThemeService.Current?.Appearance.DockGlassTransparency ?? AppearanceSettings.DefaultDockGlassTransparency);
+    /// <summary>Leave an uncaptured panel fully transparent instead of drawing ambient replacement glass.</summary>
+    public bool TransparentWhileLoading { get; set; }
+    /// <summary>Uses the frosted material only for this surface.</summary>
+    public bool UseFrostedMaterial
+    {
+        get => _useFrostedMaterial;
+        set
+        {
+            if (_useFrostedMaterial == value) return;
+            _useFrostedMaterial = value;
+            RefreshMaterialOverride();
+        }
+    }
+    /// <summary>Overrides shared transparency only for this surface; NaN follows settings.</summary>
+    public double BackgroundClarityOverride
+    {
+        get => _backgroundClarityOverride;
+        set
+        {
+            if (_backgroundClarityOverride.Equals(value)) return;
+            _backgroundClarityOverride = value;
+            RefreshMaterialOverride();
+        }
+    }
+    private GlassMaterialTarget MaterialTarget =>
+        (Window.GetWindow(this) as GlassWindow)?.MaterialTarget ?? GlassMaterialTarget.Shared;
+
+    private GlassMaterialMode SelectedMaterial
+    {
+        get
+        {
+            var target = MaterialTarget;
+            return ThemeService.Current?.Appearance.GetGlassMaterial(target)
+                ?? (target == GlassMaterialTarget.ControlCenter
+                    ? GlassMaterialMode.FrostedGlass
+                    : GlassMaterialMode.AndroidLiquidGlass);
+        }
+    }
+
+    private GlassMaterialMode Material
+    {
+        get
+        {
+            var selected = SelectedMaterial;
+            return _useFrostedMaterial && selected != GlassMaterialMode.PlainGlass
+                ? GlassMaterialMode.FrostedGlass
+                : selected;
+        }
+    }
+    private GlassMaterialTarget TransparencyTarget => UseLauncherTransparency ? GlassMaterialTarget.Launcher : MaterialTarget;
+
+    private static readonly AppearanceSettings DefaultAppearance = new();
+
+    private static double ResolveTransparency(GlassMaterialTarget target)
+    {
+        var transparency = ThemeService.Current?.Appearance.GetGlassTransparency(target) ?? DefaultAppearance.GetGlassTransparency(target);
+        return double.IsFinite(transparency) ? Math.Clamp(transparency, 0, 1) : DefaultAppearance.GetGlassTransparency(target);
+    }
+
+    private double BackgroundClarity => double.IsFinite(_backgroundClarityOverride)
+        ? AndroidLiquidGlassRenderer.NormalizeBackgroundClarity(_backgroundClarityOverride)
+        : ResolveTransparency(TransparencyTarget);
     public GlassBackdropSource BackdropSource { get; private set; }
     internal bool IsCurrentRevealMaterialReady
     {
         get
         {
+            if (IsPlainGlass) return true;
+            if (NativeStaticSelected) return _nativeReady;
             EnsureBackdropScene(revealing: true);
             if (ThemeService.Current?.UseOpaquePanels == true || BackdropRecovery.RequiresBasicRendering
                 || _background.RequiresBasicBackground) return true;
@@ -120,6 +199,11 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
     }
     /// <summary>Stable capture rectangle in owner-window DIPs when the surface is visually transformed.</summary>
     public Rect? CaptureBoundsInWindow { get; set; }
+
+    private void RefreshMaterialOverride()
+    {
+        if (IsLoaded) OnAppearanceChanged(this, EventArgs.Empty);
+    }
 
     /// <summary>Capture the full animation path; only the shared live geometry masks it.</summary>
     public void SetContainerTransitionBounds(Rect? bounds)
@@ -149,6 +233,34 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
         InvalidateVisual();
     }
 
+    /// <summary>Compatibility entry point; an unknown refresh retains the existing 120 Hz budget.</summary>
+    public void SetContainerAnimationActive(bool active) => SetContainerAnimationCadence(active, null);
+
+    internal void SetContainerAnimationCadence(bool active, double? targetHertz)
+    {
+        if (IsPlainGlass) { _containerAnimationActive = false; return; }
+        _containerAnimationActive = active && !_performanceSleeping;
+        _containerFrameInterval = _containerAnimationActive
+            ? TimeSpan.FromMilliseconds(1000d / (targetHertz is >= 1 and <= 1000 ? targetHertz.Value : 120))
+            : GlassBackgroundLayer.LiveFrameInterval;
+        if (_containerAnimationActive) _background.SetInteractionActive(true);
+        _background.SetAnimationActive(_containerAnimationActive, targetHertz);
+        SetTimerInterval(_containerFrameInterval);
+    }
+
+    /// <summary>Apply a complete morph frame with one update of the glass layers.</summary>
+    public void SetTransitionFrame(Rect bounds, double radius, Geometry geometry, double progress, double blurRadius)
+    {
+        if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0) return;
+        // Publish one consistent lens state instead of updating the layer once
+        // with the new shape/old strength and immediately again with both changed.
+        _transitionProgress = double.IsFinite(progress) ? Math.Clamp(progress, 0, 1) : 1;
+        _transitionBlurRadius = double.IsFinite(blurRadius) ? Math.Clamp(blurRadius, 0, 6) : 0;
+        if (_transitionProgress < 1 && _refreshInterval > GlassBackgroundLayer.TransitionFrameInterval)
+            SetTimerInterval(GlassBackgroundLayer.TransitionFrameInterval);
+        SetPanelShape(bounds, radius, geometry);
+    }
+
     /// <summary>Normalized container-transition progress shared with the owning window and shadow.</summary>
     public double TransitionProgress
     {
@@ -174,13 +286,20 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
     {
         ReadBackdropScene = CaptureBackdropScene;
         CaptureRevealBackdrop = CaptureHiddenDesktop;
-        _backdropScene = ReadBackdropScene();
+        _backdropScene = IsPlainGlass ? null : ReadBackdropScene();
         IsHitTestVisible = false;
         AddVisualChild(_transitionLayer);
         AddVisualChild(_compatibilityLayer);
         RenderOptions.SetBitmapScalingMode(this, BitmapScalingMode.HighQuality);
         _timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(100) };
         _timer.Tick += OnWatchdogFrame;
+        _presentationIdleTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(10) };
+        _presentationIdleTimer.Tick += (_, _) =>
+        {
+            _presentationIdleTimer.Stop();
+            if (!IsVisible && _revealCaptureUntil <= Stopwatch.GetTimestamp()) RetireHiddenPresentation();
+            else if (!IsVisible) _presentationIdleTimer.Start();
+        };
         Loaded += (_, _) =>
         {
             _theme = ThemeService.Current;
@@ -191,29 +310,44 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
                 _observedBackgroundClarity = BackgroundClarity;
             }
             RequestBackdropRefresh(revealing: true);
-            if (!_performanceSleeping && IsVisible && IsBackdropActive?.Invoke() != false) _timer.Start();
+            if (!IsPlainGlass && !_performanceSleeping && IsVisible && IsBackdropActive?.Invoke() != false) _timer.Start();
         };
         Unloaded += (_, _) => Dispose();
         IsVisibleChanged += (_, _) =>
         {
             _firstVisibleRenderMaterialReady = null;
+            _firstVisibleRenderTicks = 0;
             _firstVisibleMaterialSource = null;
             UpdateRenderClock();
             if (!IsVisible)
             {
+                _presentationIdleTimer.Stop();
+                _presentationIdleTimer.Start();
+                ReleaseNativeStatic();
                 _revealCaptureUntil = 0;
                 // Keep material and suspend readback; the compatible session stays warm
                 // while live geometry decides whether the previous mask fits.
                 _worker.Invalidate(); _worker.ClearCachedBuffers(); _lastSource = null; _background.Suspend();
                 _timer.Stop(); StopRenderClock(); CancelQueuedRefresh();
             }
-            else RequestBackdropRefresh(revealing: true);
+            else
+            {
+                _presentationIdleTimer.Stop();
+                WakeHiddenPresentation();
+                UpdateTransitionLayer();
+                RequestBackdropRefresh(revealing: true);
+            }
         };
+        // Hidden launchers should not retain effects while waiting for their first reveal.
+        if (IsPlainGlass) SuspendPlainGlassMaterial();
     }
 
     /// <summary>Wake capture when a visible host reveals its previously inactive panel.</summary>
     public void RequestBackdropRefresh(bool revealing = false)
     {
+        ClearTurnSceneSnapshot();
+        if (IsPlainGlass) { SuspendPlainGlassMaterial(); InvalidateVisual(); return; }
+        _contentChangedAt = Stopwatch.GetTimestamp();
         EnsureBackdropScene(revealing);
         if (_performanceSleeping) { InvalidateVisual(); return; }
         SetTimerInterval(GlassBackgroundLayer.LiveFrameInterval);
@@ -229,21 +363,44 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
         InvalidateVisual();
     }
 
-    /// <summary>A fully clipped panel must reacquire content, even when foreign HWNDs are unchanged.</summary>
-    public void RetireConcealedMaterial()
+    /// <summary>
+    /// Keeps the completed material visible while this surface moves on screen.
+    /// Its first destination frame replaces it; the handoff is strictly bounded.
+    /// </summary>
+    public void BeginRelocationHandoff()
     {
-        RecordMaterialRetirement("Concealed", expected: true);
+        if (_performanceSleeping || _frame is null && _transitionBackdrop is null) return;
+        _relocationHandoffUntil = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 3 / 4;
+    }
+
+    /// <summary>A fully clipped panel must reacquire content, even when foreign HWNDs are unchanged.</summary>
+    public void RetireConcealedMaterial() => RetireMaterialResources("Concealed", deep: false);
+
+    private void RetireMaterialResources(string reason, bool deep)
+    {
+        ReleaseNativeStatic();
+        RecordMaterialRetirement(reason, expected: true);
+        ClearTurnSceneSnapshot();
+        _backdropScene = null;
         ++_lifecycleGeneration;
         _worker.Invalidate(); _worker.ClearCachedBuffers();
         _lastSource = null; _lastCaptureSequence = _lastCaptureGeneration = _lastCaptureSourceTicks = 0;
+        _lastCaptureScene = null;
         _frame = null; _frameScene = null; _materialStamp = null;
         _transitionBackdrop = null; _transitionBackdropScene = null;
         _compatibilityBackdrop = null; _compatibilityStamp = null;
         _compatibilityIsDesktopSnapshot = false; _compatibilityScene = null;
-        _handoffStarted = _materialRetentionUntil = _revealCaptureUntil = 0;
+        _handoffStarted = _materialRetentionUntil = _revealCaptureUntil = _relocationHandoffUntil = 0;
         _wallpaperCancellation?.Cancel(); _wallpaperCancellation = null;
         _wallpaperPreparationPending = false;
-        _background.Suspend(); _timer.Stop(); StopRenderClock(); CancelQueuedRefresh();
+        if (deep)
+        {
+            _background.SetPerformanceSleeping(true);
+            _transitionLayer.SetPerformanceSleeping(true);
+            _compatibilityLayer.SetPerformanceSleeping(true);
+        }
+        else _background.Suspend();
+        _timer.Stop(); StopRenderClock(); CancelQueuedRefresh();
         _transitionLayer.SetBackdrop(null); _transitionLayer.Opacity = 0;
         _compatibilityLayer.SetBackdrop(null); _compatibilityLayer.Opacity = 0;
         _firstVisibleRenderMaterialReady = null; _firstVisibleMaterialSource = null;
@@ -254,6 +411,8 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
     /// <summary>Retire capture, optical work and large presentation resources until a fresh reveal.</summary>
     public void SetPerformanceSleeping(bool sleeping)
     {
+        ClearTurnSceneSnapshot();
+        if (sleeping) { ReleaseNativeStatic(); _presentationIdleTimer.Stop(); }
         if (_performanceSleeping == sleeping) return;
         _performanceSleeping = sleeping;
         _revealCaptureUntil = 0;
@@ -261,15 +420,17 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
         _worker.Invalidate(); _worker.ClearCachedBuffers();
         _lastSource = null;
         _lastCaptureSequence = _lastCaptureGeneration = _lastCaptureSourceTicks = 0;
-        _background.SetPerformanceSleeping(sleeping);
-        _transitionLayer.SetPerformanceSleeping(sleeping);
-        _compatibilityLayer.SetPerformanceSleeping(sleeping);
+        _lastCaptureScene = null;
+        _background.SetPerformanceSleeping(sleeping || IsPlainGlass);
+        _transitionLayer.SetPerformanceSleeping(sleeping || IsPlainGlass);
+        _compatibilityLayer.SetPerformanceSleeping(sleeping || IsPlainGlass);
         if (sleeping)
         {
+            _containerAnimationActive = false;
             _timer.Stop(); StopRenderClock(); CancelQueuedRefresh();
             _optics = new(); _androidGlass = new();
             _opticalFrameTimestamps.Clear(); _opticalRefreshRate = 0;
-            _handoffStarted = 0;
+            _handoffStarted = _relocationHandoffUntil = 0;
             // Deep sleep reacquires the current desktop on the next reveal. Retaining
             // a hidden full-size texture also retains WPF's shader input resources.
             _frame = null; _frameScene = null;
@@ -281,7 +442,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
             _wallpaperPreparationPending = false;
             _wallpaperCancellation?.Cancel(); _wallpaperCancellation = null;
         }
-        else if (IsLoaded && IsVisible && IsBackdropActive?.Invoke() != false)
+        else if (!IsPlainGlass && IsLoaded && IsVisible && IsBackdropActive?.Invoke() != false)
         {
             _timer.Start(); RequestBackdropRefresh(revealing: true);
         }
@@ -290,16 +451,32 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
 
     public object InspectPerformance() => new
     {
+        nativeStatic = InspectNativeStatic(),
+        renderingTier = RenderCapability.Tier >> 16,
+        processRenderMode = (int)RenderOptions.ProcessRenderMode,
+        windowRenderMode = (PresentationSource.FromVisual(this)?.CompositionTarget as System.Windows.Interop.HwndTarget)?.RenderMode is { } mode ? (int)mode : -1,
+        shader3Supported = RenderCapability.IsPixelShaderVersionSupported(3, 0),
+        gpuLensActive = _transitionLayer.UsesGpuLens || _compatibilityLayer.UsesGpuLens,
+        basicRendering = BackdropRecovery.RequiresBasicRendering,
+        remoteSession = SystemParameters.IsRemoteSession,
         sleeping = _performanceSleeping, generation = _lifecycleGeneration,
         renderClockAttached = _renderClockAttached, watchdogEnabled = _timer.IsEnabled,
         renderQueued = _renderFrameQueued, refreshQueued = _refreshPending, opticsBusy = _worker.IsBusy,
         lastRenderTicks = _lastRenderTicks, renderCount = _renderCount, lastRenderMaterialReady = _lastRenderMaterialReady,
         firstVisibleRenderMaterialReady = _firstVisibleRenderMaterialReady,
+        firstVisibleRenderTicks = _firstVisibleRenderTicks,
         firstVisibleMaterialSource = _firstVisibleMaterialSource,
-        materialReady = _frame is not null || _transitionBackdrop is not null || _compatibilityBackdrop is not null,
+        materialReady = IsPlainGlass || _nativeReady || _frame is not null || _transitionBackdrop is not null || _compatibilityBackdrop is not null,
         compatibilityReady = _compatibilityBackdrop is not null, handoffActive = _handoffStarted != 0,
         compatibilityIsDesktopSnapshot = _compatibilityIsDesktopSnapshot,
         preparedDesktopSnapshots = _preparedDesktopSnapshots, revealMaterialInvalidationReason = RevealMaterialInvalidationReason,
+        revealCaptureMilliseconds = _lastRevealCaptureMilliseconds, revealRemapMilliseconds = _lastRevealRemapMilliseconds,
+        revealFilterMilliseconds = _lastRevealFilterMilliseconds,
+        revealLayoutMilliseconds = _lastRevealLayoutMilliseconds, revealSceneMilliseconds = _lastRevealSceneMilliseconds,
+        revealPrimeMilliseconds = _lastRevealPrimeMilliseconds,
+        maximumSceneQueryMilliseconds = _maximumSceneQueryMilliseconds,
+        sceneQueries = _sceneQueries, sceneQueryReuses = _sceneQueryReuses,
+        maximumUiPreparationMilliseconds = _maximumUiPreparationMilliseconds,
         capture = _background.InspectPerformance(),
         source = BackdropSource.ToString(), retainedPixelBytes = (long)(_frame?.PixelWidth ?? 0) * (_frame?.PixelHeight ?? 0) * 4
             + (long)(_transitionBackdrop?.PixelWidth ?? 0) * (_transitionBackdrop?.PixelHeight ?? 0) * 4
@@ -313,6 +490,9 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
 
     public void Dispose()
     {
+        _presentationIdleTimer.Stop();
+        ClearTurnSceneSnapshot();
+        ReleaseNativeStatic();
         if (_theme is not null) _theme.Changed -= OnAppearanceChanged;
         _theme = null;
         _worker.Invalidate();
@@ -332,6 +512,14 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
 
     private void OnAppearanceChanged(object? sender, EventArgs e)
     {
+        if (IsPlainGlass) { SuspendPlainGlassMaterial(); InvalidateVisual(); return; }
+        if (_plainGlassMaterialSuspended)
+        {
+            _plainGlassMaterialSuspended = false;
+            _background.SetPerformanceSleeping(_performanceSleeping);
+            _transitionLayer.SetPerformanceSleeping(_performanceSleeping);
+            _compatibilityLayer.SetPerformanceSleeping(_performanceSleeping);
+        }
         RecordMaterialRetirement("AppearanceChanged", expected: true);
         // The notification can represent wallpaper/system changes even when the
         // resolved theme and transparency numbers remain identical.
@@ -357,7 +545,8 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
 
     private async void OnFrame(object? sender, EventArgs e)
     {
-        if (_performanceSleeping) return;
+        if (_performanceSleeping || IsPlainGlass) return;
+        var uiPreparationStarted = Stopwatch.GetTimestamp();
         var lifecycleGeneration = _lifecycleGeneration;
         if (!RenderCapability.IsPixelShaderVersionSupported(3, 0)) GlassDesk.UI.BackdropRecovery.UseBasicRendering();
         EnsureBackdropScene();
@@ -378,6 +567,11 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
             else
             {
                 _revealCaptureUntil = 0; _background.Suspend(); _timer.Stop();
+                if (!IsVisible || Window.GetWindow(this)?.IsVisible != true)
+                {
+                    if (!_hiddenPresentationRetired && !_presentationIdleTimer.IsEnabled)
+                        _presentationIdleTimer.Start();
+                }
             }
             StopRenderClock();
             return;
@@ -385,6 +579,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
         _revealCaptureUntil = 0;
         if (owner.PrimaryDisplaySession is { IsAvailable: false })
         {
+            ReleaseNativeStatic();
             _worker.Invalidate();
             _worker.ClearCachedBuffers();
             SetTimerInterval(TimeSpan.FromMilliseconds(200));
@@ -405,6 +600,9 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
         if (_worker.IsBusy) return;
         var reduced = ThemeService.Current?.AnimationsEnabled == false;
         var hovering = owner.IsMouseOver && !reduced;
+        var interactive = hovering || _hover >= .001 || _containerAnimationActive || _transitionProgress < 1
+            || _handoffStarted != 0;
+        _background.SetInteractionActive(interactive);
         var panelRect = _panelShape ?? new Rect(RenderSize);
         var target = hovering ? Math.Clamp((Mouse.GetPosition(this).X - panelRect.X) / panelRect.Width, .05, .95) : .35;
         _light += (target - _light) * (reduced ? 1 : .22);
@@ -413,7 +611,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
         var weightParameters = LiquidGlassDebugState.WeightParameters;
         var lodParameters = LiquidGlassDebugState.LodParameters;
         var debugView = LiquidGlassDebugState.View;
-        var material = ThemeService.Current?.Appearance.GlassMaterial ?? GlassMaterialMode.AndroidLiquidGlass;
+        var material = Material;
         var dark = ThemeService.Current?.IsDark != false;
         var backgroundClarity = BackgroundClarity;
         var useAndroidGlass = (material is GlassMaterialMode.AndroidLiquidGlass or GlassMaterialMode.FrostedGlass)
@@ -501,18 +699,41 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
         var sampleSizeDip = captureGeometry.SampleSizeDip;
         var glassBoundsDip = captureGeometry.GlassBoundsDip;
         var sampledFrameBounds = captureGeometry.FrameBoundsDip;
+        if (transitionBackdrop && TryNativeStaticWallpaper(owner,
+            new Rect(requestedRegion.X, requestedRegion.Y, requestedRegion.Width, requestedRegion.Height),
+            new Rect(region.X, region.Y, region.Width, region.Height),
+            Math.Max(1, (int)Math.Floor(region.Width * scale)), Math.Max(1, (int)Math.Floor(region.Height * scale)),
+            width, height, sampledFrameBounds, .6 + .4 * _transitionProgress)) return;
+        if (!transitionBackdrop) ReleaseNativeStatic();
         // Background is captured first. The glass stage below only reads this fixed frame;
         // WPF content is a separate visual above LiquidGlassSurface in each window.
         using var capturedBackground = _background.Capture(region,
             Math.Max(1, (int)Math.Floor(region.Width * scale)),
             Math.Max(1, (int)Math.Floor(region.Height * scale)), radius,
-            owner.SurfaceMode == GlassSurfaceMode.OpticalGlass);
+            owner.SurfaceMode == GlassSurfaceMode.OpticalGlass, DesktopOnlyBackdrop);
+        if (_background.MustDiscardUnverifiedMaterial)
+        {
+            if (_frame is not null || _transitionBackdrop is not null || _compatibilityIsDesktopSnapshot)
+            {
+                RecordMaterialRetirement("UnverifiedBackground");
+                _frame = null; _frameScene = null; _materialStamp = null;
+                _transitionBackdrop = null; _transitionBackdropScene = null;
+                _compatibilityBackdrop = null; _compatibilityStamp = null;
+                _compatibilityIsDesktopSnapshot = false; _compatibilityScene = null;
+                _handoffStarted = _materialRetentionUntil = 0;
+            }
+            _worker.Invalidate(); _lastSource = null;
+            BackdropSource = GlassBackdropSource.Transparent;
+            UpdateTransitionLayer(); InvalidateVisual(); return;
+        }
         var capturedScene = _backdropScene;
         var capturedStamp = ReadMaterialStamp();
         var capturedSourceTicks = _background.LastCaptureTiming?.SourceTicks ?? 0;
         using var background = capturedBackground is null ? null
             : _background.ExtendCapturedFrame(capturedBackground, region, requestedRegion, width, height);
         var source = background?.Pixels;
+        _maximumUiPreparationMilliseconds = Math.Max(_maximumUiPreparationMilliseconds,
+            Stopwatch.GetElapsedTime(uiPreparationStarted).TotalMilliseconds);
         var kind = background?.Source ?? GlassBackdropSource.Transparent;
         BackdropSource = kind;
         if (kind == GlassBackdropSource.Basic)
@@ -538,6 +759,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
             || (background!.IsCaptured ? background.Sequence != _lastCaptureSequence || background.CaptureGeneration != _lastCaptureGeneration
                 : _lastSource is null || !ReferenceEquals(source, _lastSource)))
         {
+            _contentChangedAt = Stopwatch.GetTimestamp();
             // Capture and optics follow the current panel, independently of content scale.
             // Cached geometry is rebuilt only when its physical sampling parameters change.
             var applyWallpaperShoulder = !useAndroidGlass && kind == GlassBackdropSource.Wallpaper
@@ -559,6 +781,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
                 wallpaperWeights is not null
                     ? pixels => ApplyWallpaperShoulder(pixels, wallpaperWeights)
                 : null, material, dark, androidGlass, backgroundClarity: backgroundClarity, launchpadOptics: launchpadOptics));
+            ClearTurnSceneSnapshot();
             EnsureBackdropScene();
             if (result is null || !_worker.IsCurrent(result) || _performanceSleeping || lifecycleGeneration != _lifecycleGeneration
                 || !owner.IsVisible || !IsVisible || IsBackdropActive?.Invoke() == false
@@ -573,6 +796,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
                 if (!capturedScene.Equals(_frameScene)) { _frame = null; _frameScene = null; }
                 if (!TryUpdateBackdropBitmap(_transitionBackdrop, refracted, width, height, out var submitted)) return;
                 _transitionBackdrop = submitted;
+                _transitionBackdropRevision++;
                 _transitionBackdropScene = capturedScene;
                 if (_transitionBackdropBounds != sampledFrameBounds) InvalidateArrange();
                 _transitionBackdropBounds = sampledFrameBounds;
@@ -597,13 +821,16 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
             }
             _lastOpticsMilliseconds = result.Milliseconds;
             if (!_compatibilityIsDesktopSnapshot || _compatibilityScene?.Equals(_backdropScene) == true)
-                _materialRetentionUntil = 0;
+                _materialRetentionUntil = _relocationHandoffUntil = 0;
             _frameUsesAndroidGlass = useAndroidGlass;
             _materialStamp = ReadMaterialStamp();
             _opticalFrameTimestamps.Enqueue(Stopwatch.GetTimestamp());
             _lastSource = background!.IsCaptured ? null : source; _frameKey = key;
             _lastCaptureSequence = background.Sequence; _lastCaptureGeneration = background.CaptureGeneration;
             _lastCaptureSourceTicks = capturedSourceTicks;
+            _lastCaptureScene = capturedScene;
+            if (BackdropRecovery.SubmittedPixelDiagnosticsEnabled)
+                RecordSubmittedPixels(source, refracted, width, height, capturedSourceTicks);
         }
         else if (background!.IsCaptured && capturedSourceTicks > _lastCaptureSourceTicks
             && CanCommitCapturedScene(capturedScene, capturedStamp, capturedSourceTicks))
@@ -611,6 +838,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
             if (transitionBackdrop) _transitionBackdropScene = capturedScene;
             else _frameScene = capturedScene;
             _lastCaptureSourceTicks = capturedSourceTicks;
+            _lastCaptureScene = capturedScene;
             if (!_compatibilityIsDesktopSnapshot || _compatibilityScene?.Equals(_backdropScene) == true)
                 _materialRetentionUntil = 0;
         }
@@ -620,13 +848,17 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
             _sampledGlassPanelBounds = panelRect;
             _sampledGlassPanelRadius = radius;
         }
-        UpdateTransitionLayer();
+        var idle = source is not null && _contentChangedAt != 0
+            && Stopwatch.GetElapsedTime(_contentChangedAt) >= TimeSpan.FromMilliseconds(500)
+            && !hovering && _hover < .001 && !_containerAnimationActive && _transitionProgress >= 1
+            && _handoffStarted == 0 && _relocationHandoffUntil == 0;
         RefreshOpticalRefreshRate();
-        SetTimerInterval(_transitionProgress < 1
-            ? GlassBackgroundLayer.TransitionFrameInterval
-            : source is null || kind is GlassBackdropSource.LiveDesktop or GlassBackdropSource.CompatibleScene || hovering
-                ? GlassBackgroundLayer.LiveFrameInterval : TimeSpan.FromMilliseconds(160));
-        InvalidateVisual();
+        SetTimerInterval(idle ? TimeSpan.FromMilliseconds(100)
+            : !interactive && source is not null ? TimeSpan.FromMilliseconds(1000d / 30)
+            : GlassBackgroundLayer.LiveFrameInterval);
+        // Retain the completed drawing and shader inputs while pixels and geometry
+        // are unchanged. Invalidating here used to keep the whole WPF render tree hot.
+        if (!idle) { UpdateTransitionLayer(); InvalidateVisual(); }
     }
 
     // WPF owns the copied pixels. Keep the same native texture while its dimensions
@@ -682,7 +914,23 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
 
     protected override void OnRender(DrawingContext drawingContext)
     {
-        EnsureBackdropScene();
+        if (IsPlainGlass) { RenderPlainGlass(drawingContext); return; }
+        if (NativeStaticSelected && _nativeBridge is not null)
+        {
+            base.OnRender(drawingContext); UpdateTransitionLayer();
+            _lastRenderTicks = Stopwatch.GetTimestamp(); ++_renderCount;
+            _lastRenderMaterialReady = _nativeReady;
+            _firstVisibleRenderMaterialReady ??= _nativeReady;
+            if (_firstVisibleRenderTicks == 0 && IsVisible) _firstVisibleRenderTicks = _lastRenderTicks;
+            if (_nativeReady) _firstVisibleMaterialSource ??= "NativeStaticWallpaper";
+            SharedMaterialChanged?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+        // Paint publishes the state validated by capture/commit. A Launcher morph
+        // changes its silhouette every render; it must not enumerate foreign HWNDs
+        // just to draw those already-verified pixels. Recovery/pose/material changes
+        // still require fresh verification, as do all other window types.
+        if (NeedsPaintSceneVerification()) EnsureBackdropScene();
         UpdateTransitionLayer();
         SharedMaterialChanged?.Invoke(this, EventArgs.Empty);
         var dc = drawingContext;
@@ -697,24 +945,31 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
             || _transitionBackdrop is not null && _transitionBackdropBounds.Contains(rect)
             || _compatibilityBackdrop is not null && _compatibilityLayer.Opacity > 0
                 && _compatibilityLayer.RenderSize.Width > 0 && _compatibilityLayer.RenderSize.Height > 0;
+        var waitingTransparently = TransparentWhileLoading && ThemeService.Current?.UseOpaquePanels != true
+            && !(_frame is not null && _sampledGlassPanelBounds == rect && _sampledGlassPanelRadius == radius
+                || _transitionBackdrop is not null && _transitionBackdropBounds.Contains(rect)
+                || _compatibilityIsDesktopSnapshot && _compatibilityBackdrop is not null && _compatibilityLayer.Opacity > 0);
+        if (waitingTransparently) _lastRenderMaterialReady = false;
         _firstVisibleRenderMaterialReady ??= _lastRenderMaterialReady;
-        var displayedSource = ThemeService.Current?.UseOpaquePanels == true ? "Opaque"
+        if (_firstVisibleRenderTicks == 0 && IsVisible) _firstVisibleRenderTicks = _lastRenderTicks;
+        var displayedSource = waitingTransparently ? "TransparentPending" : ThemeService.Current?.UseOpaquePanels == true ? "Opaque"
             : BackdropRecovery.RequiresBasicRendering || _background.RequiresBasicBackground ? "Basic"
             : _frame is not null && _sampledGlassPanelBounds == rect && _sampledGlassPanelRadius == radius
                 || _transitionBackdrop is not null && _transitionBackdropBounds.Contains(rect) ? "Live"
             : _compatibilityIsDesktopSnapshot && _compatibilityBackdrop is not null ? "DesktopSnapshot" : "Ambient";
         if (_diagnosticMaterial != displayedSource)
         {
-            var visibleLoss = _diagnosticMaterial == "Live" && (displayedSource is "Ambient" or "Basic")
+            var visibleLoss = _diagnosticMaterial == "Live" && (displayedSource is "Ambient" or "Basic" or "TransparentPending")
                 && Window.GetWindow(this)?.IsVisible == true && IsVisible && IsBackdropActive?.Invoke() != false;
             RecordSurfaceTrace(visibleLoss ? "MaterialLoss" : "MaterialState",
                 (_diagnosticMaterial ?? "Initial") + "To" + displayedSource, displayedSource);
             _diagnosticMaterial = displayedSource;
         }
-        _firstVisibleMaterialSource ??= _compatibilityIsDesktopSnapshot && _compatibilityBackdrop is not null
+        _firstVisibleMaterialSource ??= waitingTransparently ? "TransparentPending" : _compatibilityIsDesktopSnapshot && _compatibilityBackdrop is not null
             && _compatibilityLayer.Opacity > 0 ? "CurrentDesktopSnapshot"
             : _frame is not null || _transitionBackdrop is not null ? "CompletedLiveMaterial"
             : ThemeService.Current?.UseOpaquePanels == true ? "OpaquePreference" : "AmbientCompatibility";
+        if (waitingTransparently) return;
         var transition = Math.Clamp(_transitionProgress, 0, 1);
         var highlightScale = .48 + .52 * transition;
         var debugView = LiquidGlassDebugState.View;
@@ -747,7 +1002,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
             dc.Pop(); return;
         }
         var compatibleChrome = debugView == LiquidGlassDebugView.None && (_frameUsesAndroidGlass
-            || _frame is null && (ThemeService.Current?.Appearance.GlassMaterial ?? GlassMaterialMode.AndroidLiquidGlass)
+            || _frame is null && Material
                 is GlassMaterialMode.AndroidLiquidGlass or GlassMaterialMode.FrostedGlass);
         var opticalFrameMatches = _frame is not null && _sampledGlassPanelBounds == rect
             && _sampledGlassPanelRadius == radius;
@@ -857,14 +1112,45 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
     protected override Size ArrangeOverride(Size finalSize)
     {
         UpdateTransitionLayer(finalSize);
-        _transitionLayer.Arrange(_transitionBackdropBounds.Width > 0
-            ? _transitionBackdropBounds : new Rect(finalSize));
+        _transitionLayer.Arrange(NativeStaticSelected && _nativeBridge is not null && _nativeBounds.Width > 0
+            ? _nativeBounds : _transitionBackdropBounds.Width > 0 ? _transitionBackdropBounds : new Rect(finalSize));
         _compatibilityLayer.Arrange(new Rect(finalSize));
         return finalSize;
     }
 
+    private void RetireHiddenPresentation()
+    {
+        _presentationIdleTimer.Stop();
+        if (IsVisible || _revealCaptureUntil > Stopwatch.GetTimestamp()) return;
+        _hiddenPresentationRetired = true;
+        RetireMaterialResources("HiddenIdle", deep: true);
+    }
+
+    private void WakeHiddenPresentation()
+    {
+        if (!_hiddenPresentationRetired) return;
+        _hiddenPresentationRetired = false;
+        if (_performanceSleeping || IsPlainGlass) return;
+        _background.SetPerformanceSleeping(false);
+        _transitionLayer.SetPerformanceSleeping(false);
+        _compatibilityLayer.SetPerformanceSleeping(false);
+    }
+
     private void UpdateTransitionLayer(Size? layoutSize = null)
     {
+        if (_hiddenPresentationRetired && _revealCaptureUntil <= Stopwatch.GetTimestamp())
+        {
+            _transitionLayer.SetBackdrop(null); _transitionLayer.Opacity = 0;
+            _compatibilityLayer.SetBackdrop(null); _compatibilityLayer.Opacity = 0;
+            return;
+        }
+        if (UpdateNativeLayer(layoutSize ?? RenderSize)) return;
+        if (IsPlainGlass)
+        {
+            _transitionLayer.SetBackdrop(null); _transitionLayer.Opacity = 0;
+            _compatibilityLayer.SetBackdrop(null); _compatibilityLayer.Opacity = 0;
+            return;
+        }
         var size = layoutSize ?? RenderSize;
         var panel = _panelShape ?? new Rect(size);
         var radius = _panelShape is null ? (Window.GetWindow(this) as GlassWindow)?.PanelCornerRadius.TopLeft ?? 40 : _panelRadius;
@@ -874,11 +1160,11 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
             && _transitionBackdrop is not null && _transitionBackdropBounds.Contains(panel)
             && LiquidGlassDebugState.View == LiquidGlassDebugView.None
             && ThemeService.Current?.UseOpaquePanels != true
-            && (ThemeService.Current?.Appearance.GlassMaterial ?? GlassMaterialMode.AndroidLiquidGlass)
+            && Material
                 is GlassMaterialMode.AndroidLiquidGlass or GlassMaterialMode.FrostedGlass;
         _transitionLayer.SetBackdrop(enabled ? _transitionBackdrop : null);
         _transitionLayer.Opacity = enabled ? 1 : 0;
-        var frosted = ThemeService.Current?.Appearance.GlassMaterial == GlassMaterialMode.FrostedGlass;
+        var frosted = Material == GlassMaterialMode.FrostedGlass;
         if (enabled) _transitionLayer.SetPanel(panel, _transitionBackdropBounds, radius, .6 + .4 * _transitionProgress, UseLaunchpadOptics, frosted);
         var liveReady = !_background.RequiresBasicBackground && (enabled || opticalMatches);
         var needsCompatibility = ThemeService.Current?.UseOpaquePanels != true
@@ -889,6 +1175,8 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
             PrepareCompatibleMaterial(size);
             var opacity = !liveReady || _handoffStarted == 0 ? 1
                 : Math.Clamp(1 - Stopwatch.GetElapsedTime(_handoffStarted).TotalMilliseconds / 100, 0, 1);
+            if (_background.UsesTranslucentCaptureFallback && !_compatibilityIsDesktopSnapshot
+                && (UseLaunchpadOptics || IsBackdropActive is null)) opacity *= .18;
             _compatibilityLayer.SetBackdrop(_compatibilityBackdrop);
             if (_compatibilityLayer.Clip is null || _compatibilityClipKey != (panel, radius))
             {
@@ -922,7 +1210,11 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
     {
         var origin = new Point();
         var dpi = VisualTreeHelper.GetDpi(this);
-        if (_revealOrigin is { } preparedOrigin && Window.GetWindow(this) is { IsVisible: false }) origin = preparedOrigin;
+        if (_revealOrigin is { } preparedOrigin && Window.GetWindow(this) is { IsVisible: false })
+        {
+            origin = preparedOrigin;
+            dpi = _revealDpi ?? dpi;
+        }
         else if (PresentationSource.FromVisual(this) is not null) origin = PointToScreen(new Point());
         else if (Window.GetWindow(this) is { } owner && PresentationSource.FromVisual(owner) is not null)
         {
@@ -931,12 +1223,15 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
             origin = owner.PointToScreen(new Point()); dpi = VisualTreeHelper.GetDpi(owner);
         }
         return new(origin, _transitionCaptureBounds ?? CaptureBoundsInWindow ?? new Rect(RenderSize),
-            dpi, ThemeService.Current?.Appearance.GlassMaterial ?? GlassMaterialMode.AndroidLiquidGlass,
+            dpi, Material,
             ThemeService.Current?.IsDark != false, BackgroundClarity, UseLaunchpadOptics,
             LiquidGlassDebugState.SamplingParameters, LiquidGlassDebugState.WeightParameters, LiquidGlassDebugState.LodParameters,
             LiquidGlassDebugState.FinishingParameters, LiquidGlassDebugState.BrdfParameters,
-            LiquidGlassDebugState.DispersionParameters, GlassDesk.UI.BackdropRecovery.Generation);
+            LiquidGlassDebugState.DispersionParameters, GlassDesk.UI.BackdropRecovery.Generation, DesktopOnlyBackdrop);
     }
+
+    private static bool MatchesExceptOrigin(MaterialStamp left, MaterialStamp right)
+        => left with { Origin = right.Origin } == right;
 
     private void PrepareCompatibleMaterial(Size size)
     {
@@ -945,8 +1240,16 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
         if (_compatibilityBackdrop is not null && _compatibilityStamp == stamp && _compatibilityBounds == bounds) return;
         if (_compatibilityIsDesktopSnapshot) RevealMaterialInvalidationReason = $"origin {_compatibilityStamp?.Origin} => {stamp.Origin}; dpi {_compatibilityStamp?.Dpi.DpiScaleX} => {stamp.Dpi.DpiScaleX}; bounds {_compatibilityBounds} => {bounds}; capture {_compatibilityStamp?.CaptureBounds} => {stamp.CaptureBounds}";
         _compatibilityStamp = stamp; _compatibilityBounds = bounds;
-        // A small, fully opaque ambient texture is immediately available. It contains
-        // no screen pixels and enters the exact production lens, tint and blur path.
+        if (TransparentWhileLoading)
+        {
+            _compatibilityBackdrop = null; _compatibilityIsDesktopSnapshot = false;
+            _compatibilityScene = null; _handoffStarted = 0;
+            return;
+        }
+        // Retire expired screen content without replacing a compact glass surface
+        // with a solid dark block. Its temporary body remains transmissive while
+        // capture catches up; the launcher keeps its existing readability profile.
+        // This ambient texture contains no screen pixels or stale window content.
         const int width = 32, height = 24;
         var source = new byte[width * height * 4];
         for (var y = 0; y < height; y++)
@@ -957,7 +1260,8 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
             source[i] = (byte)((stamp.Dark ? 51 : 208) + variation);
             source[i + 1] = (byte)((stamp.Dark ? 43 : 205) + variation);
             source[i + 2] = (byte)((stamp.Dark ? 37 : 200) + variation);
-            source[i + 3] = 255;
+            source[i + 3] = UseLaunchpadOptics || IsBackdropActive is null ? (byte)255
+                : (byte)Math.Round(255 * AndroidLiquidGlassRenderer.BodyOpacity);
         }
         var filtered = new byte[source.Length]; var scratch = new byte[source.Length];
         RenderMaterialBackdropInto(stamp.Material, source, filtered, scratch, width, height,
@@ -976,15 +1280,43 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
     /// <summary>Prepare current, fully filtered glass before a hidden launcher becomes visible.</summary>
     public void PrepareRevealMaterial(PixelRect host, PixelRect panel, double dpi)
     {
+        if (IsPlainGlass) return;
+        if (NativeStaticSelected) { RequestBackdropRefresh(revealing: true); return; }
+        _lastRevealCaptureMilliseconds = _lastRevealRemapMilliseconds = _lastRevealFilterMilliseconds = 0;
+        _lastRevealLayoutMilliseconds = _lastRevealSceneMilliseconds = _lastRevealPrimeMilliseconds = 0;
         if (Window.GetWindow(this) is not { } revealOwner
             || revealOwner.IsVisible && IsBackdropActive?.Invoke() != false || ThemeService.Current?.UseOpaquePanels == true
             || BackdropRecovery.RequiresBasicRendering || host.Width <= 0 || host.Height <= 0) return;
+        WakeHiddenPresentation();
         var size = new Size(host.Width * 96d / dpi, host.Height * 96d / dpi);
         _revealOrigin = new Point(host.X, host.Y);
         _revealHost = host;
+        _revealDpi = new DpiScale(dpi / 96d, dpi / 96d);
+        var stageStarted = Stopwatch.GetTimestamp();
         Measure(size); Arrange(new Rect(size));
+        _lastRevealLayoutMilliseconds = Stopwatch.GetElapsedTime(stageStarted).TotalMilliseconds;
+        stageStarted = Stopwatch.GetTimestamp();
         EnsureBackdropScene(revealing: true);
+        _lastRevealSceneMilliseconds = Stopwatch.GetElapsedTime(stageStarted).TotalMilliseconds;
+        stageStarted = Stopwatch.GetTimestamp();
         using var primed = PrimeRevealCapture(host, dpi, out var primedRegion);
+        _lastRevealPrimeMilliseconds = Stopwatch.GetElapsedTime(stageStarted).TotalMilliseconds;
+        if (RequireFreshRetainedReveal)
+        {
+            var now = Stopwatch.GetTimestamp();
+            bool Fresh(long sourceTicks) => sourceTicks > 0 && now >= sourceTicks
+                && now - sourceTicks <= Stopwatch.Frequency * 120 / 1000;
+            if ((_frame is not null || _transitionBackdrop is not null) && !Fresh(_lastCaptureSourceTicks))
+            {
+                _frame = null; _frameScene = null; _transitionBackdrop = null; _transitionBackdropScene = null;
+                _materialStamp = null; _lastSource = null; _worker.Invalidate();
+            }
+            if (_compatibilityIsDesktopSnapshot && !Fresh(_compatibilitySourceTicks))
+            {
+                _compatibilityBackdrop = null; _compatibilityStamp = null;
+                _compatibilityScene = null; _compatibilityIsDesktopSnapshot = false;
+            }
+        }
         if (_frame is not null || _transitionBackdrop is not null) return;
         if (_compatibilityIsDesktopSnapshot && _compatibilityScene?.Equals(_backdropScene) == true
             && _compatibilityStamp == ReadMaterialStamp()) return;
@@ -999,7 +1331,12 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
         var captureWidth = Math.Max(1, (int)Math.Floor(region.Width * scale));
         var captureHeight = Math.Max(1, (int)Math.Floor(region.Height * scale));
         var scene = _backdropScene;
-        var pixels = CaptureRevealBackdrop(region, captureWidth, captureHeight);
+        var captureStarted = Stopwatch.GetTimestamp();
+        // Composed-screen snapshots contain covering windows. Pinned bars may
+        // only prepare from the same isolated desktop source used by live frames.
+        var pixels = DesktopOnlyBackdrop ? null : CaptureRevealBackdrop(region, captureWidth, captureHeight);
+        _lastRevealCaptureMilliseconds = Stopwatch.GetElapsedTime(captureStarted).TotalMilliseconds;
+        var remapStarted = Stopwatch.GetTimestamp();
         var usedNative = false;
         // The existing prewarm owner already excludes every product window. A
         // launcher/morph can make GDI unsafe while this native frame is available;
@@ -1041,14 +1378,19 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
             }
         }
         var stamp = ReadMaterialStamp();
+        _lastRevealRemapMilliseconds = Stopwatch.GetElapsedTime(remapStarted).TotalMilliseconds;
         var filtered = new byte[source.Length]; var scratch = new byte[source.Length];
+        var filterStarted = Stopwatch.GetTimestamp();
         RenderMaterialBackdropInto(stamp.Material, source, filtered, scratch, width, height,
             size, stamp.Dark, 1, stamp.Clarity, stamp.Launchpad);
+        _lastRevealFilterMilliseconds = Stopwatch.GetElapsedTime(filterStarted).TotalMilliseconds;
         var bitmap = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, filtered, width * 4);
         bitmap.Freeze();
         _wallpaperCancellation?.Cancel();
         _compatibilityBackdrop = bitmap; _compatibilityStamp = stamp; _compatibilityBounds = new Rect(size);
         _compatibilityScene = scene; _compatibilityIsDesktopSnapshot = true; _handoffStarted = 0;
+        _compatibilitySourceTicks = usedNative && _background.LastCaptureTiming is { } capturedTiming
+            ? capturedTiming.SourceTicks : captureStarted;
         ++_preparedDesktopSnapshots; RevealMaterialInvalidationReason = null;
         UpdateTransitionLayer(size); InvalidateVisual();
     }
@@ -1088,7 +1430,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
         // Start the existing isolated owner before GDI and filtering block the
         // Dispatcher. The first visible render uses this same crop and sample size.
         var pending = _background.Capture(region, Math.Max(1, (int)Math.Floor(region.Width * scale)),
-            Math.Max(1, (int)Math.Floor(region.Height * scale)), _panelRadius, true);
+            Math.Max(1, (int)Math.Floor(region.Height * scale)), _panelRadius, true, DesktopOnlyBackdrop);
         _revealCaptureUntil = Stopwatch.GetTimestamp() + Stopwatch.Frequency;
         _timer.Interval = TimeSpan.FromMilliseconds(100); _timer.Start();
         return pending;
@@ -1156,6 +1498,12 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
     private bool CanCommitCapturedScene(GlassBackdropScene? capturedScene, MaterialStamp? capturedStamp, long sourceTicks)
     {
         if (capturedScene is null || capturedStamp != ReadMaterialStamp()) return false;
+        // Static capture may replay its last sample indefinitely. Retiring the
+        // displayed bitmap must not let that same pre-move sample be rendered
+        // again under a new scene label. Keep provenance after material expiry;
+        // geometry/material changes in the same scene may still reuse pixels.
+        if (sourceTicks > 0 && sourceTicks <= _lastCaptureSourceTicks
+            && !capturedScene.Equals(_lastCaptureScene)) return false;
         if (capturedScene.Equals(_backdropScene)) return true;
         // The acquired snapshot has already passed native exclusion and scene
         // barriers. An external window moving during CPU composition does not
@@ -1168,8 +1516,18 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
 
     private void EnsureBackdropScene(bool revealing = false)
     {
-        var scene = ReadBackdropScene();
+        if (IsPlainGlass) return;
+        var queryStarted = Stopwatch.GetTimestamp();
+        var queryRecovery = BackdropRecovery.Generation;
+        var scene = ReadSceneForCurrentTurn(revealing);
+        _lastSceneRecovery = queryRecovery;
         var stamp = ReadMaterialStamp();
+        var now = Stopwatch.GetTimestamp();
+        var relocationHandoff = _relocationHandoffUntil > now
+            && _materialStamp is not null
+            && MatchesExceptOrigin(_materialStamp, stamp);
+        _maximumSceneQueryMilliseconds = Math.Max(_maximumSceneQueryMilliseconds,
+            Stopwatch.GetElapsedTime(queryStarted).TotalMilliseconds);
         var snapshotDiscarded = false;
         if (_compatibilityIsDesktopSnapshot && (scene is null || !scene.Equals(_compatibilityScene)))
         {
@@ -1189,9 +1547,13 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
         }
         if ((_frame is not null || _transitionBackdrop is not null) && _materialStamp is not null && _materialStamp != stamp)
         {
-            RecordMaterialRetirement("MaterialStampChanged");
-            _frame = null; _frameScene = null; _transitionBackdrop = null; _transitionBackdropScene = null;
-            _worker.Invalidate(); _lastSource = null; _handoffStarted = 0;
+            if (!relocationHandoff)
+            {
+                RecordMaterialRetirement("MaterialStampChanged");
+                _frame = null; _frameScene = null; _transitionBackdrop = null; _transitionBackdropScene = null;
+                _worker.Invalidate(); _lastSource = null; _handoffStarted = 0;
+                _relocationHandoffUntil = 0;
+            }
         }
         if (_frame is not null) _frameScene ??= _backdropScene;
         if (_transitionBackdrop is not null) _transitionBackdropScene ??= _backdropScene;
@@ -1219,6 +1581,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
         var discarded = false;
         bool Reusable(GlassBackdropScene? materialScene)
         {
+            if (relocationHandoff) return true;
             if (scene is null) return false;
             if (scene.Equals(materialScene)) return true;
             var visibleHandoff = Window.GetWindow(this)?.IsVisible == true && IsVisible
@@ -1260,7 +1623,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
     {
         var timing = _background.LastCaptureTiming;
         BackdropRecovery.Record(new(stage, reason, Stopwatch.GetTimestamp(), timing?.SourceTicks ?? 0,
-            Generation: BackdropRecovery.Generation, SurfaceId: _diagnosticId, Surface: UseLaunchpadOptics ? "Launcher" : "Dock",
+            Generation: BackdropRecovery.Generation, SurfaceId: _diagnosticId, Surface: DiagnosticSurfaceName,
             MaterialSource: source, Visible: Window.GetWindow(this)?.IsVisible == true && IsVisible,
             Active: IsBackdropActive?.Invoke() != false, Sleeping: _performanceSleeping,
             SceneHash: _backdropScene?.GetHashCode() ?? 0, Width: (int)Math.Max(0, ActualWidth), Height: (int)Math.Max(0, ActualHeight)));
@@ -1268,6 +1631,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
 
     private GlassBackdropScene? CaptureBackdropScene()
     {
+        if (DesktopOnlyBackdrop) return new GlassBackdropScene();
         if (Window.GetWindow(this) is not GlassWindow owner) return GlassBackdropScene.Capture();
         var bounds = !owner.IsVisible && _revealHost is { } prepared ? prepared
             : DisplayService.GetWindowPixelBounds(new System.Windows.Interop.WindowInteropHelper(owner).Handle);
@@ -1298,7 +1662,9 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
 
     private void SetTimerInterval(TimeSpan interval)
     {
-        _refreshInterval = _handoffStarted != 0 ? GlassBackgroundLayer.LiveFrameInterval : interval;
+        if (IsPlainGlass) return;
+        _refreshInterval = _containerAnimationActive ? _containerFrameInterval
+            : _handoffStarted != 0 ? GlassBackgroundLayer.LiveFrameInterval : interval;
         // A 16 ms DispatcherTimer can wake only every second display frame because
         // its Windows timer is rounded. Live updates follow WPF's render clock;
         // the timer only wakes idle modes or recovers a temporarily silent clock.
@@ -1310,8 +1676,8 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
 
     private void UpdateRenderClock()
     {
-        var active = !_performanceSleeping && IsLoaded && IsVisible && IsBackdropActive?.Invoke() != false
-            && _refreshInterval <= GlassBackgroundLayer.LiveFrameInterval;
+        var active = !IsPlainGlass && !_performanceSleeping && IsLoaded && IsVisible && IsBackdropActive?.Invoke() != false
+            && (_containerAnimationActive || _refreshInterval <= GlassBackgroundLayer.LiveFrameInterval);
         if (active && !_renderClockAttached)
         {
             _lastRenderingTime = TimeSpan.MinValue; _lastRenderingTicks = 0;
@@ -1330,7 +1696,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
 
     private void OnRenderingFrame(object? sender, EventArgs e)
     {
-        if (_performanceSleeping) return;
+        if (_performanceSleeping || IsPlainGlass) return;
         if (e is RenderingEventArgs rendering)
         {
             if (rendering.RenderingTime == _lastRenderingTime) return;
@@ -1362,7 +1728,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
 
     private void OnWatchdogFrame(object? sender, EventArgs e)
     {
-        if (_performanceSleeping) return;
+        if (_performanceSleeping || IsPlainGlass) return;
         if (_renderClockAttached && _lastRenderingTicks != 0
             && Stopwatch.GetElapsedTime(_lastRenderingTicks) < TimeSpan.FromMilliseconds(100)) return;
         OnFrame(sender, e);

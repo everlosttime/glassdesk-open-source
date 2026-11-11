@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using GlassDesk.UI.Theming;
@@ -33,6 +34,21 @@ public partial class LauncherWindow
         // Moving tiles must not become accidental click or drag targets.
         PageScroll.IsHitTestVisible = false;
 
+        // Cache only the moving page visuals at WPF's native device resolution.
+        // Late icon updates still invalidate the cache; glass remains live underneath.
+        // Software / remote renderers keep the existing vector path.
+        var dpi = VisualTreeHelper.GetDpi(this);
+        var maximum = RenderCapability.MaxHardwareTextureSize;
+        if (RenderCapability.Tier >> 16 > 0 && !SystemParameters.IsRemoteSession
+            && RenderOptions.ProcessRenderMode != RenderMode.SoftwareOnly
+            && (PresentationSource.FromVisual(this)?.CompositionTarget as HwndTarget)?.RenderMode != RenderMode.SoftwareOnly
+            && Math.Ceiling(TileGrid.Width * dpi.DpiScaleX) <= maximum.Width
+            && Math.Ceiling(Math.Max(oldHeight, TileGrid.MinHeight) * dpi.DpiScaleY) <= maximum.Height)
+        {
+            TileGrid.CacheMode = new BitmapCache();
+            OutgoingPageGrid.CacheMode = new BitmapCache();
+        }
+
         var offset = Math.Sign(direction) * distance;
         // The animation clock starts on the next render tick; position the new
         // page now so that it cannot flash at the destination for one frame.
@@ -57,6 +73,8 @@ public partial class LauncherWindow
     {
         IncomingPageMotion.BeginAnimation(TranslateTransform.XProperty, null);
         OutgoingPageMotion.BeginAnimation(TranslateTransform.XProperty, null);
+        TileGrid.CacheMode = null;
+        OutgoingPageGrid.CacheMode = null;
         IncomingPageMotion.X = OutgoingPageMotion.X = 0;
         OutgoingPageScroll.Visibility = Visibility.Collapsed;
         OutgoingPageGrid.Children.Clear();

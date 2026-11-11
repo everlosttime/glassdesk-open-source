@@ -9,7 +9,7 @@ namespace GlassDesk.UI.Controls;
 /// <summary>Fixed desktop texture; its lens reads the live shared silhouette every frame.</summary>
 internal sealed class TransitionGlassLayer : FrameworkElement
 {
-    private BitmapSource? _backdrop;
+    private ImageSource? _backdrop;
     private TransitionGlassEffect? _lens;
     private readonly DrawingGroup _drawing = new();
     private bool _sleeping;
@@ -17,24 +17,29 @@ internal sealed class TransitionGlassLayer : FrameworkElement
     private Rect _panel;
     private double _radius, _strength;
     public bool UsesGpuLens => Effect is TransitionGlassEffect;
+    // Explicit component attribution only; never selected by product settings.
+    internal bool DiagnosticDisableLens { get; set; }
 
     public TransitionGlassLayer()
     {
         IsHitTestVisible = false;
         Opacity = 0;
         RenderOptions.SetBitmapScalingMode(this, BitmapScalingMode.HighQuality);
-        if (RenderCapability.IsPixelShaderVersionSupported(3, 0))
-        {
-            _lens = new TransitionGlassEffect();
-            Effect = _lens;
-        }
+        // SetPanel creates the lens only for a real textured material. Plain and
+        // never-shown surfaces must not load a shader just to discard it again.
     }
 
-    public void SetBackdrop(BitmapSource? backdrop)
+    public void SetBackdrop(ImageSource? backdrop)
     {
         if (ReferenceEquals(backdrop, _backdrop)) return;
         _backdrop = backdrop;
-        if (backdrop is null) _drawing.Children.Clear();
+        if (backdrop is null)
+        {
+            _drawing.Children.Clear();
+            // An empty layer must not keep WPF's shader-input resources alive.
+            Effect = null;
+            _lens = null;
+        }
         InvalidateVisual();
     }
 
@@ -56,8 +61,8 @@ internal sealed class TransitionGlassLayer : FrameworkElement
         _radius = radius;
         _strength = strength;
         _frosted = frosted;
-        if (_sleeping) return;
-        if (frosted || GlassDesk.UI.BackdropRecovery.RequiresBasicRendering || !RenderCapability.IsPixelShaderVersionSupported(3, 0))
+        if (_sleeping || _backdrop is null) return;
+        if (frosted || DiagnosticDisableLens || GlassDesk.UI.BackdropRecovery.RequiresBasicRendering || !RenderCapability.IsPixelShaderVersionSupported(3, 0))
         {
             Effect = null;
             InvalidateVisual();

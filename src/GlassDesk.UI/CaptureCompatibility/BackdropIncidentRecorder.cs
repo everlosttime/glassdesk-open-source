@@ -57,7 +57,9 @@ internal sealed class BackdropIncidentRecorder : IDisposable
     private static bool IsTrigger(CaptureTrace trace) => trace.Stage is "CaptureFailure" or "MaterialLoss" or "VisualSwap"
         || trace.Stage == "UIScene" && trace.Reason == "UnknownAfterRetry"
         || trace.Stage == "Rendering" && trace.Reason == "BasicBackgroundRequired"
-        || trace.Stage == "NativePixels" && (trace.TransparentFraction > 0 || trace.NearBlackFraction >= .95);
+        || trace.Stage == "NativePixels" && (trace.TransparentFraction > 0 || trace.NearBlackFraction >= .95)
+        || trace.Stage == "MaterialSubmittedPixels" && (trace.NearBlackFraction >= .95
+            || trace.TransparentFraction >= .95 || trace.Reason == "LuminanceDrop");
 
     private void Trim(long now)
     {

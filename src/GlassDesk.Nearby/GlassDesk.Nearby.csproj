@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GlassDesk.Nearby</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <InternalsVisibleTo Include="GlassDesk.Nearby.Tests" />
+    <ProjectReference Include="../GlassDesk.Core/GlassDesk.Core.csproj" />
+  </ItemGroup>
+</Project>

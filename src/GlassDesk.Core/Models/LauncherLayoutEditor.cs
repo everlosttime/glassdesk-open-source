@@ -1,117 +1,104 @@
 namespace GlassDesk.Core.Models;
 
-/// <summary>编辑分离的启动台布局，由调用方决定何时提交结果。</summary>
+/// <summary>Edits detached launcher pages; holes compact within their own page only.</summary>
 public static class LauncherLayoutEditor
 {
-    /// <summary>Place an icon at its final grid slot; preview callers retain an immutable drag origin.</summary>
+    /// <summary>finalIndex encodes a grid coordinate (page * capacity + slot), including a new trailing page.</summary>
     public static LauncherLayout PlaceAtSlot(LauncherLayout source, string slotId, int finalIndex, int capacity, bool exchange)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
-        var slots = Flatten(source);
-        var old = slots.FindIndex(slot => SlotId(slot) == slotId);
-        if (old < 0) throw new InvalidOperationException("The dragged item no longer exists.");
-        var target = Math.Clamp(finalIndex, 0, slots.Count - 1);
-        if (exchange)
-            (slots[old], slots[target]) = (slots[target], slots[old]);
+        var draft = LauncherLayoutRules.DeepClone(source);
+        var (origin, old) = Find(draft, slotId);
+        var page = Math.Clamp(finalIndex / capacity, 0, draft.Pages.Count);
+        var index = Math.Max(0, finalIndex % capacity);
+        EnsurePage(draft, page);
+        var target = draft.Pages[page];
+        var moving = origin.Slots[old];
+        if (exchange && index < target.Slots.Count)
+            (origin.Slots[old], target.Slots[index]) = (target.Slots[index], moving);
         else
         {
-            var moving = slots[old];
-            slots.RemoveAt(old);
-            slots.Insert(target, moving);
+            origin.Slots.RemoveAt(old);
+            target.Slots.Insert(Math.Min(index, target.Slots.Count), moving);
         }
-        return Pack(slots, capacity);
+        return Finish(draft, capacity);
     }
 
     public static LauncherLayout Move(LauncherLayout source, string slotId, int page, int index, int capacity)
     {
-        var slots = Flatten(source);
-        var old = slots.FindIndex(slot => SlotId(slot) == slotId);
-        if (old < 0) throw new InvalidOperationException("The dragged item no longer exists.");
-        var moving = slots[old];
-        slots.RemoveAt(old);
-        var requested = (page * capacity) + index;
-        var target = Math.Clamp(requested > old ? requested - 1 : requested, 0, slots.Count);
-        slots.Insert(target, moving);
-        return Pack(slots, capacity);
+        var (origin, old) = Find(source, slotId);
+        if (source.Pages.IndexOf(origin) == page && index > old) index--;
+        return PlaceAtSlot(source, slotId, Math.Max(0, page) * capacity + Math.Max(0, index), capacity, false);
     }
 
-    /// <summary>Remove a top-level application or group from Launcher while preserving its library entries.</summary>
     public static LauncherLayout RemoveShortcut(LauncherLayout source, string slotId, int capacity)
     {
-        var slots = Flatten(source);
-        var index = slots.FindIndex(slot => SlotId(slot) == slotId);
-        if (index >= 0)
+        var draft = LauncherLayoutRules.DeepClone(source);
+        foreach (var page in draft.Pages)
         {
-            slots.RemoveAt(index);
-            return Pack(slots, capacity);
+            var index = page.Slots.FindIndex(slot => SlotId(slot) == slotId);
+            if (index >= 0) { page.Slots.RemoveAt(index); return Finish(draft, capacity); }
+            var groupSlot = page.Slots.FirstOrDefault(slot => slot.Group?.ItemIds.Contains(slotId, StringComparer.Ordinal) == true);
+            if (groupSlot?.Group is not { } group) continue;
+            group.ItemIds.Remove(slotId);
+            CollapseGroup(page, groupSlot);
+            return Finish(draft, capacity);
         }
-
-        var groupIndex = slots.FindIndex(slot => slot.Group?.ItemIds.Contains(slotId, StringComparer.Ordinal) == true);
-        if (groupIndex < 0) throw new InvalidOperationException("The dragged item no longer exists.");
-        var group = slots[groupIndex].Group!;
-        if (!group.ItemIds.Remove(slotId)) throw new InvalidOperationException("The dragged item no longer exists.");
-        if (group.ItemIds.Count == 0)
-            slots.RemoveAt(groupIndex);
-        else if (group.ItemIds.Count == 1)
-            slots[groupIndex] = new LauncherSlot { ItemId = group.ItemIds[0] };
-        return Pack(slots, capacity);
+        throw new InvalidOperationException("The dragged item no longer exists.");
     }
 
     public static LauncherLayout CreateGroup(LauncherLayout source, string movingId, string targetId, string groupId, int capacity)
     {
         if (movingId == targetId) throw new InvalidOperationException("An item cannot be grouped with itself.");
-        var slots = Flatten(source);
-        var moving = slots.SingleOrDefault(slot => slot.Kind == LauncherSlotKind.App && slot.ItemId == movingId);
-        var target = slots.SingleOrDefault(slot => slot.Kind == LauncherSlotKind.App && slot.ItemId == targetId);
-        if (moving is null || target is null) throw new InvalidOperationException("Both items must be top-level applications.");
-        slots.Remove(moving);
-        var targetIndex = slots.IndexOf(target);
-        slots[targetIndex] = new LauncherSlot { Kind = LauncherSlotKind.Group, Group = new LauncherGroup
-        { Id = groupId, Name = "新建文件夹", ItemIds = [targetId, movingId] } };
-        return Pack(slots, capacity);
+        var draft = LauncherLayoutRules.DeepClone(source);
+        var (origin, old) = Find(draft, movingId);
+        var (targetPage, targetIndex) = Find(draft, targetId);
+        var moving = origin.Slots[old]; var target = targetPage.Slots[targetIndex];
+        if (moving.Kind != LauncherSlotKind.App || target.Kind != LauncherSlotKind.App)
+            throw new InvalidOperationException("Both items must be top-level applications.");
+        origin.Slots.Remove(moving);
+        targetPage.Slots[targetPage.Slots.IndexOf(target)] = new LauncherSlot { Kind = LauncherSlotKind.Group,
+            Group = new() { Id = groupId, Name = "新建文件夹", ItemIds = [targetId, movingId] } };
+        return Finish(draft, capacity);
     }
 
     public static LauncherLayout AddToGroup(LauncherLayout source, string itemId, string groupId, int capacity)
     {
-        var slots = Flatten(source);
-        var group = slots.SingleOrDefault(slot => slot.Kind == LauncherSlotKind.Group && slot.Group?.Id == groupId)?.Group
-            ?? throw new InvalidOperationException("Group not found.");
-        var item = slots.SingleOrDefault(slot => slot.Kind == LauncherSlotKind.App && slot.ItemId == itemId)
-            ?? throw new InvalidOperationException("Only an application can enter a group.");
-        slots.Remove(item);
+        var draft = LauncherLayoutRules.DeepClone(source);
+        var (origin, old) = Find(draft, itemId);
+        var group = FindGroup(draft, groupId).Slot.Group!;
+        if (origin.Slots[old].Kind != LauncherSlotKind.App) throw new InvalidOperationException("Only an application can enter a group.");
+        origin.Slots.RemoveAt(old);
         if (!group.ItemIds.Contains(itemId, StringComparer.Ordinal)) group.ItemIds.Add(itemId);
-        return Pack(slots, capacity);
+        return Finish(draft, capacity);
     }
 
     public static LauncherLayout RemoveFromGroup(LauncherLayout source, string itemId, string groupId, int page, int index, int capacity)
     {
-        var slots = Flatten(source);
-        var group = slots.SingleOrDefault(slot => slot.Group?.Id == groupId)?.Group
-            ?? throw new InvalidOperationException("Group not found.");
-        if (!group.ItemIds.Remove(itemId)) throw new InvalidOperationException("Item not in group.");
-        if (group.ItemIds.Count == 0) slots.RemoveAll(slot => slot.Group?.Id == groupId);
-        else if (group.ItemIds.Count == 1)
-            slots[slots.FindIndex(slot => slot.Group?.Id == groupId)] = new LauncherSlot { ItemId = group.ItemIds[0] };
-        slots.Insert(Math.Clamp((page * capacity) + index, 0, slots.Count), new LauncherSlot { ItemId = itemId });
-        return Pack(slots, capacity);
+        var draft = LauncherLayoutRules.DeepClone(source);
+        var (groupPage, slot) = FindGroup(draft, groupId);
+        if (!slot.Group!.ItemIds.Remove(itemId)) throw new InvalidOperationException("Item not in group.");
+        CollapseGroup(groupPage, slot);
+        page = Math.Clamp(page, 0, draft.Pages.Count);
+        EnsurePage(draft, page);
+        draft.Pages[page].Slots.Insert(Math.Clamp(index, 0, draft.Pages[page].Slots.Count), new() { ItemId = itemId });
+        return Finish(draft, capacity);
     }
 
     public static LauncherLayout Dissolve(LauncherLayout source, string groupId, int capacity)
     {
-        var slots = Flatten(source);
-        var index = slots.FindIndex(slot => slot.Group?.Id == groupId);
-        if (index < 0) throw new InvalidOperationException("Group not found.");
-        var members = slots[index].Group!.ItemIds.Select(id => new LauncherSlot { ItemId = id }).ToList();
-        slots.RemoveAt(index);
-        slots.InsertRange(index, members);
-        return Pack(slots, capacity);
+        var draft = LauncherLayoutRules.DeepClone(source);
+        var (page, slot) = FindGroup(draft, groupId);
+        var index = page.Slots.IndexOf(slot);
+        page.Slots.RemoveAt(index);
+        page.Slots.InsertRange(index, slot.Group!.ItemIds.Select(id => new LauncherSlot { ItemId = id }));
+        return Finish(draft, capacity);
     }
 
     public static LauncherLayout MoveGroupMember(LauncherLayout source, string groupId, string itemId, int index)
     {
         var draft = LauncherLayoutRules.DeepClone(source);
-        var group = draft.Pages.SelectMany(page => page.Slots).SingleOrDefault(slot => slot.Group?.Id == groupId)?.Group
-            ?? throw new InvalidOperationException("Group not found.");
+        var group = FindGroup(draft, groupId).Slot.Group!;
         if (!group.ItemIds.Remove(itemId)) throw new InvalidOperationException("Item not in group.");
         group.ItemIds.Insert(Math.Clamp(index, 0, group.ItemIds.Count), itemId);
         return draft;
@@ -122,33 +109,72 @@ public static class LauncherLayoutEditor
         var trimmed = name.Trim();
         if (trimmed.Length is < 1 or > 60) throw new ArgumentException("Group name must be 1–60 characters.", nameof(name));
         var draft = LauncherLayoutRules.DeepClone(source);
-        var group = draft.Pages.SelectMany(page => page.Slots).SingleOrDefault(slot => slot.Group?.Id == groupId)?.Group
-            ?? throw new InvalidOperationException("Group not found.");
-        group.Name = trimmed;
+        FindGroup(draft, groupId).Slot.Group!.Name = trimmed;
         return draft;
     }
 
-    private static List<LauncherSlot> Flatten(LauncherLayout source)
-        => LauncherLayoutRules.DeepClone(source).Pages.SelectMany(page => page.Slots).ToList();
+    public static LauncherLayout AddShortcuts(LauncherLayout source, IEnumerable<string> ids, int capacity)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
+        var draft = LauncherLayoutRules.DeepClone(source);
+        var existing = LauncherLayoutRules.AppIds(source).ToHashSet(StringComparer.Ordinal);
+        EnsurePage(draft, 0);
+        foreach (var id in ids.Where(id => !string.IsNullOrWhiteSpace(id)))
+        {
+            if (!existing.Add(id)) continue;
+            if (draft.Pages[^1].Slots.Count >= capacity) EnsurePage(draft, draft.Pages.Count);
+            draft.Pages[^1].Slots.Add(new() { ItemId = id });
+        }
+        return Finish(draft, capacity);
+    }
 
     private static string? SlotId(LauncherSlot slot) => slot.Kind == LauncherSlotKind.Group ? slot.Group?.Id : slot.ItemId;
 
-    public static LauncherLayout AddShortcuts(LauncherLayout source, IEnumerable<string> ids, int capacity)
+    private static (LauncherPage Page, int Index) Find(LauncherLayout layout, string id)
     {
-        var slots = Flatten(source);
-        var existing = LauncherLayoutRules.AppIds(source).ToHashSet(StringComparer.Ordinal);
-        foreach (var id in ids.Where(id => !string.IsNullOrWhiteSpace(id)))
-            if (existing.Add(id)) slots.Add(new LauncherSlot { ItemId = id });
-        return Pack(slots, capacity);
+        foreach (var page in layout.Pages)
+        {
+            var index = page.Slots.FindIndex(slot => SlotId(slot) == id);
+            if (index >= 0) return (page, index);
+        }
+        throw new InvalidOperationException("The dragged item no longer exists.");
     }
 
-    private static LauncherLayout Pack(List<LauncherSlot> slots, int capacity)
+    private static (LauncherPage Page, LauncherSlot Slot) FindGroup(LauncherLayout layout, string id)
+    {
+        var (page, index) = Find(layout, id);
+        if (page.Slots[index].Group is null) throw new InvalidOperationException("Group not found.");
+        return (page, page.Slots[index]);
+    }
+
+    private static void CollapseGroup(LauncherPage page, LauncherSlot slot)
+    {
+        if (slot.Group!.ItemIds.Count == 0) page.Slots.Remove(slot);
+        else if (slot.Group.ItemIds.Count == 1)
+            page.Slots[page.Slots.IndexOf(slot)] = new() { ItemId = slot.Group.ItemIds[0] };
+    }
+
+    private static void EnsurePage(LauncherLayout layout, int index)
+    {
+        while (layout.Pages.Count <= index)
+            layout.Pages.Add(new() { Id = "page-" + Guid.NewGuid().ToString("N") });
+    }
+
+    /// <summary>Overflow travels forward; underfilled pages never borrow from following pages.</summary>
+    internal static LauncherLayout Finish(LauncherLayout layout, int capacity)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
-        var result = new LauncherLayout();
-        for (var offset = 0; offset < slots.Count; offset += capacity)
-            result.Pages.Add(new LauncherPage { Id = $"page-{(offset / capacity) + 1}", Slots = slots.Skip(offset).Take(capacity).ToList() });
-        result.SchemaVersion = 2;
-        return result;
+        for (var p = 0; p < layout.Pages.Count; p++)
+        {
+            var slots = layout.Pages[p].Slots;
+            if (slots.Count <= capacity) continue;
+            EnsurePage(layout, p + 1);
+            layout.Pages[p + 1].Slots.InsertRange(0, slots.Skip(capacity));
+            slots.RemoveRange(capacity, slots.Count - capacity);
+        }
+        while (layout.Pages.Count > 0 && layout.Pages[^1].Slots.Count == 0) layout.Pages.RemoveAt(layout.Pages.Count - 1);
+        layout.SchemaVersion = 2;
+        LauncherFilterRules.Normalize(layout);
+        return layout;
     }
 }

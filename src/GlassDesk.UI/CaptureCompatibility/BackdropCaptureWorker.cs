@@ -9,12 +9,15 @@ namespace GlassDesk.UI;
 public static class BackdropCaptureWorker
 {
     internal const int ProtocolMagic = 0x47444333;
-    internal const int ProtocolVersion = 5;
+    internal const int ProtocolVersion = 6;
     public static bool RunIfRequested(string[] arguments, out int exitCode)
     {
         exitCode = 0;
         if (arguments.Length != 2 || arguments[0] != "--glass-backdrop-worker") return false;
         if (!int.TryParse(arguments[1], out var parentId) || parentId <= 0) { exitCode = 2; return true; }
+        // A GUI-subsystem helper has no Application loop. Retrieve its first message before
+        // blocking on pipes/drivers, so Windows ends the process-starting cursor feedback.
+        CompleteStartupFeedback();
         using var input = new BinaryReader(Console.OpenStandardInput(), Encoding.UTF8);
         using var output = new BinaryWriter(Console.OpenStandardOutput(), Encoding.UTF8);
         try
@@ -36,7 +39,7 @@ public static class BackdropCaptureWorker
             if (input.ReadInt32() != ProtocolMagic || input.ReadInt32() != ProtocolVersion)
                 throw new InvalidDataException("Invalid capture protocol.");
             var provider = input.ReadByte();
-            if (provider > 2) throw new InvalidDataException("Invalid capture provider.");
+            if (provider > 4) throw new InvalidDataException("Invalid capture provider.");
             var region = new ScreenRect(input.ReadInt32(), input.ReadInt32(), input.ReadInt32(), input.ReadInt32());
             if (region.Width <= 0 || region.Height <= 0 || (long)region.Width * region.Height > 32_000_000)
                 throw new InvalidDataException("Invalid capture extent.");
@@ -50,6 +53,9 @@ public static class BackdropCaptureWorker
             {
                 0 => new SharedDesktopSceneCapture(region, trace: diagnostics.Observe, isolatedParentProcess: parentId, excludedProcesses: () => excluded),
                 1 => new DocumentedDesktopSceneCapture(region, trace: diagnostics.Observe, excludedProcesses: () => excluded),
+                3 when GlassDesk.Platform.WindowsCapabilities.BuildNumber >= 22000 => new SharedDesktopSceneCapture(
+                    region, false, diagnostics.Observe, parentId, () => excluded, desktopOnly: true),
+                3 or 4 => new DocumentedDesktopSceneCapture(region, false, diagnostics.Observe, () => excluded, desktopOnly: true),
                 _ => new WallpaperSceneCapture(region)
             };
             output.Write((byte)1);output.Write(ProtocolVersion); output.Write(capture.CarrierHandle.ToInt64()); output.Flush();
@@ -78,7 +84,7 @@ public static class BackdropCaptureWorker
                     capture.ReleaseReadbackBuffers();resize.Dispose();sampled=null;cachedNative=null; output.Write((byte)0);
                     output.Write(sequence); output.Write(generation); output.Write(capture.SceneRevision); output.Flush(); continue;
                 }
-                if (command is not (1 or 4)) throw new InvalidDataException("Unknown capture command.");
+                if (command is not (1 or 4 or 6)) throw new InvalidDataException("Unknown capture command.");
                 var notBefore = input.ReadInt64();
                 var wait = Math.Clamp(input.ReadInt32(), 0, 100);
                 var crop=new PixelBounds(input.ReadInt32(),input.ReadInt32(),input.ReadInt32(),input.ReadInt32());
@@ -87,10 +93,16 @@ public static class BackdropCaptureWorker
                     || width<=0 || height<=0 || (long)width*height>1_000_000 || (long)width*height*4>pixels.Capacity)
                     throw new InvalidDataException("Invalid sampled capture geometry.");
                 var cachedSource=command==4 ? input.ReadInt64() : 0;
+                // Production samples do not promise subsequent full-source tiles.
+                // Diagnostic command 1/4 keeps that separate snapshot contract.
+                if(command==6){cachedNative=null;cachedGeneration=0;}
+                var croppedReadback=command==6 && capture.SupportsCroppedReadback;
                 var frame=command==4
                     ? cachedNative is not null && cachedGeneration==generation && cachedNative.SourceQpcTicks==cachedSource
                         && cachedSource>=notBefore ? cachedNative : null
-                    : capture.TryRead(TimeSpan.FromMilliseconds(wait),sourceNotBeforeTicks:notBefore,reusePixels:true);
+                    : croppedReadback
+                        ? capture.TryReadCropped(crop,TimeSpan.FromMilliseconds(wait),sourceNotBeforeTicks:notBefore,reusePixels:true)
+                        : capture.TryRead(TimeSpan.FromMilliseconds(wait),sourceNotBeforeTicks:notBefore,reusePixels:true);
                 if(command==1 && frame is not null) {cachedNative=frame;cachedGeneration=generation;}
                 if (frame is null)
                 { output.Write((byte)0); output.Write(sequence); output.Write(generation); output.Write(capture.SceneRevision); }
@@ -99,7 +111,7 @@ public static class BackdropCaptureWorker
                     diagnostics.ObservePixels(frame, generation);
                     var bytes=checked(width*height*4);
                     if(sampled?.Length!=bytes) sampled=new byte[bytes];
-                    resize.ResizeInto(frame,width,height,crop,sampled);
+                    resize.ResizeInto(frame,width,height,croppedReadback?new(0,0,frame.Width,frame.Height):crop,sampled);
                     pixels.Write(sampled);
                     output.Write((byte)1); output.Write(sequence); output.Write(generation);
                     output.Write(capture.SceneRevision);
@@ -119,7 +131,8 @@ public static class BackdropCaptureWorker
             exitCode = 1;
             try
             {
-                var bytes = Encoding.UTF8.GetBytes(error.Message);
+                var bytes = Encoding.UTF8.GetBytes(error is GlassDesk.UI.CaptureCompatibility.SharedWallpaperBufferException
+                    ? GlassDesk.UI.CaptureCompatibility.SharedWallpaperBufferException.ProtocolErrorCode : error.Message);
                 if (bytes.Length > 8192) bytes = bytes[..8192];
                 output.Write((byte)2); output.Write(bytes.Length); output.Write(bytes); output.Flush();
             }
@@ -127,6 +140,38 @@ public static class BackdropCaptureWorker
         }
         return true;
     }
+    private static bool CompleteStartupFeedback()
+    {
+        const uint startupMessage = 0x8000 + 0x314;
+        _ = PeekMessage(out _, 0, startupMessage, startupMessage, 0);
+        // The private thread message guarantees GetMessage cannot wait for user input;
+        // filtering it leaves unrelated queued window messages untouched.
+        return PostThreadMessage(GetCurrentThreadId(), startupMessage, 0, 0)
+            && GetMessage(out _, 0, startupMessage, startupMessage) > 0;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct StartupMessage
+    {
+        public nint Window;
+        public uint Message;
+        public nuint WParam;
+        public nint LParam;
+        public uint Time;
+        public int X, Y;
+        public uint Private;
+    }
+
+    [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
+    [DllImport("user32.dll", EntryPoint = "PeekMessageW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool PeekMessage(out StartupMessage message, nint window, uint min, uint max, uint remove);
+    [DllImport("user32.dll", EntryPoint = "PostThreadMessageW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool PostThreadMessage(uint thread, uint message, nuint wParam, nint lParam);
+    [DllImport("user32.dll", EntryPoint = "GetMessageW")]
+    private static extern int GetMessage(out StartupMessage message, nint window, uint min, uint max);
+
     private static int[] ReadFamily(BinaryReader input, int parent)
     {
         var count = input.ReadInt32();

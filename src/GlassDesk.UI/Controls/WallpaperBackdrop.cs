@@ -9,6 +9,16 @@ namespace GlassDesk.UI.Controls;
 /// <summary>Stable wallpaper pixels only. Never reads the composed screen or another application's pixels.</summary>
 internal sealed class WallpaperBackdrop
 {
+    private readonly Func<string, int, string?> _cachedWallpaper;
+    private readonly Func<DesktopWallpaperSnapshot?> _readDesktop;
+    internal string SourceKind { get; private set; } = "Unavailable";
+
+    internal WallpaperBackdrop(Func<string, int, string?>? cachedWallpaper = null,
+        Func<DesktopWallpaperSnapshot?>? readDesktop = null)
+    {
+        _cachedWallpaper = cachedWallpaper ?? new WindowsWallpaperCache().Resolve;
+        _readDesktop = readDesktop ?? DesktopWallpaperSource.TryRead;
+    }
     private DesktopWallpaperSnapshot? _desktop;
     private DateTime _refreshAt;
     private int _revision;
@@ -17,7 +27,16 @@ internal sealed class WallpaperBackdrop
     private (Rect Region, int Width, int Height, int Revision, double Radius) _last;
     public byte[]? Pixels { get; private set; }
 
-    public bool Update(Rect region, int width, int height, double cornerRadius)
+    // A fixed-region capture worker retains the completed BGRA pixels. Keeping
+    // the decoded monitor images too duplicates their backing WIC storage.
+    // Preserve failed entries: their presence drives the bounded retry below.
+    internal void ReleaseDecodedImages()
+    {
+        foreach (var path in _images.Where(entry => entry.Value is not null).Select(entry => entry.Key).ToArray())
+            _images.Remove(path);
+    }
+
+    public bool Update(Rect region, int width, int height, double cornerRadius, bool renderPixels = true)
     {
         if (DateTime.UtcNow >= _refreshAt)
         {
@@ -27,7 +46,7 @@ internal sealed class WallpaperBackdrop
                 _images.Clear();
                 _last = default; // Retry temporarily unavailable files at the bounded refresh interval.
             }
-            var desktop = DesktopWallpaperSource.TryRead();
+            var desktop = _readDesktop();
             var hash = new HashCode();
             hash.Add(desktop?.Position);
             hash.Add(desktop?.BackgroundColor);
@@ -35,15 +54,32 @@ internal sealed class WallpaperBackdrop
             {
                 hash.Add(monitor);
                 hash.Add(GetWriteTime(monitor.Path));
+                if (!string.IsNullOrWhiteSpace(monitor.Path) && !File.Exists(monitor.Path))
+                {
+                    var cachedPath = _cachedWallpaper(monitor.Path, desktop!.Monitors.Count);
+                    hash.Add(cachedPath);
+                    if (cachedPath is not null) hash.Add(FileState(cachedPath));
+                }
             }
             var revision = hash.ToHashCode();
             if (revision != _revision) _images.Clear();
             _revision = revision;
             _desktop = desktop;
         }
+        if (!renderPixels)
+        {
+            // A fully covering live source supplies every output pixel. Keep the
+            // metadata polling/retry policy, but build static pixels only when a
+            // gap or source removal makes them necessary again.
+            Pixels = null;
+            _last = default;
+            if (_images.Count != 0) ReleaseDecodedImages();
+            return false;
+        }
         var key = (region, width, height, _revision, cornerRadius);
         if (key == _last) return false;
         _last = key;
+        SourceKind = "Unavailable";
         if (_desktop is null || _desktop.Monitors.Count == 0)
         {
             Pixels = null;
@@ -53,6 +89,8 @@ internal sealed class WallpaperBackdrop
         var background = new SolidColorBrush(Color.FromRgb((byte)color, (byte)(color >> 8), (byte)(color >> 16)));
         var visual = new DrawingVisual();
         var unavailable = false;
+        var usedOriginal = false;
+        var usedCache = false;
         using (var context = visual.RenderOpen())
         {
             context.PushClip(new RectangleGeometry(new Rect(0, 0, width, height)));
@@ -67,6 +105,12 @@ internal sealed class WallpaperBackdrop
                 var bounds = new Rect(monitor.Bounds.X, monitor.Bounds.Y, monitor.Bounds.Width, monitor.Bounds.Height);
                 if (!bounds.IntersectsWith(region)) continue;
                 var image = Load(monitor.Path);
+                if (image is null && !string.IsNullOrWhiteSpace(monitor.Path))
+                {
+                    image = LoadCached(monitor.Path, _desktop.Monitors.Count);
+                    usedCache |= image is not null;
+                }
+                else usedOriginal |= image is not null;
                 if (image is null)
                 {
                     unavailable |= !string.IsNullOrWhiteSpace(monitor.Path);
@@ -117,7 +161,35 @@ internal sealed class WallpaperBackdrop
         bitmap.Render(visual);
         Pixels = new byte[width * height * 4];
         bitmap.CopyPixels(Pixels, width * 4, 0);
+        SourceKind = usedCache ? "DecodedWindowsCache" : usedOriginal ? "DecodedOriginal" : "SolidColor";
         return true;
+    }
+
+    private WallpaperImage? LoadCached(string originalPath, int monitorCount)
+    {
+        var cachedPath = _cachedWallpaper(originalPath, monitorCount);
+        if (cachedPath is null) return null;
+        var before = FileState(cachedPath);
+        if (before.Length is <= 0 or > 32 * 1024 * 1024) return null;
+        var image = Load(cachedPath);
+        if (before != FileState(cachedPath)
+            || !string.Equals(cachedPath, _cachedWallpaper(originalPath, monitorCount), StringComparison.OrdinalIgnoreCase))
+        {
+            _images.Remove(cachedPath);
+            return null;
+        }
+        return image;
+    }
+
+    private static (long Length, DateTime Modified) FileState(string path)
+    {
+        try
+        {
+            var file = new FileInfo(path);
+            return file.Exists ? (file.Length, file.LastWriteTimeUtc) : default;
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException
+            or System.Security.SecurityException) { return default; }
     }
 
     private static DateTime GetWriteTime(string path)
@@ -137,6 +209,8 @@ internal sealed class WallpaperBackdrop
             var metadata = BitmapDecoder.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None).Frames[0];
             var width = metadata.PixelWidth;
             var height = metadata.PixelHeight;
+            if (width <= 0 || height <= 0 || (long)width * height > 64_000_000)
+                throw new NotSupportedException("Wallpaper dimensions exceed the decode budget.");
             stream.Position = 0;
             var bitmap = new BitmapImage();
             bitmap.BeginInit();

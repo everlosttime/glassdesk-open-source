@@ -3,7 +3,7 @@ using Windows.Graphics.Capture;
 using Windows.Graphics.DirectX;
 using Windows.Graphics.DirectX.Direct3D11;
 
-internal sealed class PersistentWindowCapture : IDisposable
+internal sealed class PersistentWindowCapture : IWindowCapture
 {
     private nint _device,_context,_dxgi,_inspectable;
     private IDirect3DDevice? _projected;
@@ -22,6 +22,7 @@ internal sealed class PersistentWindowCapture : IDisposable
         _trace=trace;
         if((sharedDevice==0)!=(sharedContext==0))
             throw new ArgumentException("A shared capture device requires its immediate context.");
+        var stage="D3D11CreateDevice";
         try
         {
             if(sharedDevice==0)
@@ -34,21 +35,44 @@ internal sealed class PersistentWindowCapture : IDisposable
                 Marshal.AddRef(sharedContext);_context=sharedContext;
             }
             _trace?.Invoke(new("GraphicsDevice",sharedDevice==0 ? "Created" : "Shared",System.Diagnostics.Stopwatch.GetTimestamp()));
+            stage="IDXGIDevice.QueryInterface";
             var dxgiId=new Guid("54ec77fa-1377-44e6-8c32-88fd5f44c84c");
             Marshal.ThrowExceptionForHR(Marshal.QueryInterface(_device,in dxgiId,out _dxgi));
+            stage="CreateDirect3D11DeviceFromDXGIDevice";
             Marshal.ThrowExceptionForHR(CreateDirect3D11DeviceFromDXGIDevice(_dxgi,out _inspectable));
+            stage="IDirect3DDevice projection";
             _projected=WinRT.MarshalInterface<IDirect3DDevice>.FromAbi(_inspectable);
+            stage="GraphicsCaptureItem";
             var item=WgcWindowCapture.CreateItem(hwnd);
             _item=item;
+            stage="GraphicsCaptureItem.Size";
             _captureSize=item.Size;
+            stage="Direct3D11CaptureFramePool.CreateFreeThreaded";
             _pool=Direct3D11CaptureFramePool.CreateFreeThreaded(_projected,DirectXPixelFormat.B8G8R8A8UIntNormalized,2,item.Size);
+            stage="Direct3D11CaptureFramePool.FrameArrived";
             _pool.FrameArrived+=OnFrameArrived;_notificationsRegistered=true;
-            _session=_pool.CreateCaptureSession(item);_session.IsCursorCaptureEnabled=false;
+            stage="Direct3D11CaptureFramePool.CreateCaptureSession";
+            _session=_pool.CreateCaptureSession(item);
+            stage="GraphicsCaptureSession.IsCursorCaptureEnabled";
+            _session.IsCursorCaptureEnabled=false;
+            stage="GraphicsCaptureSession.StartCapture";
             _session.StartCapture();
         }
-        catch {Dispose();throw;}
+        catch(Exception error)
+        {
+            Dispose();
+            throw new InvalidOperationException($"Window capture initialization failed at {stage} (0x{error.HResult:X8}): {error.Message}",error);
+        }
     }
-    internal CapturePixels? TryRead(long notBeforeQpcTicks=0,TimeSpan waitForFrame=default,CancellationToken cancellation=default,bool reusePixels=false)
+    public CapturePixels? TryRead(long notBeforeQpcTicks=0,TimeSpan waitForFrame=default,CancellationToken cancellation=default,bool reusePixels=false)
+        => TryReadCore(notBeforeQpcTicks,waitForFrame,cancellation,reusePixels,null);
+    internal CapturePixels? TryReadCropped(PixelBounds crop,long notBeforeQpcTicks=0,TimeSpan waitForFrame=default,CancellationToken cancellation=default,bool reusePixels=false)
+    {
+        if(crop.Left<0 || crop.Top<0 || crop.Right>_captureSize.Width || crop.Bottom>_captureSize.Height || crop.Width<=0 || crop.Height<=0)
+            throw new ArgumentOutOfRangeException(nameof(crop));
+        return TryReadCore(notBeforeQpcTicks,waitForFrame,cancellation,reusePixels,crop);
+    }
+    private CapturePixels? TryReadCore(long notBeforeQpcTicks,TimeSpan waitForFrame,CancellationToken cancellation,bool reusePixels,PixelBounds? crop)
     {
         if(cancellation.IsCancellationRequested) return null;
         if(notBeforeQpcTicks>_demandBarrier)
@@ -57,7 +81,7 @@ internal sealed class PersistentWindowCapture : IDisposable
             if(_awaitingSceneSince==0) _awaitingSceneSince=System.Diagnostics.Stopwatch.GetTimestamp();
         }
         _arrival.Reset();
-        var frame=ReadFreshScene(notBeforeQpcTicks,reusePixels);
+        var frame=ReadFreshScene(notBeforeQpcTicks,reusePixels,crop);
         if(frame is not null || waitForFrame<=TimeSpan.Zero) return frame;
         var timer=System.Diagnostics.Stopwatch.StartNew();
         var handles=cancellation.CanBeCanceled ? new WaitHandle[] {cancellation.WaitHandle,_arrival} : new WaitHandle[] {_arrival};
@@ -69,16 +93,16 @@ internal sealed class PersistentWindowCapture : IDisposable
             var signaled=WaitHandle.WaitAny(handles,(int)Math.Min(int.MaxValue,Math.Ceiling(remaining.TotalMilliseconds)));
             if(signaled==WaitHandle.WaitTimeout) break;
             if(cancellation.IsCancellationRequested) break;
-            frame=ReadFreshScene(notBeforeQpcTicks,reusePixels);
+            frame=ReadFreshScene(notBeforeQpcTicks,reusePixels,crop);
             if(frame is not null) return frame;
         }
         _trace?.Invoke(new("NativeWait",cancellation.IsCancellationRequested ? "Cancelled" : "Deadline",
             System.Diagnostics.Stopwatch.GetTimestamp(),BarrierTicks:notBeforeQpcTicks));
         return null;
     }
-    private CapturePixels? ReadFreshScene(long notBeforeQpcTicks,bool reusePixels)
+    private CapturePixels? ReadFreshScene(long notBeforeQpcTicks,bool reusePixels,PixelBounds? crop)
     {
-        var frame=ReadOnce(notBeforeQpcTicks,reusePixels);
+        var frame=ReadOnce(notBeforeQpcTicks,reusePixels,crop);
         if(frame is not null) {_awaitingSceneSince=0;return frame;}
         if(_awaitingSceneSince!=0 && System.Diagnostics.Stopwatch.GetTimestamp()-_awaitingSceneSince
             >=System.Diagnostics.Stopwatch.Frequency*32/1000)
@@ -86,11 +110,11 @@ internal sealed class PersistentWindowCapture : IDisposable
             // A previously live source can stop repainting at this boundary.
             // Recover promptly instead of waiting for an unrelated desktop change.
             RestartCaptureSession();
-            return ReadOnce(notBeforeQpcTicks,reusePixels);
+            return ReadOnce(notBeforeQpcTicks,reusePixels,crop);
         }
         return null;
     }
-    private CapturePixels? ReadOnce(long notBeforeQpcTicks,bool reusePixels)
+    private CapturePixels? ReadOnce(long notBeforeQpcTicks,bool reusePixels,PixelBounds? crop)
     {
         Direct3D11CaptureFrame? latest=null;
         var queued=0;
@@ -117,14 +141,14 @@ internal sealed class PersistentWindowCapture : IDisposable
                 BarrierTicks:notBeforeQpcTicks,QueueFrames:queued));
             _trace?.Invoke(new("Readback","Starting",System.Diagnostics.Stopwatch.GetTimestamp(),sourceTicks));
             var readStart=System.Diagnostics.Stopwatch.GetTimestamp();
-            var pixels=_readback.ReadPixels(_device,_context,latest,_trace,reusePixels);
+            var pixels=_readback.ReadPixels(_device,_context,latest,_trace,reusePixels,crop);
             if(sourceTicks>_lastSourceTicks) {_previousSourceTicks=_lastSourceTicks;_lastSourceTicks=sourceTicks;}
             _trace?.Invoke(new("Acquisition","ReadbackCompleted",System.Diagnostics.Stopwatch.GetTimestamp(),sourceTicks,EndTicks:readStart));
             return pixels;
         }
         finally {latest?.Dispose();}
     }
-    internal void RefreshSessionAtSceneBoundary()
+    public void RefreshSessionAtSceneBoundary()
     {
         // The owning STA calls this between readbacks, after the new scene is
         // committed. Retiring a queue can consume its only new-scene update.
@@ -155,7 +179,7 @@ internal sealed class PersistentWindowCapture : IDisposable
         _session.StartCapture();
         _trace?.Invoke(new("CaptureSession","SceneBoundaryRestarted",System.Diagnostics.Stopwatch.GetTimestamp()));
     }
-    internal void RetireQueuedFramesAtSceneBoundary(long barrierTicks)
+    public void RetireQueuedFramesAtSceneBoundary(long barrierTicks)
     {
         // A queued pre-commit texture can carry a slightly future compositor time.
         // Retire queue ownership at the boundary; source time alone cannot identify it.
@@ -169,7 +193,7 @@ internal sealed class PersistentWindowCapture : IDisposable
     }
     // Called only by the owning capture worker, between readbacks. Retain the
     // native session and frame pool so the next reveal needs no capture startup.
-    internal void ReleaseReadbackBuffers() => _readback.Dispose();
+    public void ReleaseReadbackBuffers() => _readback.Dispose();
     public void Dispose()
     {
         lock(_notificationGate)

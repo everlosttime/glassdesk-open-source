@@ -31,13 +31,15 @@ public sealed class LaunchpadStyleTests
                 _ = new WindowInteropHelper(launcher).EnsureHandle();
                 FlushBindings();
                 var choice = Assert.IsType<ComboBox>(settings.FindName("LaunchpadIconStyleCombo"));
-                var glyph = (LaunchpadGlyph)((PhoneBorder)dock.FindName("LaunchpadTile")).Child;
+                var glyph = (LaunchpadGlyph)dock.FindName("LauncherDefaultGlyph");
                 var transitionGlyph = (LaunchpadGlyph)launcher.FindName("CollapsedGlyph");
-                Assert.Equal(0, choice.SelectedIndex);
-                AssertGlyph(glyph, filled: true);
+                Assert.Equal(1, choice.SelectedIndex);
+                AssertGlyph(glyph, filled: false);
 
                 ((Slider)settings.FindName("DockBuiltinIconBrightnessSlider")).Value = .35;
                 ((Slider)settings.FindName("LauncherTextBrightnessSlider")).Value = .65;
+                choice.SelectedIndex = 0; FlushBindings();
+                AssertGlyph(glyph, filled: true);
                 choice.SelectedIndex = 1; FlushBindings();
                 AssertGlyph(glyph, filled: false);
                 Assert.False((bool)typeof(LaunchpadGlyph).GetProperty("IsFilled")!.GetValue(transitionGlyph)!);

@@ -1,0 +1,28 @@
+{
+  "passed": false,
+  "checks": [
+    {
+      "kind": "opaque",
+      "phase": "popup",
+      "passed": false,
+      "error": "Scene layer 2 failed at window texture acquisition (HwndWrapper[GlassBackdropSpike;;799e3e48-25e3-42a0-8419-e0a8d4c02091], valid=True, visible=True, HWND=24972500, captured=unavailable): HRESULT=0x80070057: \u53C2\u6570\u9519\u8BEF\u3002\r\n",
+      "innerHresult": "0x80070057"
+    },
+    {
+      "kind": "alpha",
+      "phase": "popup",
+      "passed": false,
+      "error": "Scene layer 2 failed at window texture acquisition (HwndWrapper[GlassBackdropSpike;;4802c6c5-b8a1-41bb-8f7d-b68130a91f45], valid=True, visible=True, HWND=51580094, captured=unavailable): HRESULT=0x80070057: \u53C2\u6570\u9519\u8BEF\u3002\r\n",
+      "innerHresult": "0x80070057"
+    },
+    {
+      "kind": "system",
+      "phase": "popup",
+      "passed": false,
+      "error": "Scene layer 2 failed at window texture acquisition (HwndWrapper[GlassBackdropSpike;;bbf1a56a-035b-4195-87fe-c2bcbcbe47b9], valid=True, visible=True, HWND=5835864, captured=unavailable): HRESULT=0x80070057: \u53C2\u6570\u9519\u8BEF\u3002\r\n",
+      "innerHresult": "0x80070057"
+    }
+  ],
+  "originalForegroundRestored": true,
+  "note": "Only aggregate statistics saved. Controlled white backing prevents user desktop content entering compared regions. Full physical regions, stable pre/post GDI references, 2px grid, BGR tolerance 2. Body and 48px outside ring checked separately. Default WGC indicator permitted only during this isolated test, then disposed before reference. No borderless product acceptance, no complete glass sample or external recording acceptance. Any repeatable native shadow/corner discrepancy blocks integration."
+}

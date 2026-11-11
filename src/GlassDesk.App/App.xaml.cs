@@ -47,9 +47,16 @@ public partial class App : Application, IDisposable
         base.OnStartup(e);
 
         var options = CommandLineOptions.Parse(e.Args);
+        if (options.RestoreDesktopIcons)
+        {
+            if (options.Unknown.Count > 0) { Shutdown(2); return; }
+            using var desktop = new GlassDesk.Platform.Shell.DesktopIconSession(showOnDispose: true);
+            Shutdown(desktop.TrySetVisible(true, out _) ? 0 : 1);
+            return;
+        }
         if (!GlassDesk.Platform.WindowsCapabilities.IsSupported)
         {
-            MessageBox.Show("此测试版本需要 Windows 11（Build 22000 及以上）。", "GlassDesk", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("此版本需要 Windows 10 2004（Build 19041）及以上。", "GlassDesk", MessageBoxButton.OK, MessageBoxImage.Information);
             Shutdown(2); return;
         }
         System.Windows.Media.Effects.PixelShader.InvalidPixelShaderEncountered += OnBackdropShaderFailure;

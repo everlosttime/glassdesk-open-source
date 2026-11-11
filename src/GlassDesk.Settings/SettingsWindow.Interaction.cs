@@ -1,3 +1,4 @@
+// Public 1.6.0 adaptation: information-bar-specific implementation is excluded.
 using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
@@ -16,8 +17,6 @@ public partial class SettingsWindow
 {
     private bool _userDataDeletionPending;
     private InstallationInfo? _installationInfo;
-    private Func<bool?>? _desktopIconsRead;
-    private Func<bool, string?>? _desktopIconsSet;
 
     /// <summary>应用快捷操作和显示器设置并负责持久化。返回错误说明；null 表示成功。</summary>
     public Func<ShortcutSettings, DisplaySettings, string?>? InteractionSettingsApply { get; set; }
@@ -72,18 +71,10 @@ public partial class SettingsWindow
     public void ShowInteractionStatus(string message) => InteractionSettingsStatus.Text = message ?? string.Empty;
 
     /// <summary>读取 Windows 桌面图标当前显示状态；null 表示不支持或不可用。</summary>
-    public Func<bool?>? DesktopIconsRead
-    {
-        get => _desktopIconsRead;
-        set { _desktopIconsRead = value; if (IsInitialized) LoadDesktopStatus(); }
-    }
+    public Func<bool?>? DesktopIconsRead { get; set; }
 
     /// <summary>请求 Windows 显示或隐藏桌面图标；返回错误说明，null 表示成功。</summary>
-    public Func<bool, string?>? DesktopIconsSet
-    {
-        get => _desktopIconsSet;
-        set { _desktopIconsSet = value; if (IsInitialized) LoadDesktopStatus(); }
-    }
+    public Func<bool, string?>? DesktopIconsSet { get; set; }
 
     private void LoadAppearanceControls()
     {
@@ -92,7 +83,9 @@ public partial class SettingsWindow
         try
         {
             var appearance = _dataStore.Settings.Current.Appearance;
-            AppearanceMaterialCombo.SelectedIndex = appearance.GlassMaterial == GlassMaterialMode.FrostedGlass ? 1 : 0;
+            LauncherMaterialCombo.SelectedIndex = MaterialIndex(appearance.GetGlassMaterial(GlassMaterialTarget.Launcher));
+            DockMaterialCombo.SelectedIndex = MaterialIndex(appearance.GetGlassMaterial(GlassMaterialTarget.Dock));
+            DesktopLayerModeCombo.SelectedIndex = appearance.PinBarsToDesktop ? 1 : 0;
             LaunchpadIconStyleCombo.SelectedIndex = appearance.LaunchpadIconFilled ? 0 : 1;
             DockTransparencySlider.Value = appearance.DockGlassTransparency;
             LauncherTransparencySlider.Value = appearance.LauncherGlassTransparency;
@@ -103,19 +96,36 @@ public partial class SettingsWindow
             DockBuiltinIconBrightnessValue.Text = appearance.DockBuiltinIconBrightness.ToString("P0", CultureInfo.CurrentCulture);
             LauncherTextBrightnessValue.Text = appearance.LauncherTextBrightness.ToString("P0", CultureInfo.CurrentCulture);
             ReduceMotionCheck.IsChecked = appearance.ReduceMotion;
-            AppearanceStatus.Text = "设置面板固定使用深色不透明背景；玻璃透明度应用到 Dock 和启动台。";
+            AppearanceStatus.Text = "设置面板固定使用深色不透明背景；各组件的玻璃透明度可单独调节。";
         }
         finally { _loadingAppearanceControls = false; }
     }
+
+    private static int MaterialIndex(GlassMaterialMode material) => material switch
+    {
+        GlassMaterialMode.FrostedGlass => 1,
+        GlassMaterialMode.PlainGlass => 2,
+        _ => 0,
+    };
+
+    private static GlassMaterialMode MaterialFromIndex(int index) => index switch
+    {
+        1 => GlassMaterialMode.FrostedGlass,
+        2 => GlassMaterialMode.PlainGlass,
+        _ => GlassMaterialMode.AndroidLiquidGlass,
+    };
 
     private void OnAppearanceControlChanged(object sender, RoutedEventArgs e)
     {
         if (_loadingAppearanceControls || _dataStore is null) return;
         var current = _dataStore.Settings.Current;
         var snapshot = SettingsPageEditor.Clone(current);
-        current.Appearance.GlassMaterial = AppearanceMaterialCombo.SelectedIndex == 1
-            ? GlassMaterialMode.FrostedGlass : GlassMaterialMode.AndroidLiquidGlass;
+        if (ReferenceEquals(sender, LauncherMaterialCombo))
+            current.Appearance.LauncherGlassMaterial = MaterialFromIndex(LauncherMaterialCombo.SelectedIndex);
+        else if (ReferenceEquals(sender, DockMaterialCombo))
+            current.Appearance.DockGlassMaterial = MaterialFromIndex(DockMaterialCombo.SelectedIndex);
         current.Appearance.ReduceMotion = ReduceMotionCheck.IsChecked == true;
+        current.Appearance.PinBarsToDesktop = DesktopLayerModeCombo.SelectedIndex == 1;
         current.Appearance.LaunchpadIconFilled = LaunchpadIconStyleCombo.SelectedIndex != 1;
         SavePageSnapshot(snapshot, "外观", AppearanceStatus);
         // A failed save replaces Appearance; the live theme must follow the restored snapshot.
@@ -158,6 +168,7 @@ public partial class SettingsWindow
             PreviousPageHotkeyBox.Text = HotkeyText.Format(current.Shortcuts.PreviousPage);
             ToggleDesktopIconsHotkeyBox.Text = HotkeyText.Format(current.Shortcuts.ToggleDesktopIcons);
             ToggleDockRevealLockHotkeyBox.Text = HotkeyText.Format(current.Shortcuts.ToggleDockRevealLock);
+            ToggleGameSleepHotkeyBox.Text = HotkeyText.Format(current.Shortcuts.ToggleGameSleep);
             InteractionSettingsStatus.Text = "快捷键录制完成后自动保存并应用。";
         }
         catch (Exception ex)
@@ -173,11 +184,12 @@ public partial class SettingsWindow
         if (!TryReadHotkey(ToggleLauncherHotkeyBox, out var toggle)
             || !TryReadHotkey(NextPageHotkeyBox, out var next) || !TryReadHotkey(PreviousPageHotkeyBox, out var previous)
             || !TryReadHotkey(ToggleDesktopIconsHotkeyBox, out var icons)
-            || !TryReadHotkey(ToggleDockRevealLockHotkeyBox, out var dockRevealLock)) return;
+            || !TryReadHotkey(ToggleDockRevealLockHotkeyBox, out var dockRevealLock)
+            || !TryReadHotkey(ToggleGameSleepHotkeyBox, out var gameSleep)) return;
         var shortcuts = new ShortcutSettings
         {
             ToggleLauncher = toggle, HideLauncher = new(), NextPage = next, PreviousPage = previous,
-            ToggleDesktopIcons = icons, ToggleDockRevealLock = dockRevealLock,
+            ToggleDesktopIcons = icons, ToggleDockRevealLock = dockRevealLock, ToggleGameSleep = gameSleep,
         };
         var display = new DisplaySettings
         {
@@ -219,7 +231,7 @@ public partial class SettingsWindow
     public bool TryCaptureRegisteredHotkey(nint packedChord)
     {
         var recorder = new[] { ToggleLauncherHotkeyBox, NextPageHotkeyBox,
-            PreviousPageHotkeyBox, ToggleDesktopIconsHotkeyBox, ToggleDockRevealLockHotkeyBox }
+            PreviousPageHotkeyBox, ToggleDesktopIconsHotkeyBox, ToggleDockRevealLockHotkeyBox, ToggleGameSleepHotkeyBox }
             .FirstOrDefault(control => control.IsRecording && control.IsKeyboardFocusWithin);
         if (recorder is null) return false;
         var packed = unchecked((uint)packedChord.ToInt64());
@@ -241,35 +253,6 @@ public partial class SettingsWindow
         InteractionSettingsStatus.Text = $"{AutomationProperties.GetName(box)}无法识别：{error}";
         box.Focus();
         return false;
-    }
-
-    private void LoadDesktopStatus()
-    {
-        bool? state;
-        try { state = DesktopIconsRead?.Invoke(); }
-        catch (Exception ex)
-        {
-            DesktopIconsToggleButton.IsEnabled = false;
-            DesktopSettingsStatus.Text = "读取桌面图标状态失败：" + ex.Message;
-            return;
-        }
-        DesktopIconsToggleButton.IsEnabled = state.HasValue && DesktopIconsSet is not null;
-        DesktopSettingsStatus.Text = state.HasValue
-            ? $"当前桌面图标：{(state.Value ? "显示" : "隐藏")}。"
-            : "当前环境不支持读取或切换桌面图标。";
-    }
-
-    private void OnDesktopIconsToggleClick(object sender, RoutedEventArgs e)
-    {
-        bool? current;
-        try { current = DesktopIconsRead?.Invoke(); }
-        catch (Exception ex) { DesktopSettingsStatus.Text = "读取桌面图标状态失败：" + ex.Message; return; }
-        if (!current.HasValue || DesktopIconsSet is null) { LoadDesktopStatus(); return; }
-        string? error;
-        try { error = DesktopIconsSet(!current.Value); }
-        catch (Exception ex) { error = ex.Message; }
-        if (error is not null) DesktopSettingsStatus.Text = "桌面图标设置失败：" + error;
-        else LoadDesktopStatus();
     }
 
     private void OnCreateBackupClick(object sender, RoutedEventArgs e)
@@ -330,7 +313,7 @@ public partial class SettingsWindow
         UninstallRequested.Invoke(this, EventArgs.Empty);
     }
 
-    private void OnRestoreBackupClick(object sender, RoutedEventArgs e)
+    private async void OnRestoreBackupClick(object sender, RoutedEventArgs e)
     {
         if (_dataStore is null) { BackupStatus.Text = "设置数据尚未加载。"; return; }
         var dialog = new OpenFolderDialog { Title = "选择 GlassDesk 备份文件夹", Multiselect = false };
@@ -344,9 +327,15 @@ public partial class SettingsWindow
             "恢复会用所选备份替换当前 GlassDesk 数据。系统会先保存当前数据副本。恢复后请重新启动 GlassDesk 以载入全部内容。要继续吗？",
             "恢复 GlassDesk 备份", MessageBoxButton.YesNo, MessageBoxImage.Warning);
         if (answer != MessageBoxResult.Yes) return;
+        if (BeforeDataRestore is not null)
+        {
+            try { await BeforeDataRestore(); }
+            catch (Exception error) { BackupStatus.Text = "未能停止后台任务，未执行恢复：" + error.Message; return; }
+        }
         var result = _dataStore.Backup.RestoreFrom(dialog.FolderName);
         if (!result.Succeeded)
         {
+            if (AfterDataRestoreFailure is not null) await AfterDataRestoreFailure();
             BackupStatus.Text = result.Error ?? "恢复未能完成。";
             return;
         }
@@ -358,14 +347,14 @@ public partial class SettingsWindow
         DataRestored?.Invoke(this, EventArgs.Empty);
     }
 
-    private void OnResetPageClick(object sender, RoutedEventArgs e)
+    private async void OnResetPageClick(object sender, RoutedEventArgs e)
     {
         if (_dataStore is null || !CanResetSelectedPage) return;
         var page = PlannedPages[SettingsPageList.SelectedIndex];
+        if (page == "附近传输") { await SaveNearbyAsync(new NearbySettings()); return; }
         var target = _dataStore.Settings.Current;
         var old = SettingsPageEditor.Clone(target);
-        // Keep the persisted model and retained Core assembly compatible with earlier releases.
-        var reset = SettingsPageEditor.ResetPage(old, page == "桌面" ? "桌面与任务栏" : page);
+        var reset = SettingsPageEditor.ResetPage(old, page);
         var validationError = SettingsPageEditor.Validate(reset);
         if (validationError is not null) { StatusFor(page).Text = "无法恢复默认：" + validationError; return; }
         if (page == "快捷操作")
@@ -391,8 +380,6 @@ public partial class SettingsWindow
         }
         NotifyPageApplied(page);
         ReloadPage(page);
-        if (page == "桌面")
-            DesktopSettingsStatus.Text += " 本页应用内配置已恢复默认，未更改 Windows 桌面图标显示状态。";
     }
 
     private void SavePageSnapshot(GlassDeskSettings snapshot, string page, TextBlock status)
@@ -403,6 +390,7 @@ public partial class SettingsWindow
             SettingsPageEditor.Apply(_dataStore.Settings.Current, snapshot);
             LoadAppearanceControls();
             LoadDockControls();
+            if (page == "回收站") LoadNaiwaControls();
             status.Text = "设置无效，已恢复原设置：" + validationError;
             return;
         }
@@ -415,6 +403,7 @@ public partial class SettingsWindow
             SettingsPageEditor.Apply(_dataStore!.Settings.Current, snapshot);
             LoadAppearanceControls();
             LoadDockControls();
+            if (page == "回收站") LoadNaiwaControls();
             status.Text = "保存失败，已恢复原设置：" + ex.Message;
             return;
         }
@@ -426,13 +415,14 @@ public partial class SettingsWindow
     {
         var current = _dataStore!.Settings.Current;
         if (page == "外观") ThemeService.Current?.Update(current.Appearance);
-        if (page == "Dock")
+        if (page is "Dock")
         {
             DockSettingsHost.Current?.Update(current.Dock);
             ThemeService.Current?.Update(current.Appearance);
         }
         if (page == "启动台") LauncherSettingsChanged?.Invoke(this, current.Launcher);
         if (page == "性能") PerformanceSettingsChanged?.Invoke(this, EventArgs.Empty);
+        if (page == "回收站") NaiwaSettingsChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void ReloadPage(string page)
@@ -444,13 +434,20 @@ public partial class SettingsWindow
             case "启动台": LoadLauncherControls(); LauncherSettingsChanged?.Invoke(this, _dataStore!.Settings.Current.Launcher); break;
             case "快捷操作": LoadInteractionControls(); break;
             case "性能": LoadPerformanceControls(); break;
-            case "桌面": LoadDesktopStatus(); break;
+            case "回收站":
+                LoadNaiwaControls();
+                SyncNaiwaAppearance();
+                NaiwaSettingsStatus.Text = "本页已恢复默认设置。";
+                break;
+            case "附近传输": LoadNearbyControls(); break;
         }
     }
 
     private TextBlock StatusFor(string page) => page switch
     {
         "外观" => AppearanceStatus, "Dock" => DockSettingsStatus, "启动台" => LauncherSettingsStatus,
-        "快捷操作" => InteractionSettingsStatus, "性能" => PerformanceSettingsStatus, _ => DesktopSettingsStatus,
+        "快捷操作" => InteractionSettingsStatus, "性能" => PerformanceSettingsStatus, "附近传输" => NearbySettingsStatus,
+        "回收站" => NaiwaSettingsStatus,
+        _ => throw new ArgumentOutOfRangeException(nameof(page), page, "该分类没有可编辑设置。"),
     };
 }

@@ -22,17 +22,24 @@ internal sealed class RecoveringDesktopSceneCapture : IDesktopSceneCapture
     nint IDesktopSceneCapture.CarrierHandle => CarrierHandle;
 
     internal RecoveringDesktopSceneCapture(ScreenRect region, Action<CaptureTrace>? trace = null, string? executable = null)
-        : this(region, () => new IsolatedDesktopSceneCapture(region, trace, executable),
-            () => new RecoveringDesktopSceneCapture(region,
-                () => new IsolatedDesktopSceneCapture(region, true, trace, executable),
-                () => new IsolatedDesktopSceneCapture(region, GlassDesk.UI.Controls.GlassBackdropSource.Wallpaper, trace, executable),
-                Stopwatch.GetTimestamp, trace), Stopwatch.GetTimestamp, trace) { }
+        : this(region, DesktopSceneCaptureFactory.SelectProvider(GlassDesk.Platform.WindowsCapabilities.BuildNumber), trace, executable) { }
+
+    // The OS choice also owns every later reprobe: Win10 must never start a
+    // private-ABI worker, even after a documented worker fails or is retired.
+    internal RecoveringDesktopSceneCapture(ScreenRect region, DesktopSceneProvider provider,
+        Action<CaptureTrace>? trace = null, string? executable = null)
+        : this(region,
+            () => new IsolatedDesktopSceneCapture(region, provider == DesktopSceneProvider.IsolatedDocumentedScene, trace, executable),
+            provider == DesktopSceneProvider.IsolatedDocumentedScene
+                ? () => new IsolatedDesktopSceneCapture(region, GlassDesk.UI.Controls.GlassBackdropSource.Wallpaper, trace, executable)
+                : () => new RecoveringDesktopSceneCapture(region, DesktopSceneProvider.IsolatedDocumentedScene, trace, executable),
+            Stopwatch.GetTimestamp, trace) { }
 
     internal RecoveringDesktopSceneCapture(ScreenRect region, Func<IDesktopSceneCapture> createNative,
         Func<IDesktopSceneCapture> createFallback, Func<long> clock)
         : this(region, createNative, createFallback, clock, null) { }
 
-    private RecoveringDesktopSceneCapture(ScreenRect region, Func<IDesktopSceneCapture> createNative,
+    internal RecoveringDesktopSceneCapture(ScreenRect region, Func<IDesktopSceneCapture> createNative,
         Func<IDesktopSceneCapture> createFallback, Func<long> clock, Action<CaptureTrace>? trace)
     {
         _region = region; _createPrimary = createNative; _createFallback = createFallback; _clock = clock; _trace = trace;
@@ -52,9 +59,25 @@ internal sealed class RecoveringDesktopSceneCapture : IDesktopSceneCapture
         _fallback = true;
         _reprobeAt = _clock() + Stopwatch.Frequency * 30;
         Trace.WriteLine("Native capture helper failed; documented compatibility background: " + error.Message);
-        _trace?.Invoke(new("BackdropProvider", "DocumentedFallback", Stopwatch.GetTimestamp()));
+        _trace?.Invoke(new("BackdropProvider", "DocumentedFallback", Stopwatch.GetTimestamp(), ErrorCode: error.HResult,
+            Detail: error.GetType().Name + ": " + error.Message));
         _source = _createFallback();
         _initialDeadline = _clock() + Stopwatch.Frequency * 3;
+    }
+    private void RecreateSharedSource()
+    {
+        // The isolated owner has already rotated its failed scope. Reopen the
+        // current provider before considering a capability fallback to a still image.
+        var retired=_source;_source=null;
+        try{retired?.Dispose();}
+        catch{_disposed=true;throw;}
+        try
+        {
+            _source=(_fallback?_createFallback:_createPrimary)();
+            _initialDeadline=_clock()+Stopwatch.Frequency*3;
+            _trace?.Invoke(new("BackdropProvider","SharedSourceRecreated",Stopwatch.GetTimestamp()));
+        }
+        catch(Exception error) when(!_fallback){Recover(error);}
     }
     internal bool UpdateExclusions()
     {
@@ -116,6 +139,11 @@ internal sealed class RecoveringDesktopSceneCapture : IDesktopSceneCapture
                 // frame never arrives, let the feed recreate the failed session.
                 throw new TimeoutException((_fallback ? "Documented capture" : "Native capture helper") + " stopped delivering frames.");
             return frame;
+        }
+        catch (GlassDesk.UI.CaptureCompatibility.SharedWallpaperBufferException) when(!cancellation.IsCancellationRequested)
+        {
+            RecreateSharedSource();
+            return null;
         }
         catch (Exception error) when (!_fallback && !cancellation.IsCancellationRequested)
         {

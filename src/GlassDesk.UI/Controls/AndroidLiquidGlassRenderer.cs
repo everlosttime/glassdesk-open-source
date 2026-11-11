@@ -17,6 +17,8 @@ internal sealed class AndroidLiquidGlassRenderer
     private readonly record struct Sample(float X, float Y, float Coverage, float Highlight, float Shade,
         float DispersionX, float DispersionY, float OuterBlend);
     private Sample[]? _map;
+    private Int32Rect _samplingBounds;
+    private LiquidGlassDispersionParameters? _samplingDispersion;
     private (int Width, int Height, Size Size, Rect Bounds, double Radius, bool Squircle, double Strength, bool Launchpad) _key;
 
     internal static double LensOffset(double depth, double height, double amount)
@@ -43,6 +45,7 @@ internal sealed class AndroidLiquidGlassRenderer
         if (_map is null || _key != key)
         {
             _key = key;
+            _samplingDispersion = null;
             _map = new Sample[width * height];
             var pixelDip = Math.Max(size.Width / width, size.Height / height);
             var halfWidth = bounds.Width / 2;
@@ -122,11 +125,13 @@ internal sealed class AndroidLiquidGlassRenderer
             }
         }
 
-        var filtered = FilterBackdrop(source, width, height, size, strength, backgroundClarity);
+        var dispersion = (dispersionParameters ?? LiquidGlassDispersionParameters.Default).Normalize();
+        var samplingBounds = SamplingBounds(width,height,dispersion);
         var result = new byte[source.Length];
+        if (samplingBounds.IsEmpty) return result;
+        var filtered = FilterSampledBackdrop(source,width,height,size,strength,backgroundClarity,samplingBounds,out var filterBounds);
         var tint = dark ? 18d : 250d;
         var opacity = NormalizeTintOpacity(tintOpacity) * BodyTintScale(backgroundClarity, launchpadOptics) * strength;
-        var dispersion = (dispersionParameters ?? LiquidGlassDispersionParameters.Default).Normalize();
         var dispersionScale = dispersion.DispersionStrength / LiquidGlassDispersionParameters.DefaultDispersionStrength;
         for (var pixel = 0; pixel < _map.Length; pixel++)
         {
@@ -145,16 +150,76 @@ internal sealed class AndroidLiquidGlassRenderer
                 var x0 = (int)x; var y0 = (int)y;
                 var x1 = Math.Min(x0 + 1, width - 1); var y1 = Math.Min(y0 + 1, height - 1);
                 var fx = x - x0; var fy = y - y0;
-                var top = filtered[(y0 * width + x0) * 4 + c] * (1 - fx)
-                    + filtered[(y0 * width + x1) * 4 + c] * fx;
-                var bottom = filtered[(y1 * width + x0) * 4 + c] * (1 - fx)
-                    + filtered[(y1 * width + x1) * 4 + c] * fx;
+                var row0 = (y0-filterBounds.Y)*filterBounds.Width;
+                var row1 = (y1-filterBounds.Y)*filterBounds.Width;
+                var column0 = x0-filterBounds.X; var column1 = x1-filterBounds.X;
+                var top = filtered[(row0 + column0) * 4 + c] * (1 - fx)
+                    + filtered[(row0 + column1) * 4 + c] * fx;
+                var bottom = filtered[(row1 + column0) * 4 + c] * (1 - fx)
+                    + filtered[(row1 + column1) * 4 + c] * fx;
                 var value = top * (1 - fy) + bottom * fy;
                 result[i + c] = c == 3 ? Byte(value * sample.Coverage)
                     : Byte((value * (1 - opacity) + tint * opacity) * (1 - sample.Shade) + sample.Highlight * 255);
             }
         }
         return result;
+    }
+
+    private Int32Rect SamplingBounds(int width,int height,LiquidGlassDispersionParameters dispersion)
+    {
+        if (_samplingDispersion == dispersion) return _samplingBounds;
+        var minX=double.PositiveInfinity;var minY=double.PositiveInfinity;
+        var maxX=double.NegativeInfinity;var maxY=double.NegativeInfinity;
+        var any=false;
+        var scale=dispersion.DispersionStrength/LiquidGlassDispersionParameters.DefaultDispersionStrength;
+        foreach(var sample in _map!)
+        {
+            if(sample.Coverage==0)continue;
+            any=true;
+            var gain=sample.OuterBlend*dispersion.OuterDispersionGain/LiquidGlassDispersionParameters.DefaultOuterDispersionGain
+                +(1-sample.OuterBlend)*dispersion.InnerDispersionGain/LiquidGlassDispersionParameters.DefaultInnerDispersionGain;
+            var separation=scale*gain;
+            var dx=Math.Abs(sample.DispersionX*separation);var dy=Math.Abs(sample.DispersionY*separation);
+            minX=Math.Min(minX,sample.X-dx);maxX=Math.Max(maxX,sample.X+dx);
+            minY=Math.Min(minY,sample.Y-dy);maxY=Math.Max(maxY,sample.Y+dy);
+        }
+        _samplingDispersion=dispersion;
+        if(!any)return _samplingBounds=Int32Rect.Empty;
+        if(!double.IsFinite(minX)||!double.IsFinite(minY)||!double.IsFinite(maxX)||!double.IsFinite(maxY))
+            return _samplingBounds=new(0,0,width,height);
+        var left=(int)Math.Clamp(Math.Floor(minX),0,width-1);
+        var top=(int)Math.Clamp(Math.Floor(minY),0,height-1);
+        // Bilinear interpolation reads the upper neighbour even when its weight is zero.
+        var right=(int)Math.Min(width,Math.Clamp(Math.Floor(maxX),0,width-1)+2);
+        var bottom=(int)Math.Min(height,Math.Clamp(Math.Floor(maxY),0,height-1)+2);
+        return _samplingBounds=new(left,top,right-left,bottom-top);
+    }
+
+    private static byte[] FilterSampledBackdrop(byte[] source,int width,int height,Size size,double strength,
+        double backgroundClarity,Int32Rect sampling,out Int32Rect bounds)
+    {
+        bounds=new(0,0,width,height);
+        if(strength<=0)return source;
+        var clarity=NormalizeBackgroundClarity(backgroundClarity);
+        var blurScale=clarity<=.5 ? 1.5-clarity : 2*(1-clarity);
+        var sigmaX=BlurDip*strength*blurScale*width/size.Width;
+        var sigmaY=BlurDip*strength*blurScale*height/size.Height;
+        // A sample depends on the sum of all three box radii. Keep that complete
+        // halo, using the original pixel density, so cropped filtering is exact.
+        var haloX=(int)Math.Min(width,(long)Radius(sigmaX,0)+Radius(sigmaX,1)+Radius(sigmaX,2));
+        var haloY=(int)Math.Min(height,(long)Radius(sigmaY,0)+Radius(sigmaY,1)+Radius(sigmaY,2));
+        var left=Math.Max(0,sampling.X-haloX);var top=Math.Max(0,sampling.Y-haloY);
+        var right=(int)Math.Min(width,(long)sampling.X+sampling.Width+haloX);
+        var bottom=(int)Math.Min(height,(long)sampling.Y+sampling.Height+haloY);
+        if(left==0 && top==0 && right==width && bottom==height)
+            return FilterBackdrop(source,width,height,size,strength,backgroundClarity);
+        bounds=new(left,top,right-left,bottom-top);
+        var filtered=new byte[bounds.Width*bounds.Height*4];
+        for(var row=0;row<bounds.Height;row++)
+            source.AsSpan(((top+row)*width+left)*4,bounds.Width*4).CopyTo(filtered.AsSpan(row*bounds.Width*4));
+        ApplyBackdropSaturation(filtered,filtered,strength);
+        if(blurScale>0)Blur(filtered,bounds.Width,bounds.Height,sigmaX,sigmaY);
+        return filtered;
     }
 
     /// <summary>Unmasked material in fixed screen coordinates; moving edges belong to WPF.</summary>
@@ -248,6 +313,18 @@ internal sealed class AndroidLiquidGlassRenderer
     private static void ApplyBackdropFilter(byte[] source, byte[] filtered, int width, int height,
         Size size, double strength, double backgroundClarity, byte[]? scratch = null)
     {
+        ApplyBackdropSaturation(source,filtered,strength);
+        var clarity = NormalizeBackgroundClarity(backgroundClarity);
+        var blurScale = clarity <= .5 ? 1.5 - clarity : 2 * (1 - clarity);
+        // Only the prefiltered backdrop changes. The lens map and lighting above
+        // retain their original strength; the default .5 is exactly the old material.
+        if (blurScale > 0)
+            Blur(filtered, width, height, BlurDip * strength * blurScale * width / size.Width,
+                BlurDip * strength * blurScale * height / size.Height, scratch);
+    }
+
+    private static void ApplyBackdropSaturation(byte[] source,byte[] filtered,double strength)
+    {
         if (Avx.IsSupported && Sse41.IsSupported)
         {
             var saturation = Vector256.Create(1 + .5 * strength);
@@ -268,13 +345,6 @@ internal sealed class AndroidLiquidGlassRenderer
                 var luminance = .072 * source[i] + .715 * source[i + 1] + .213 * source[i + 2];
                 for (var c = 0; c < 3; c++) filtered[i + c] = Byte(luminance + (source[i + c] - luminance) * (1 + .5 * strength));
             }
-        var clarity = NormalizeBackgroundClarity(backgroundClarity);
-        var blurScale = clarity <= .5 ? 1.5 - clarity : 2 * (1 - clarity);
-        // Only the prefiltered backdrop changes. The lens map and lighting above
-        // retain their original strength; the default .5 is exactly the old material.
-        if (blurScale > 0)
-            Blur(filtered, width, height, BlurDip * strength * blurScale * width / size.Width,
-                BlurDip * strength * blurScale * height / size.Height, scratch);
     }
 
     // Three separable box passes approximate the background Gaussian blur in O(pixels).
@@ -326,8 +396,36 @@ internal sealed class AndroidLiquidGlassRenderer
                         var packed = Unsafe.ReadUnaligned<uint>(ref Unsafe.Add(ref sourceStart, start + Math.Clamp(k, 0, width - 1) * 4));
                         sum = Sse2.Add(sum, Sse41.ConvertToVector128Int32(Vector128.CreateScalar(packed).AsByte()));
                     }
-                    for (var x = 0; x < width; x++)
+                    var x = 0;
+                    for (; x < width; x++)
                     {
+                        // Two adjacent BGRA pixels share a rolling sum. Advance
+                        // both with one AVX2 divide; the second sum is exactly the
+                        // first plus its incoming/outgoing pixel. Only the interior
+                        // uses contiguous reads; edge extension keeps the original
+                        // clamped SSE arithmetic, including narrow images.
+                        if (Avx2.IsSupported && x >= radius && x + radius + 2 < width)
+                        {
+                            var pairRounding = Vector256.Create(divisor / 2);
+                            var pairDenominator = Vector256.Create((float)divisor);
+                            for (; x + radius + 2 < width; x += 2)
+                            {
+                                var removePair = Unsafe.ReadUnaligned<ulong>(ref Unsafe.Add(ref sourceStart, start + (x - radius) * 4));
+                                var addPair = Unsafe.ReadUnaligned<ulong>(ref Unsafe.Add(ref sourceStart, start + (x + radius + 1) * 4));
+                                var delta = Avx2.Subtract(
+                                    Avx2.ConvertToVector256Int32(Vector128.CreateScalar(addPair).AsByte()),
+                                    Avx2.ConvertToVector256Int32(Vector128.CreateScalar(removePair).AsByte()));
+                                var next = Sse2.Add(sum, delta.GetLower());
+                                var pair = Vector256.Create(sum, next);
+                                var pairQuotient = Avx.ConvertToVector256Int32WithTruncation(
+                                    Avx.Divide(Avx.ConvertToVector256Single(Avx2.Add(pair, pairRounding)), pairDenominator));
+                                var words = Sse2.PackSignedSaturate(pairQuotient.GetLower(), pairQuotient.GetUpper());
+                                var pairBytes = Sse2.PackUnsignedSaturate(words, Vector128<short>.Zero);
+                                Unsafe.WriteUnaligned(ref Unsafe.Add(ref targetStart, start + x * 4), pairBytes.AsUInt64().GetElement(0));
+                                sum = Sse2.Add(next, delta.GetUpper());
+                            }
+                            if (x >= width) break;
+                        }
                         var quotient = Sse2.ConvertToVector128Int32WithTruncation(Sse.Divide(Sse2.ConvertToVector128Single(Sse2.Add(sum, rounding)), denominator));
                         var bytes = Sse2.PackUnsignedSaturate(Sse2.PackSignedSaturate(quotient, Vector128<int>.Zero), Vector128<short>.Zero);
                         Unsafe.WriteUnaligned(ref Unsafe.Add(ref targetStart, start + x * 4), bytes.AsUInt32().GetElement(0));

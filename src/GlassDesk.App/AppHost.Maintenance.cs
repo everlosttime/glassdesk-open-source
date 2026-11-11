@@ -28,11 +28,14 @@ internal sealed partial class AppHost
             stopInteractions: DisposeInteractionController,
             stopTray: () =>
             {
+                StopTrayRecovery();
                 _tray?.Dispose();
                 _tray = null;
             },
             stopServices: () =>
             {
+                StopNaiwa();
+                DisposeNearbyUi();
                 _services?.Dispose();
                 _services = null;
             },

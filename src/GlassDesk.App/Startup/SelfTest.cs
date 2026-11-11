@@ -51,7 +51,7 @@ internal static class SelfTest
         if (!WindowsCapabilities.IsSupported)
         {
             failures++;
-            report.AppendLine("✗ 此 Windows 版本低于支持范围（需要 Windows 11 Build 22000 及以上）");
+            report.AppendLine("✗ 此 Windows 版本低于支持范围（需要 Windows 10 2004 Build 19041 及以上）");
         }
 
         report.AppendLine();

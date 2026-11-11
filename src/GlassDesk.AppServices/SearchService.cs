@@ -9,6 +9,18 @@ public sealed class SearchService : ISearchService
 {
     private readonly Func<IEnumerable<AppEntry>> _entries;
     private readonly Func<LauncherLayout> _layout;
+    // Store derived strings only, never entries or search results. Rename, alias,
+    // membership and layout changes therefore remain visible on the next query.
+    private const int MaximumPinyinNames = 512;
+    private const int MaximumPinyinCharacters = 128 * 1024;
+    private readonly Lock _pinyinGate = new();
+    private readonly Dictionary<string, LinkedListNode<PinyinText>> _pinyin = new(StringComparer.Ordinal);
+    private readonly LinkedList<PinyinText> _pinyinLru = new();
+    private int _pinyinCharacters;
+    private sealed record PinyinText(string Name, string Full, string Initials)
+    {
+        internal long Characters => (long)Name.Length + Full.Length + Initials.Length;
+    }
 
     public SearchService(Func<IEnumerable<AppEntry>> entries, Func<LauncherLayout> layout)
     {
@@ -35,18 +47,48 @@ public sealed class SearchService : ISearchService
             .ToList();
     }
 
-    private static SearchMatchKind? Match(AppEntry item, string needle)
+    private SearchMatchKind? Match(AppEntry item, string needle)
     {
         var name = Normalize(item.DisplayName);
         if (name == needle) return SearchMatchKind.ExactName;
         if (name.StartsWith(needle, StringComparison.Ordinal)) return SearchMatchKind.NamePrefix;
-        var (full, initials) = OfflinePinyin.Index(item.DisplayName);
+        var (full, initials) = PinyinFor(item.DisplayName);
         if (full.Contains(needle, StringComparison.Ordinal)) return SearchMatchKind.Pinyin;
         if (initials.Contains(needle, StringComparison.Ordinal)) return SearchMatchKind.PinyinInitials;
         if (name.Contains(needle, StringComparison.Ordinal)) return SearchMatchKind.NameContains;
         if ((item.SearchAliases ?? []).Any(alias => Normalize(alias).Contains(needle, StringComparison.Ordinal)))
             return SearchMatchKind.Alias;
         return null;
+    }
+
+    private (string Full, string Initials) PinyinFor(string? text)
+    {
+        var name = text ?? string.Empty;
+        lock (_pinyinGate)
+        {
+            if (_pinyin.TryGetValue(name, out var node))
+            {
+                _pinyinLru.Remove(node);
+                _pinyinLru.AddLast(node);
+                return (node.Value.Full, node.Value.Initials);
+            }
+
+            var index = OfflinePinyin.Index(name);
+            var derived = new PinyinText(name, index.Full, index.Initials);
+            // Oversized names can still be searched, but never retained in the cache.
+            if (derived.Characters > MaximumPinyinCharacters) return index;
+            while (_pinyin.Count >= MaximumPinyinNames
+                || _pinyinCharacters + derived.Characters > MaximumPinyinCharacters)
+            {
+                var oldest = _pinyinLru.First!;
+                _pinyinLru.RemoveFirst();
+                _pinyin.Remove(oldest.Value.Name);
+                _pinyinCharacters -= (int)oldest.Value.Characters;
+            }
+            _pinyin.Add(name, _pinyinLru.AddLast(derived));
+            _pinyinCharacters += (int)derived.Characters;
+            return index;
+        }
     }
 
     private static string Normalize(string? text)

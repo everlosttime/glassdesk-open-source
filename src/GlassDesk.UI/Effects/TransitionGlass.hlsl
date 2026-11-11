@@ -8,6 +8,13 @@ float4 Material : register(c1); // backdrop width/height DIP, radius DIP, streng
 float4 Dispersion : register(c2); // strength ratio, inner gain ratio, outer gain ratio; no clarity
 float4 Profile : register(c3); // x: large launchpad lens; Dock remains on the compact path
 
+// Shader inputs have one mip level. Explicit LOD permits the exact interior
+// shortcut without implicit-derivative restrictions inside a ps_3_0 branch.
+float4 ReadBackdrop(float2 uv)
+{
+    return tex2Dlod(Backdrop, float4(saturate(uv), 0, 0));
+}
+
 float4 main(float2 uv : TEXCOORD) : COLOR
 {
     float2 size = Material.xy;
@@ -15,10 +22,22 @@ float4 main(float2 uv : TEXCOORD) : COLOR
     float2 p = (uv - Panel.xy) * size;
     float2 distanceToSide = min(p, panelSize - p);
     float radius = max(.001, min(Material.z, min(panelSize.x, panelSize.y) * .5));
+    // Past the corner, refraction, dispersion and bevel bands the exact result is
+    // the unmodified backdrop. Keep this branch outside all optical boundaries;
+    // the full profile below still owns every corner and animated small panel.
+    float interiorBand = max(radius, Profile.x > .5 ? 48 : 24);
+    [branch] if (min(distanceToSide.x, distanceToSide.y) >= interiorBand)
+        return ReadBackdrop(uv);
     float2 corner = saturate(1 - distanceToSide / radius);
     float2 powers = pow(max(corner, .00001), 2.6);
-    float2 gradient = 2.6 * pow(max(corner, .00001), 1.6) / radius;
-    float cornerDepth = (1 - powers.x - powers.y) / max(length(gradient), .00001);
+    float2 gradient = pow(max(corner, .00001), 1.6);
+    float cornerPower = powers.x + powers.y;
+    // Normalize the superellipse norm, rather than linearizing its powered field.
+    // On either axis this reduces to distanceToSide exactly, so entering the
+    // corner cannot jump the lens UV. The contour and its first-order depth stay
+    // unchanged. (1 - norm) * norm^1.6 = cornerPower^(1.6/2.6) - cornerPower.
+    float cornerDepth = radius * (pow(cornerPower, 1.6 / 2.6) - cornerPower)
+        / max(length(gradient), .00000001);
     float depth = min(distanceToSide.x, distanceToSide.y);
     depth = (distanceToSide.x < radius && distanceToSide.y < radius) ? cornerDepth : depth;
     depth = max(0, depth);
@@ -50,7 +69,7 @@ float4 main(float2 uv : TEXCOORD) : COLOR
         }
     }
     float2 lensUv = uv + lensOffset / size;
-    float4 color = tex2D(Backdrop, saturate(lensUv));
+    float4 color = ReadBackdrop(lensUv);
     float displacementLength = Profile.x > .5 ? length(lensOffset) : abs(displacement);
     float2 dispersionNormal = Profile.x > .5 && displacementLength > .00001 ? -lensOffset / max(displacementLength, .00001) : normal;
     float refracting = saturate(displacementLength / 8);
@@ -60,8 +79,8 @@ float4 main(float2 uv : TEXCOORD) : COLOR
     float regionGain = lerp(Dispersion.y, Dispersion.z, outerBlend);
     float2 splitUv = splitDip * Dispersion.x * regionGain * dispersionNormal / size;
     // Split only transmitted RGB. Green, coverage and bevel lighting remain unchanged.
-    color.r = tex2D(Backdrop, saturate(lensUv + splitUv)).r;
-    color.b = tex2D(Backdrop, saturate(lensUv - splitUv)).b;
+    color.r = ReadBackdrop(lensUv + splitUv).r;
+    color.b = ReadBackdrop(lensUv - splitUv).b;
     float bevel = pow(saturate(1 - depth / (Profile.x > .5 ? 18 : 10)), 2);
     float light = dot(normal, float2(-.6, -.8));
     float highlight = pow(max(0, light), 2) * .18 * bevel * Material.w;

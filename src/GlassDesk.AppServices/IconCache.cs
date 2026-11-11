@@ -40,7 +40,7 @@ public sealed record IconCacheClearResult(int Removed, int LeftAlone)
 public sealed class IconCache
 {
     // 变更图标处理方式时更新此版本，避免继续复用旧尺寸的 PNG 缓存。
-    private const string CacheKeyVersion = "installer-resource-v3";
+    private const string CacheKeyVersion = "icon-high-resolution-v5";
     private readonly AppPaths _paths;
 
     public IconCache(AppPaths paths)

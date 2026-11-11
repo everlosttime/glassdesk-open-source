@@ -22,8 +22,8 @@ namespace GlassDesk.Platform.Shell;
 /// 回调在钩子线程上触发，需要更新界面的调用方要自行切回自己的线程。
 /// </para>
 /// <para>
-/// 事件合并：拖动窗口时位置变化事件每秒可达数百条。重算被合并到一个 120 毫秒的延时上，
-/// 也就是说判定最多滞后 120 毫秒。这个定时器**只由事件安排、只触发一次**，不是周期轮询。
+/// 事件合并：拖动窗口时位置变化事件每秒可达数百条。重算被合并到一个 40 毫秒的延时上，
+/// 也就是说判定最多滞后 40 毫秒。这个定时器**只由事件安排、只触发一次**，不是周期轮询。
 /// </para>
 /// <para>
 /// 刻意**不加** <c>WINEVENT_SKIPOWNPROCESS</c>：本产品自己的窗口成为前台窗口时，
@@ -35,7 +35,7 @@ namespace GlassDesk.Platform.Shell;
 public sealed class FullscreenWatcher : IDisposable
 {
     /// <summary>事件合并窗口（毫秒）。拖动时的事件风暴被压缩成一次重算。</summary>
-    private const int CoalesceMilliseconds = 120;
+    private const int CoalesceMilliseconds = 40;
 
     /// <summary>等待钩子线程报告安装结果的上限。</summary>
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(5);

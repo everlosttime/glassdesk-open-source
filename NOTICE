@@ -1,5 +1,5 @@
 Required Notice: Copyright 2026 everlosttime and GlassDesk contributors
-Required Notice: Based on GlassDesk 1.4.0; retain the historical Apache and third-party notices.
+Required Notice: Based on GlassDesk 1.6.0; retain the historical Apache and third-party notices.
 
 GlassDesk
 Copyright 2026 everlosttime and GlassDesk contributors
@@ -25,3 +25,9 @@ Redistribution notices: docs/third-party/dotnet-10.0.12/
 
 Names and icons of applications imported by users are not bundled source assets.
 This project license does not grant rights to third-party trademarks.
+
+Naiwa desktop pet
+Copyright (c) 2026 LIN4RUN
+The separate companion under contrib/Naiwa retains its MIT License.
+Original: https://github.com/LIN4RUN/naiwa-desktop-pet
+See contrib/Naiwa/LICENSE. The project noncommercial terms do not replace these upstream grants.

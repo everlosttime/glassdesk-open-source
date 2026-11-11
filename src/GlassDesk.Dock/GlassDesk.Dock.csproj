@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\GlassDesk.AppServices\GlassDesk.AppServices.csproj" />
     <ProjectReference Include="..\GlassDesk.Core\GlassDesk.Core.csproj" />
+    <ProjectReference Include="..\GlassDesk.Rendering\GlassDesk.Rendering.csproj" />
     <ProjectReference Include="..\GlassDesk.UI\GlassDesk.UI.csproj" />
   </ItemGroup>
 

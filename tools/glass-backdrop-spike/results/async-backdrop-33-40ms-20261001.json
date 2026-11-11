@@ -1,0 +1,169 @@
+{
+  "passed": false,
+  "failure": null,
+  "runs": [
+    {
+      "passed": false,
+      "cadenceMs": 33,
+      "physicalRegion": {
+        "Left": 650,
+        "Top": 310,
+        "Right": 1910,
+        "Bottom": 1290,
+        "Width": 1260,
+        "Height": 980
+      },
+      "width": 641,
+      "height": 498,
+      "elapsedSeconds": 30.0020253,
+      "consumerReads": 633,
+      "newFrames": 623,
+      "repeatedFrames": 10,
+      "unavailableFrames": 0,
+      "newFramesObservedPerSecond": 20.765264803639774,
+      "sourceAge": {
+        "count": 633,
+        "meanMs": 28.725017061611375,
+        "p50Ms": 28.944,
+        "p95Ms": 45.5438,
+        "p99Ms": 46.8142,
+        "maxMs": 47.5983
+      },
+      "consumerLookup": {
+        "count": 633,
+        "meanMs": 0.0003843601895734583,
+        "p50Ms": 0.0003,
+        "p95Ms": 0.001,
+        "p99Ms": 0.0017,
+        "maxMs": 0.0065
+      },
+      "consumerIntervals": {
+        "count": 632,
+        "meanMs": 47.30475712025318,
+        "p50Ms": 46.4859,
+        "p95Ms": 58.6206,
+        "p99Ms": 62.2732,
+        "maxMs": 66.5207
+      },
+      "dispatcherHeartbeat": {
+        "count": 1182,
+        "meanMs": 25.33259729272418,
+        "p50Ms": 30.3632,
+        "p95Ms": 32.1145,
+        "p99Ms": 46.1019,
+        "maxMs": 48.7485
+      },
+      "producer": {
+        "published": 658,
+        "discarded": 1,
+        "failure": null,
+        "capture": {
+          "count": 659,
+          "meanMs": 19.214346130500758,
+          "p50Ms": 19.1183,
+          "p95Ms": 22.3865,
+          "p99Ms": 23.9439,
+          "maxMs": 25.2825
+        },
+        "captureIntervals": {
+          "count": 658,
+          "meanMs": 45.68896337386019,
+          "p50Ms": 46.3272,
+          "p95Ms": 47.2248,
+          "p99Ms": 47.5268,
+          "maxMs": 47.6762
+        }
+      },
+      "cleanStop": true,
+      "probeCpuMs": 4359.375,
+      "peakPrivateMiB": 38.4453125,
+      "gcCollections": [
+        165,
+        165,
+        165
+      ]
+    },
+    {
+      "passed": true,
+      "cadenceMs": 40,
+      "physicalRegion": {
+        "Left": 650,
+        "Top": 310,
+        "Right": 1910,
+        "Bottom": 1290,
+        "Width": 1260,
+        "Height": 980
+      },
+      "width": 641,
+      "height": 498,
+      "elapsedSeconds": 30.0134806,
+      "consumerReads": 635,
+      "newFrames": 619,
+      "repeatedFrames": 16,
+      "unavailableFrames": 0,
+      "newFramesObservedPerSecond": 20.624065840600974,
+      "sourceAge": {
+        "count": 635,
+        "meanMs": 26.469528818897643,
+        "p50Ms": 27.1022,
+        "p95Ms": 45.6956,
+        "p99Ms": 47.0316,
+        "maxMs": 48.2732
+      },
+      "consumerLookup": {
+        "count": 635,
+        "meanMs": 0.0003469291338582674,
+        "p50Ms": 0.0003,
+        "p95Ms": 0.0006,
+        "p99Ms": 0.001,
+        "maxMs": 0.0055
+      },
+      "consumerIntervals": {
+        "count": 634,
+        "meanMs": 47.19095236593055,
+        "p50Ms": 46.5612,
+        "p95Ms": 55.9537,
+        "p99Ms": 62.2323,
+        "maxMs": 63.2731
+      },
+      "dispatcherHeartbeat": {
+        "count": 1193,
+        "meanMs": 25.123769572506276,
+        "p50Ms": 30.2943,
+        "p95Ms": 32.0969,
+        "p99Ms": 45.6729,
+        "maxMs": 46.8361
+      },
+      "producer": {
+        "published": 647,
+        "discarded": 0,
+        "failure": null,
+        "capture": {
+          "count": 647,
+          "meanMs": 19.374175115919652,
+          "p50Ms": 19.1823,
+          "p95Ms": 22.7567,
+          "p99Ms": 24.675,
+          "maxMs": 26.7181
+        },
+        "captureIntervals": {
+          "count": 646,
+          "meanMs": 46.452597058823486,
+          "p50Ms": 46.4365,
+          "p95Ms": 47.3841,
+          "p99Ms": 47.5755,
+          "maxMs": 52.1594
+        }
+      },
+      "cleanStop": true,
+      "probeCpuMs": 4421.875,
+      "peakPrivateMiB": 39.87109375,
+      "gcCollections": [
+        161,
+        161,
+        161
+      ]
+    }
+  ],
+  "note": "Independent source test, 30 seconds per unchanged 33/40ms material cadence, \u003C=320k sampled pixels; native paint still full shell. Persistent DIBs and immutable latest-only regional snapshots. Freshness limit 120ms; source acquisition P95 must fit cadence, age P95 below two cadences, lookup P95 below 1ms, no unavailable consumer frames after warmup, at least 80% target unique deliveries, clean shutdown required. Dispatcher heartbeat is diagnostic, NOT presented FPS. No glass processing or full scene reconstruction measured; product remains unchanged."
+}

@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace GlassDesk.AppServices.Updates;
 
-/// <summary>Stable GitHub releases and bounded, checksum-verified installer downloads.</summary>
+/// <summary>Version-only GitHub notices and legacy checksum-verified installer downloads.</summary>
 public sealed partial class UpdateClient
 {
     public const long MaximumInstallerSize = 512L * 1024 * 1024;
@@ -21,7 +21,14 @@ public sealed partial class UpdateClient
         _source = source;
     }
 
-    public async Task<UpdateRelease?> CheckAsync(Version current, CancellationToken token)
+    public async Task<UpdateNotice?> CheckAsync(Version current, CancellationToken token) =>
+        ParseNotice(await ReadMetadataAsync(token).ConfigureAwait(false), current);
+
+    /// <summary>Retained only for legacy direct-download acceptance; the application uses CheckAsync.</summary>
+    public async Task<UpdateRelease?> CheckInstallerAsync(Version current, CancellationToken token) =>
+        ParseRelease(await ReadMetadataAsync(token).ConfigureAwait(false), current, _source);
+
+    private async Task<string> ReadMetadataAsync(CancellationToken token)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
         timeout.CancelAfter(TimeSpan.FromSeconds(20));
@@ -39,7 +46,29 @@ public sealed partial class UpdateClient
             if (output.Length + read > MaximumMetadataSize) throw new InvalidDataException("更新信息过大。");
             output.Write(buffer, 0, read);
         }
-        return ParseRelease(System.Text.Encoding.UTF8.GetString(output.ToArray()), current, _source);
+        return System.Text.Encoding.UTF8.GetString(output.ToArray());
+    }
+
+    private static UpdateNotice? ParseNotice(string json, Version current)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+            if (root.GetProperty("draft").GetBoolean() || root.GetProperty("prerelease").GetBoolean()) return null;
+            var tag = root.GetProperty("tag_name").GetString() ?? string.Empty;
+            var text = tag.StartsWith('v') ? tag[1..] : tag;
+            if (!StableVersionPattern().IsMatch(text) || !Version.TryParse(text, out var version))
+                throw new InvalidDataException("更新版本号无效。仅支持正式版本。");
+            var installed = new Version(current.Major, current.Minor, Math.Max(0, current.Build));
+            if (version <= installed) return null;
+            var notes = root.TryGetProperty("body", out var body) ? body.GetString() ?? string.Empty : string.Empty;
+            return new UpdateNotice(version, notes.Length > 12000 ? notes[..12000] : notes);
+        }
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or FormatException or OverflowException)
+        {
+            throw new InvalidDataException("更新信息格式无效。", ex);
+        }
     }
 
     public static UpdateRelease? ParseRelease(string json, Version current, Uri source)

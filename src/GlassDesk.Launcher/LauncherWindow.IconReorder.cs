@@ -12,6 +12,7 @@ namespace GlassDesk.Launcher;
 public partial class LauncherWindow
 {
     private LauncherLayout? _dragOrigin;
+    private int _dragPageCount;
     private string? _dragIconId;
     private Button? _dragGhost;
     private bool _suppressTileClick;
@@ -64,16 +65,19 @@ public partial class LauncherWindow
         _pressedTile = null;
         _dropCommitted = false;
         _suppressTileClick = true;
-        _dragEdit = _workspace.BeginEdit();
+        _dragEdit = _settings.GroupModeEnabled
+            ? _workspace.BeginGroupModeEdit(_activeFilterGroupId, _view.Capacity) : _workspace.BeginEdit();
         _dragOrigin = LauncherLayoutRules.DeepClone(_dragEdit.Draft);
         if (_dragSourceGroupId is not null)
         {
             _memberOrigin = LauncherLayoutRules.DeepClone(_dragOrigin);
-            var groupIndex = _dragOrigin.Pages.SelectMany(p => p.Slots).ToList().FindIndex(s => s.Group?.Id == _dragSourceGroupId);
-            _dragOrigin = LauncherLayoutEditor.RemoveFromGroup(_dragOrigin, id, _dragSourceGroupId, 0, groupIndex + 1, _view.Capacity);
+            var groupPage = _dragOrigin.Pages.FindIndex(p => p.Slots.Any(s => s.Group?.Id == _dragSourceGroupId));
+            var groupIndex = _dragOrigin.Pages[groupPage].Slots.FindIndex(s => s.Group?.Id == _dragSourceGroupId);
+            _dragOrigin = LauncherLayoutEditor.RemoveFromGroup(_dragOrigin, id, _dragSourceGroupId, groupPage, groupIndex + 1, _view.Capacity);
         }
         _retainedTilePages.Clear();
         _dragIconId = id;
+        _dragPageCount = _dragOrigin.Pages.Count;
         _grabPoint = grabPoint;
         _previewIndex = _view.Page * _view.Capacity + TileGrid.Children.IndexOf(source);
         _previewExchange = false;
@@ -205,6 +209,10 @@ public partial class LauncherWindow
         if (snap) { CancelQueuedIconPreview(); _placementCandidateIndex = -1; }
         if (_dragOrigin is null || _dragEdit is null || _dragIconId is null || TileGrid.ActualWidth <= 0 || TileGrid.ActualHeight <= 0
             || (!snap && DateTimeOffset.UtcNow < _pagePreviewAfter)) return;
+        // Edge navigation leaves the pointer in the panel's padding. Dropping on
+        // an empty page must still place the icon, without needing another move.
+        if (snap && (_dragOrigin.Pages.ElementAtOrDefault(_view.Page)?.Slots.Count ?? 0) == 0)
+            point = new Point(Math.Clamp(point.X, 0, TileGrid.ActualWidth - .01), Math.Clamp(point.Y, 0, TileGrid.ActualHeight - .01));
         if (point.X < 0 || point.Y < 0 || point.X >= TileGrid.ActualWidth || point.Y >= TileGrid.ActualHeight)
         { _placementCandidateIndex = -1; return; }
         if (PreviewFolderMemberInside(point)) return;
@@ -219,8 +227,11 @@ public partial class LauncherWindow
         var cellHeight = TileGrid.ActualHeight / _view.Rows;
         var column = Math.Clamp((int)(point.X / cellWidth), 0, _view.Columns - 1);
         var row = Math.Clamp((int)(point.Y / cellHeight), 0, _view.Rows - 1);
-        var count = _dragOrigin.Pages.Sum(p => p.Slots.Count);
-        var index = Math.Min(_view.Page * _view.Capacity + row * _view.Columns + column, count - 1);
+        var pageSlots = _dragOrigin.Pages.ElementAtOrDefault(_view.Page)?.Slots;
+        var count = pageSlots?.Count ?? 0;
+        var containsMoving = pageSlots?.Any(s => s.ItemId == _dragIconId || s.Group?.Id == _dragIconId) == true;
+        var lastIndex = Math.Max(0, count - (containsMoving ? 1 : 0));
+        var index = _view.Page * _view.Capacity + Math.Min(row * _view.Columns + column, lastIndex);
         if (index == _previewIndex && exchange == _previewExchange) { _placementCandidateIndex = -1; return; }
         // Crossing into a new cell needs a few pixels of intent, so boundary jitter cannot shuttle icons back and forth.
         if (!snap && _previewIndex >= 0 && index != _previewIndex)
@@ -230,7 +241,7 @@ public partial class LauncherWindow
             if (x < 8 || x > cellWidth - 8 || y < 8 || y > cellHeight - 8)
             { _placementCandidateIndex = -1; return; }
         }
-        if (!snap && !exchange)
+        if (!snap && !exchange && !_settings.GroupModeEnabled)
         {
             // Briefly entering a new cell should not reorder the grid before
             // the pointer can reach its icon. Alt and the final drop stay direct.
@@ -246,7 +257,9 @@ public partial class LauncherWindow
         _previewIndex = index;
         _previewExchange = exchange;
         _layoutBeforePlacement = LauncherLayoutRules.DeepClone(_dragEdit.Draft);
-        _dragEdit.Draft = LauncherLayoutEditor.PlaceAtSlot(_dragOrigin, _dragIconId, index, _view.Capacity, exchange);
+        _dragEdit.Draft = _settings.GroupModeEnabled
+            ? LauncherFilterRules.PlaceAtSlot(_dragOrigin, _dragIconId, index, _view.Capacity, exchange)
+            : LauncherLayoutEditor.PlaceAtSlot(_dragOrigin, _dragIconId, index, _view.Capacity, exchange);
         if (snap) StopPageSlide();
         RenderIconPreview();
     }
@@ -257,6 +270,12 @@ public partial class LauncherWindow
         CancelQueuedIconPreview();
         ClearFolderHover();
         var previous = _view.Page;
+        // At most one empty page can be visited beyond the populated drag draft.
+        if (direction > 0 && previous == _view.PageCount - 1 && previous < _dragOrigin.Pages.Count && VisiblePageSlots().Any())
+        {
+            _dragPageCount = _view.PageCount + 1;
+            UpdatePageCounts();
+        }
         _view.MoveToPage(previous + direction);
         if (_view.Page == previous) return;
         _previewIndex = -1;
@@ -288,11 +307,10 @@ public partial class LauncherWindow
         if (OutgoingPageGrid.Children.Count > 0) StopPageSlide();
         var indices = TileGrid.Children.OfType<Button>().Select((tile, index) => (tile, index))
             .ToDictionary(pair => pair.tile, pair => pair.index);
-        var slots = CurrentSlots();
-        _view.SetItemCount(slots.Count);
+        UpdatePageCounts();
         var desired = new List<Button>();
         var moving = new List<Button>();
-        foreach (var slot in slots.Skip(_view.Page * _view.Capacity).Take(_view.Capacity))
+        foreach (var slot in VisiblePageSlots())
         {
             var id = slot.Kind == LauncherSlotKind.Group ? slot.Group!.Id : slot.ItemId!;
             if (!_dragTiles.TryGetValue(id, out var tile))
@@ -434,6 +452,7 @@ public partial class LauncherWindow
         ClearDropTarget();
         _dragEdit = null;
         _dragOrigin = null;
+        _dragPageCount = 0;
         _dragIconId = null;
         _pressedId = null;
         _pressedTile = null;

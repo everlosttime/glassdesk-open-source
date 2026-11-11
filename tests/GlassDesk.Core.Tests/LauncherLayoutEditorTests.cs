@@ -47,6 +47,7 @@ public sealed class LauncherLayoutEditorTests
         var grouped = LauncherLayoutEditor.CreateGroup(Layout(3), "a0", "a1", "g", 2);
         var changed = LauncherLayoutEditor.MoveGroupMember(grouped, "g", "a0", 0);
         Assert.Equal(["a0", "a1"], changed.Pages[0].Slots[0].Group!.ItemIds);
-        Assert.Equal("a2", changed.Pages[0].Slots[1].ItemId);
+        Assert.Single(changed.Pages[0].Slots);
+        Assert.Equal("a2", changed.Pages[1].Slots[0].ItemId);
     }
 }

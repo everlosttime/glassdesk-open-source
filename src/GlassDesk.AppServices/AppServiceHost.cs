@@ -43,6 +43,15 @@ public sealed class AppServiceHost : IDisposable, IImportObserver
         Running = new RunningAppTracker(data.Library);
         Search = new SearchService(() => data.Library.Items, () => data.Layouts.Launcher);
         Editor = new AppEntryEditor(data.Library, data.Paths, OnLibraryChanged);
+        DockIcons = new DockIconCustomization(data, OnLibraryChanged);
+        var identity = new NearbyIdentityStore(Path.Combine(data.Paths.RootDirectory, "runtime", "nearby"));
+        Nearby = new GlassDesk.Nearby.NearbyTransferService(new GlassDesk.Nearby.NearbyOptions
+        {
+            LoadIdentity = identity.LoadOrCreate,
+            ForbiddenReceiveRoots = [data.Paths.RootDirectory],
+            DefaultReceiveDirectory = Path.Combine(KnownFolders.Downloads
+                ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"), "GlassDesk"),
+        });
     }
 
     public IconCache Icons { get; }
@@ -56,6 +65,8 @@ public sealed class AppServiceHost : IDisposable, IImportObserver
     public SearchService Search { get; }
 
     public AppEntryEditor Editor { get; }
+    public DockIconCustomization DockIcons { get; }
+    public INearbyTransferService Nearby { get; }
 
     public event EventHandler? LibraryChanged;
 
@@ -125,6 +136,7 @@ public sealed class AppServiceHost : IDisposable, IImportObserver
 
     public void Dispose()
     {
+        Nearby.DisposeAsync().AsTask().GetAwaiter().GetResult();
         // 目前没有需要显式释放的非托管资源：COM 对象都在各自的调用里成对释放了，
         // 图标句柄也一样。运行状态跟踪的事件线程在这里收尾。
         Running.Dispose();

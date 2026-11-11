@@ -122,6 +122,8 @@ internal static partial class Shell32
     /// 网址存在 ID 列表里，不在路径字段里。见 <c>ShortcutResolver</c>。
     /// </remarks>
     internal const uint SigdnUrl = 0x80068000;
+    // https://learn.microsoft.com/windows/win32/api/shobjidl_core/ne-shobjidl_core-sigdn
+    internal const uint SigdnDesktopAbsoluteParsing = 0x80028000;
 
     /// <summary>
     /// 把 PIDL 转成一个名称字符串。

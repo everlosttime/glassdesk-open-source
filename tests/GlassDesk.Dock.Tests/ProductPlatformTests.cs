@@ -6,8 +6,11 @@ namespace GlassDesk.Dock.Tests;
 public sealed class ProductPlatformTests
 {
     [Theory]
-    [InlineData(19045, false)]
-    [InlineData(21999, false)]
+    [InlineData(17763, false)]
+    [InlineData(19040, false)]
+    [InlineData(19041, true)]
+    [InlineData(19045, true)]
+    [InlineData(21999, true)]
     [InlineData(22000, true)]
     [InlineData(26300, true)]
     [InlineData(40000, true)]

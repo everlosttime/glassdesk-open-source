@@ -42,6 +42,7 @@ internal static class CaptureProtocolFixture
             for(var i=0;i<2;i++)
             {
                 var command=input.ReadByte();var identity=input.ReadInt64();var version=input.ReadInt64();Family(input);
+                if(command!=(i==0?1:4))throw new InvalidDataException("Snapshot must cache one full native source before reading its next tile.");
                 input.ReadInt64();input.ReadInt32();
                 var x=input.ReadInt32();var y=input.ReadInt32();var r=input.ReadInt32();var b=input.ReadInt32();
                 var sampleWidth=input.ReadInt32();var sampleHeight=input.ReadInt32();
@@ -53,15 +54,29 @@ internal static class CaptureProtocolFixture
             }
             Thread.Sleep(Timeout.Infinite);return 0;
         }
-        input.ReadByte(); var sequence = input.ReadInt64(); var generation = input.ReadInt64(); Family(input);
+        var sampleCommand=input.ReadByte();
+        if(fault=="sample-command" && sampleCommand!=6)throw new InvalidDataException("Production sampling must request cropped readback without a full-source cache.");
+        var sequence = input.ReadInt64(); var generation = input.ReadInt64(); Family(input);
         var barrier = input.ReadInt64(); input.ReadInt32();
         var left=input.ReadInt32();var top=input.ReadInt32();var right=input.ReadInt32();var bottom=input.ReadInt32();
         width=input.ReadInt32();height=input.ReadInt32();
+        if(fault=="wallpaper-source-abandoned")
+        {
+            var error=Encoding.UTF8.GetBytes(GlassDesk.UI.CaptureCompatibility.SharedWallpaperBufferException.ProtocolErrorCode);
+            output.Write((byte)2);output.Write(error.Length);output.Write(error);output.Flush();return 0;
+        }
         if (fault == "read-hang") { Thread.Sleep(Timeout.Infinite); return 0; }
         output.Write((byte)1); output.Write(fault == "old-sequence" ? sequence - 1 : sequence);
         output.Write(fault == "old-generation" ? generation - 1 : generation); output.Write(1L); output.Flush();
         if (fault == "split-hang") { Thread.Sleep(Timeout.Infinite); return 0; }
-        pixels.Write(new byte[width * height * 4]);
+        var payload=new byte[width * height * 4];
+        if(fault=="wallpaper-settings")
+        {
+            payload[0]=Guid.TryParseExact(Environment.GetEnvironmentVariable("GLASSDESK_WALLPAPER_SOURCE_SCOPE"),"N",out _)?(byte)1:(byte)0;
+            payload[1]=Environment.GetEnvironmentVariable("GLASSDESK_SHARED_WALLPAPER_FRAMES")=="1"?(byte)1:(byte)0;
+            payload[3]=255;
+        }
+        pixels.Write(payload);
         output.Write(fault=="wrong-width" ? width+1 : width); output.Write(height);
         output.Write(fault == "old-source" ? barrier - 1 : fault=="future-source" ? Stopwatch.GetTimestamp()+Stopwatch.Frequency : Stopwatch.GetTimestamp());
         output.Write(width * height * 4);

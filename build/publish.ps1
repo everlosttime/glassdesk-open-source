@@ -1,3 +1,4 @@
+# Public 1.6.0 adaptation: information-bar-only companion packaging is excluded.
 # Produces a self-contained Windows x64 build of GlassDesk.
 #
 # ASCII only on purpose: Windows PowerShell 5.1 reads a .ps1 without a BOM using the system
@@ -16,6 +17,7 @@ param(
     [string]$AssemblyVersion,
     [string]$FileVersion,
     [string]$AcceptanceDataRoot,
+    [switch]$IncludeNaiwa,
     [string]$EvidenceDirectory = ('docs/evidence/' + [char]0x9636 + [char]0x6BB5 + '7')
 )
 
@@ -228,6 +230,13 @@ try {
     Write-Host "== publish self-contained win-x64 ($Configuration) ==" -ForegroundColor Cyan
     Write-Host "output: $OutputDirectory"
 
+    # Ship the tested launcher shadow with the normal executable, not a local
+    # environment-only launcher script. The native build pins/verifies its compiler.
+    $nativeOutput = Join-Path $repoRoot ('artifacts/native-rendering/publish-' + [guid]::NewGuid().ToString('N'))
+    & (Join-Path $PSScriptRoot 'Build-NativeRendering.ps1') -OutputDirectory $nativeOutput
+    if ($LASTEXITCODE -ne 0) { throw 'Launcher native shadow build failed.' }
+    $nativeDll = Join-Path $nativeOutput 'GlassDesk.Rendering.Native.dll'
+
     # ReadyToRun trades a little size for noticeably faster cold start, which matters for a
     # utility the user launches at logon.
     $publishArguments = @(
@@ -237,6 +246,7 @@ try {
         '--self-contained', 'true',
         '-p:PublishReadyToRun=true',
         '-p:DebugType=none',
+        ('-p:NativeRenderingDllPath=' + $nativeDll),
         '-o', $OutputDirectory,
         '--nologo'
     )
@@ -249,6 +259,15 @@ try {
 
     Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/third-party/unicode-license-v3.txt') `
         -Destination (Join-Path $OutputDirectory 'UNICODE-LICENSE.txt') -Force
+
+    if ($IncludeNaiwa) {
+        $naiwaOutput = Join-Path $OutputDirectory 'components/Naiwa'
+        & $dotnet build 'contrib/Naiwa/GlassDesk.Naiwa.csproj' -c $Configuration -o $naiwaOutput -p:DebugType=none --nologo
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $naiwaOutput 'GlassDesk.Naiwa.exe'))) {
+            throw 'Naiwa companion build failed.'
+        }
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'contrib/Naiwa/LICENSE') -Destination (Join-Path $naiwaOutput 'LICENSE.txt')
+    }
 
     $exe = Join-Path $OutputDirectory 'GlassDesk.exe'
     if (-not (Test-Path $exe)) { throw "Expected GlassDesk.exe was not produced." }

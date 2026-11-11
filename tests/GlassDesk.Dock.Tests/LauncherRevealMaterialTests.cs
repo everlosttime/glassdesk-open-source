@@ -9,6 +9,30 @@ namespace GlassDesk.Dock.Tests;
 public sealed class LauncherRevealMaterialTests
 {
     [Fact]
+    public void HiddenPreparationUsesPhysicalDpiBeforeTheVisualIsConnected()
+    {
+        StaTest.Run(() =>
+        {
+            var window = new LauncherWindow();
+            var surface = (LiquidGlassSurface)window.FindName("GlassSurface");
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            var scene = new GlassBackdropScene(); surface.ReadBackdropScene = () => scene;
+            surface.CaptureRevealBackdrop = (_, width, height) => Enumerable.Repeat((byte)80, width * height * 4).ToArray();
+            try
+            {
+                _ = new System.Windows.Interop.WindowInteropHelper(window).EnsureHandle();
+                surface.PrepareRevealMaterial(new PixelRect(100, 100, 600, 450), new PixelRect(100, 100, 600, 450), 144);
+                var stamp = typeof(LiquidGlassSurface).GetField("_compatibilityStamp", flags)!.GetValue(surface)!;
+                Assert.NotNull(stamp);
+                var dpi = (System.Windows.DpiScale)stamp.GetType().GetProperty("Dpi")!.GetValue(stamp)!;
+                Assert.Equal(1.5, dpi.DpiScaleX);
+                Assert.Equal(1.5, dpi.DpiScaleY);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
     public void BeforeRevealCaptureRejectsOverlappingProductWindowsWithoutChangingTheirAffinity()
     {
         StaTest.Run(() =>
@@ -33,7 +57,7 @@ public sealed class LauncherRevealMaterialTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void UnavailableOrBlackSnapshotKeepsAmbientGlassAndDoesNotStartWallpaperReplacement(bool black)
+    public void UnavailableOrBlackSnapshotWaitsTransparentlyWithoutWallpaperReplacement(bool black)
     {
         StaTest.Run(() =>
         {
@@ -46,7 +70,7 @@ public sealed class LauncherRevealMaterialTests
             {
                 window.ShowWithTransition(null);
                 var flags = BindingFlags.Instance | BindingFlags.NonPublic;
-                Assert.NotNull(typeof(LiquidGlassSurface).GetField("_compatibilityBackdrop", flags)!.GetValue(surface));
+                Assert.Null(typeof(LiquidGlassSurface).GetField("_compatibilityBackdrop", flags)!.GetValue(surface));
                 Assert.False((bool)typeof(LiquidGlassSurface).GetField("_compatibilityIsDesktopSnapshot", flags)!.GetValue(surface)!);
                 Assert.False((bool)typeof(LiquidGlassSurface).GetField("_wallpaperPreparationPending", flags)!.GetValue(surface)!);
             }

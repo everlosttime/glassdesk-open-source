@@ -115,6 +115,7 @@ public partial class LauncherWindow
 
     private void CancelDrag()
     {
+        CancelFilterGroupDrag();
         _pressTimer?.Stop();
         _pressTimer = null;
         _pressedTile = null;
@@ -140,9 +141,13 @@ public partial class LauncherWindow
     private void UpdateDragEdge()
     {
         if (_dragEdit is null) { CancelDrag(); return; }
-        var width = TileGrid.ActualWidth;
-        var inGrid = _lastDragPoint.X >= 0 && _lastDragPoint.X <= width && _lastDragPoint.Y >= 0 && _lastDragPoint.Y < TileGrid.ActualHeight;
-        var direction = !inGrid ? 0 : _lastDragPoint.X < 42 ? -1 : _lastDragPoint.X > width - 42 ? 1 : 0;
+        var point = TileGrid.TranslatePoint(new Point(_lastDragPoint.X - IncomingPageMotion.X, _lastDragPoint.Y), LauncherPanelRoot);
+        var gridLeft = TileGrid.TranslatePoint(new Point(), LauncherPanelRoot).X;
+        var top = PageViewport.TranslatePoint(new Point(), LauncherPanelRoot).Y;
+        var inside = point.X >= 0 && point.X <= LauncherPanelRoot.ActualWidth
+            && point.Y >= top && point.Y < top + PageViewport.ActualHeight;
+        var direction = !inside ? 0 : point.X < gridLeft + 42 ? -1
+            : point.X > gridLeft + TileGrid.ActualWidth - 42 ? 1 : 0;
         if (_edgePager.Tick(direction, DateTimeOffset.UtcNow) && direction != 0)
         {
             NavigateDragPage(direction);
@@ -216,7 +221,7 @@ public partial class LauncherWindow
             var targetSlot = slots.FirstOrDefault(slot => slot.ItemId == target || slot.Group?.Id == target);
             if (targetSlot is null) return;
             if (!slots.Any(slot => slot.Kind == LauncherSlotKind.App && slot.ItemId == source)) return;
-            var visibleSlots = slots.Skip(_view.Page * _view.Capacity).Take(_view.Capacity).ToList();
+            var visibleSlots = VisiblePageSlots().ToList();
             var targetIndex = visibleSlots.IndexOf(targetSlot);
             if (targetIndex < 0) return;
             var placeAfter = e.GetPosition(destination).X >= destination.ActualWidth / 2;

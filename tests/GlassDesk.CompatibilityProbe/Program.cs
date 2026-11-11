@@ -15,6 +15,23 @@ internal static class CompatibilityProbe
     [STAThread]
     private static int Main(string[] args)
     {
+        if(args is ["--abandon-shared-wallpaper-mutex",var mappingName,var mutexReady])
+            return WallpaperFanoutRecoveryReport.Hold(mappingName,mutexReady);
+        if(args is ["--wallpaper-fanout-recovery",var recoveryReport])
+        {
+            SetThreadDpiAwarenessContext(-4);
+            return WallpaperFanoutRecoveryReport.Run(recoveryReport);
+        }
+        if (args is ["--wallpaper-gpu-report", var sourceWindow, var gpuReport])
+        {
+            SetThreadDpiAwarenessContext(-4);
+            return WallpaperGpuReport.Run((nint)long.Parse(sourceWindow), gpuReport);
+        }
+        if (args.Length == 3 && args[0] == "--trace-desktop-flash")
+        {
+            SetThreadDpiAwarenessContext(-4);
+            return DesktopFlashReport.Run(int.Parse(args[1]), args[2]);
+        }
         if (args.Length >= 2 && args[0] == "--capture-protocol-fixture") return CaptureProtocolFixture.Run(args[1]);
         if (args.Length == 7 && args[0] == "--compare-live-region")
         {
@@ -32,7 +49,40 @@ internal static class CompatibilityProbe
             }
             return 0;
         }
+        if(args is ["--glass-backdrop-worker",_] && Environment.GetEnvironmentVariable("GLASSDESK_DIAGNOSTIC_SOFTWARE_WALLPAPER")=="1")
+            RenderOptions.ProcessRenderMode=RenderMode.SoftwareOnly;
         if (GlassDesk.UI.BackdropCaptureWorker.RunIfRequested(args, out var workerExit)) return workerExit;
+        if(args is ["--wallpaper-clip-report",var clipReport])return WallpaperClipReport.Run(clipReport);
+        if(args is ["--capture-memory-report",var desktopOnlyMemoryDirectory,"--desktop-only"])
+        {
+            SetThreadDpiAwarenessContext(-4);
+            return CaptureWorkerMemoryReport.Run(desktopOnlyMemoryDirectory,documented:true,desktopOnly:true);
+        }
+        if(args is ["--capture-memory-report",var memoryDirectory])
+        {
+            SetThreadDpiAwarenessContext(-4);
+            return CaptureWorkerMemoryReport.Run(memoryDirectory);
+        }
+        if(args is ["--capture-memory-report",var guardedMemoryDirectory,"--guarded"])
+        {
+            SetThreadDpiAwarenessContext(-4);
+            return CaptureWorkerMemoryReport.Run(guardedMemoryDirectory,true);
+        }
+        if(args is ["--capture-memory-report",var documentedMemoryDirectory,"--guarded","--documented"])
+        {
+            SetThreadDpiAwarenessContext(-4);
+            return CaptureWorkerMemoryReport.Run(documentedMemoryDirectory,true,true);
+        }
+        if(args is ["--capture-memory-report",var pairedMemoryDirectory,"--guarded","--documented","--pair"])
+        {
+            SetThreadDpiAwarenessContext(-4);
+            return CaptureWorkerMemoryReport.Run(pairedMemoryDirectory,true,true,true);
+        }
+        if (args.Length == 2 && args[0] == "--desktop-background-report")
+        {
+            SetThreadDpiAwarenessContext(-4);
+            return DesktopBackgroundReport.Run(args[1]);
+        }
         if (args.Length == 1 && args[0] == "--wallpaper-metadata")
         {
             var snapshot = DesktopWallpaperSource.TryRead();
@@ -69,6 +119,7 @@ internal static class CompatibilityProbe
         var bottom = Window(Colors.Lime, 300, 200, 240, 160);
         var top = Window(Colors.Blue, 360, 240, 120, 80);
         Window? added = null;
+        TransparentOverlayFixture? overlay = null;
         bottom.Show(); top.Show();
         SetWindowPos(new WindowInteropHelper(bottom).Handle, -1, 300, 200, 240, 160, 0x10);
         SetWindowPos(new WindowInteropHelper(top).Handle, -1, 360, 240, 120, 80, 0x10);
@@ -87,24 +138,58 @@ internal static class CompatibilityProbe
             switch (command)
             {
                 case "red": bottom.Background = Brushes.Red; break;
+                case "black": bottom.Background = Brushes.Black; break;
+                case "cef-alpha-zero":
+                case "cef-per-pixel":
+                case "cef-opaque":
+                case "cef-colorkey":
+                case "cef-screen-helper":
+                case "other-alpha-zero":
+                    overlay?.Dispose(); overlay = new TransparentOverlayFixture(command); break;
+                case "overlay-opaque": overlay?.SetOpacity(255); break;
+                case "overlay-transparent": overlay?.SetOpacity(0); break;
                 case "hide": top.Hide(); break;
+                case "minimize": top.WindowState = WindowState.Minimized; break;
+                case "show":
+                    top.Show(); top.WindowState = WindowState.Normal;
+                    SetWindowPos(new WindowInteropHelper(top).Handle, -1, 360, 240, 120, 80, 0x10); break;
                 case "close": top.Close(); break;
                 case "move": SetWindowPos(new WindowInteropHelper(top).Handle, -1, 450, 280, 120, 80, 0x10); break;
                 case "maximize": top.WindowState = WindowState.Maximized; break;
                 case "restore": top.WindowState = WindowState.Normal; break;
+                case "repaint": top.InvalidateVisual();top.UpdateLayout();break;
                 case "add":
                     added = Window(Colors.Yellow, 400, 280, 64, 32); added.Show();
                     SetWindowPos(new WindowInteropHelper(added).Handle, -1, 400, 280, 64, 32, 0x10); break;
                 case "remove": added?.Close(); added = null; break;
                 case "exit": app.Shutdown(); break;
             }
-            File.WriteAllText(Path.Combine(root, "ack.txt"), command);
+            if(command=="repaint")File.WriteAllText(Path.Combine(root,"state.json"),JsonSerializer.Serialize(new
+            {
+                command,handle=new WindowInteropHelper(top).Handle.ToInt64(),top.IsVisible,top.IsLoaded,
+                visibility=top.Visibility.ToString(),windowState=top.WindowState.ToString(),top.ActualWidth,top.ActualHeight,
+                renderWidth=top.RenderSize.Width,renderHeight=top.RenderSize.Height,
+                rootIsTop=ReferenceEquals(PresentationSource.FromVisual(top)?.RootVisual,top),background=top.Background?.ToString()
+            }));
+            WriteAcknowledgement(Path.Combine(root,"ack.txt"),command);
         };
         timer.Start();
         app.Run();
+        overlay?.Dispose();
         return 0;
     }
 
+    private static void WriteAcknowledgement(string path,string command)
+    {
+        // Parent polling can briefly deny write sharing. A diagnostic control
+        // file collision must not terminate the foreign rendering process.
+        var clock=Stopwatch.StartNew();
+        while(true)
+        {
+            try{File.WriteAllText(path,command);return;}
+            catch(IOException) when(clock.Elapsed<TimeSpan.FromSeconds(2)){Thread.Sleep(2);}
+        }
+    }
     private static Window Window(Color color, double x, double y, double width, double height) => new()
     {
         Title = "GlassDesk compatibility fixture", WindowStyle = WindowStyle.None,

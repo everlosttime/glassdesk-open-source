@@ -13,12 +13,14 @@ public sealed class LauncherIconPlacementTests
     public void InsertUsesFinalGridSlotAndShiftsInterveningIcons()
     {
         var original = Layout();
-        Assert.Equal(["b", "c", "d", "a", "e"], LauncherLayoutRules.AppIds(Place(original, "a", 3)));
+        var moved = Place(original, "a", 3);
+        Assert.Equal(["b", "c"], moved.Pages[0].Slots.Select(s => s.ItemId));
+        Assert.Equal(["a", "d", "e"], moved.Pages[1].Slots.Select(s => s.ItemId));
         Assert.Equal(["a", "b", "c", "d", "e"], LauncherLayoutRules.AppIds(original));
     }
 
     [Fact]
-    public void InsertBackwardsPullsIconsForwardAcrossPageBoundary()
+    public void FullTargetPageOverflowsForwardWithoutPullingFromLaterPage()
         => Assert.Equal(["a", "e", "b", "c", "d"], LauncherLayoutRules.AppIds(Place(Layout(), "e", 1)));
 
     [Fact]

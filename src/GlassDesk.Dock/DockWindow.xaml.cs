@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
@@ -32,6 +33,7 @@ namespace GlassDesk.Dock;
 /// </remarks>
 public partial class DockWindow : GlassWindow
 {
+    protected override bool SupportsDesktopLayer => true;
     /// <summary>启动失败提示在状态行上停留的时长。之后恢复成常规诊断文字。</summary>
     private static readonly TimeSpan FailureNoticeDuration = TimeSpan.FromSeconds(5);
 
@@ -77,7 +79,8 @@ public partial class DockWindow : GlassWindow
     /// <summary>当前滑出量（物理像素）。0 = 完全在位；<see cref="SlideOutDistancePixels"/> = 完全隐藏。</summary>
     private double _slideOffsetPixels;
 
-    internal bool IsOpticalSurfaceVisible => _slideOffsetPixels < Math.Max(1, _restingRect.Height - 4);
+    private bool IsVertical => Settings.Placement is DockPlacement.LeftCenter or DockPlacement.RightCenter;
+    internal bool IsOpticalSurfaceVisible => _slideOffsetPixels < Math.Max(1, (IsVertical ? _restingRect.Width : _restingRect.Height) - 4);
     internal PixelRect OpticalBackdropBounds => _restingRect;
 
     private DisplayInfo? CurrentPrimaryDisplay => PrimaryDisplaySession is { } session
@@ -86,8 +89,9 @@ public partial class DockWindow : GlassWindow
 
     protected override byte ResolveAcrylicTintAlpha(GlassPalette palette) => palette.IsDark ? (byte)54 : (byte)66;
 
+    // Continuous cubic shoulders keep the existing silhouette without polygon joints.
     protected override Geometry CreatePanelGeometryCore(Rect bounds, double radius) =>
-        SquircleGlassGeometry.Create(bounds, radius);
+        SquircleGlassGeometry.CreateCompact(bounds, radius);
 
     protected override bool ContainsPanelGeometryCore(Rect bounds, double radius, Point point) =>
         SquircleGlassGeometry.Contains(_slidePanelBoundsDip ?? bounds, radius, point);
@@ -101,11 +105,14 @@ public partial class DockWindow : GlassWindow
     public DockWindow()
     {
         InitializeComponent();
+        IsVisibleChanged+=(_,e)=>{if(e.NewValue is false)StopNativeForegroundExperiment();};
         InitializeEntryHover();
         PanelCornerRadius = new CornerRadius(40);
         GlassSurface.IsBackdropActive = () => IsOpticalSurfaceVisible;
+        GlassSurface.EnableNativeStaticWallpaper = true;
 
         _tileStrip = new DockTileStrip();
+        _tileStrip.DragOverlay = DockDragOverlay;
         _tileStrip.TileClicked += OnTileClicked;
         _tileStrip.TileContextMenuRequested += OnTileContextMenuRequested;
         _tileStrip.ReorderFinished += (_, _) => RefreshTiles();
@@ -421,7 +428,10 @@ public partial class DockWindow : GlassWindow
     }
 
     /// <summary>Raise the non-activating Dock above Launcher while it is a drag target.</summary>
-    public void RaiseAboveLauncherDuringDrag() => _ = WindowStyles.BringToTopWithoutActivation(Handle);
+    public void RaiseAboveLauncherDuringDrag()
+    {
+        if (!IsFixedDesktopLayer) _ = WindowStyles.BringToTopWithoutActivation(Handle);
+    }
 
     /// <summary>Dock 使用栏自身的圆角半径，而不是启动台的。</summary>
     protected override double ResolveCornerRadius(AppearanceSettings appearance)
@@ -443,6 +453,7 @@ public partial class DockWindow : GlassWindow
     public void RefreshTiles()
     {
         if (_performanceSleepRequested) { _tilesDirty = true; return; }
+        RefreshBuiltinIcons();
         var settings = Settings;
         var tracker = _services?.Running;
         var dotBrush = ThemeService.Current?.Palette.ForegroundBrush;
@@ -468,6 +479,12 @@ public partial class DockWindow : GlassWindow
 
         _tileStrip.SetTiles(_models);
         ApplyStripMetrics();
+    }
+
+    /// <summary>Refreshes this visible surface after a foreign foreground change.</summary>
+    public void RequestGlassRefresh()
+    {
+        if (IsVisible && IsOpticalSurfaceVisible) GlassSurface.RequestBackdropRefresh();
     }
 
     private DockTileModel CreateTile(AppEntry entry, DockSettings settings, RunningAppTracker tracker, Brush? dotBrush)
@@ -509,7 +526,12 @@ public partial class DockWindow : GlassWindow
         var settings = Settings;
         var display = CurrentPrimaryDisplay;
         var scale = DockScale;
-        DockContentLayer.Margin = new Thickness(10 * scale, 8 * scale, 10 * scale, 8 * scale);
+        DockEntryRow.Orientation = IsVertical ? Orientation.Vertical : Orientation.Horizontal;
+        TileStripHost.HorizontalAlignment = IsVertical ? HorizontalAlignment.Center : HorizontalAlignment.Stretch;
+        TileStripHost.HorizontalContentAlignment = IsVertical ? HorizontalAlignment.Center : HorizontalAlignment.Left;
+        DockContentLayer.Margin = IsVertical
+            ? new Thickness(8 * scale, 10 * scale, 8 * scale, 10 * scale)
+            : new Thickness(10 * scale, 8 * scale, 10 * scale, 8 * scale);
         if ((LauncherButton.Visibility == Visibility.Visible) != settings.ShowLauncherEntry
             || (ThisPcButton.Visibility == Visibility.Visible) != settings.ShowThisPcEntry
             || (DesktopIconsButton.Visibility == Visibility.Visible) != settings.ShowDesktopIconsEntry)
@@ -517,11 +539,13 @@ public partial class DockWindow : GlassWindow
         LauncherButton.Visibility = settings.ShowLauncherEntry ? Visibility.Visible : Visibility.Collapsed;
         ThisPcButton.Visibility = settings.ShowThisPcEntry ? Visibility.Visible : Visibility.Collapsed;
         DesktopIconsButton.Visibility = settings.ShowDesktopIconsEntry ? Visibility.Visible : Visibility.Collapsed;
+        RefreshBuiltinIcons();
         foreach (var button in new[] { LauncherButton, ThisPcButton, DesktopIconsButton })
         {
-            button.Width = 48 * scale;
-            button.Height = 64 * scale;
-            button.Margin = new Thickness(0, 0, 8 * scale, 0);
+            button.Width = (IsVertical ? 64 : 48) * scale;
+            button.Height = (IsVertical ? 48 : 64) * scale;
+            button.Margin = IsVertical ? new Thickness(0, 0, 0, 8 * scale)
+                : new Thickness(0, 0, 8 * scale, 0);
         }
         LaunchpadTile.Width = LaunchpadTile.Height = ThisPcTile.Width = ThisPcTile.Height
             = DesktopIconsTile.Width = DesktopIconsTile.Height = 48 * scale;
@@ -530,7 +554,7 @@ public partial class DockWindow : GlassWindow
 
         var contentLimit = display is null
             ? 0.0
-            : Math.Max(1, display.ToDips((int)display.WorkArea.Width) - 32 - (28 + BuiltinEntryWidthDip) * scale);
+            : Math.Max(1, display.ToDips((int)(IsVertical ? display.WorkArea.Height : display.WorkArea.Width)) - 32 - (28 + BuiltinEntryWidthDip) * scale);
 
         if (settings.FrameLengthDip > 0)
             contentLimit = Math.Max(1, ResolveEffectiveFrameLengthDip(settings.FrameLengthDip, display) - (22 + BuiltinEntryWidthDip) * scale);
@@ -540,7 +564,7 @@ public partial class DockWindow : GlassWindow
             DockSettings.FixedIconSpacing * scale,
             DockSettings.FixedMagnificationPeak,
             8 * scale,
-            contentLimit);
+            contentLimit, IsVertical);
     }
 
     private double DockScale => double.IsFinite(Settings.SizeScale)
@@ -554,15 +578,17 @@ public partial class DockWindow : GlassWindow
         var entryMinimum = Math.Max(DockSettings.MinimumFrameLengthDip, BuiltinEntryWidthDip + 22) * DockScale;
         if (display is null)
             return Math.Clamp(requested, entryMinimum, DockSettings.MaximumFrameLengthDip);
-        var maxWidth = Math.Max(64, display.ToDips((int)display.WorkArea.Width) - 32);
+        var maxWidth = Math.Max(64, display.ToDips((int)(IsVertical ? display.WorkArea.Height : display.WorkArea.Width)) - 32);
         maxWidth = Math.Min(DockSettings.MaximumFrameLengthDip, maxWidth);
-        var minimum = Math.Min(entryMinimum, maxWidth);
+        var minimum = Math.Min(display.ToDips((int)Math.Ceiling(entryMinimum * display.ScaleFactor)), maxWidth);
         return Math.Clamp(requested, minimum, maxWidth);
     }
 
     private void ApplyFrameLength()
     {
         var requested = Settings.FrameLengthDip;
+        if (!IsVertical || requested <= 0) Height = double.NaN;
+        if (IsVertical) Width = double.NaN;
         if (requested <= 0)
         {
             SizeToContent = System.Windows.SizeToContent.WidthAndHeight;
@@ -571,8 +597,10 @@ public partial class DockWindow : GlassWindow
         }
 
         var display = CurrentPrimaryDisplay;
-        SizeToContent = System.Windows.SizeToContent.Height;
-        Width = ResolveEffectiveFrameLengthDip(requested, display);
+        SizeToContent = IsVertical ? System.Windows.SizeToContent.Width : System.Windows.SizeToContent.Height;
+        var length = ResolveEffectiveFrameLengthDip(requested, display);
+        if (IsVertical) Height = length;
+        else Width = length;
     }
 
     /// <summary>取一枚磁贴的图标：用户自选的优先，其次缓存里提取的，没有就空着。</summary>
@@ -605,15 +633,9 @@ public partial class DockWindow : GlassWindow
         {
             // OnLoad：把像素读进内存就释放文件句柄，否则用户在资源管理器里
             // 删不掉正在被 Dock 显示的那张图标。
-            var image = new BitmapImage();
-            image.BeginInit();
-            image.CacheOption = BitmapCacheOption.OnLoad;
-            image.UriSource = new Uri(path, UriKind.Absolute);
-            image.EndInit();
-            image.Freeze();
-            return image;
+            return GlassDesk.UI.Imaging.IconBitmapLoader.DecodeFile(path, 512);
         }
-        catch (Exception ex) when (ex is IOException or UriFormatException or System.IO.FileFormatException)
+        catch (Exception ex) when (ex is IOException or UriFormatException or System.IO.FileFormatException or NotSupportedException or ArgumentException)
         {
             return null;
         }
@@ -825,35 +847,43 @@ public partial class DockWindow : GlassWindow
     /// </remarks>
     private void OnTileContextMenuRequested(object? sender, string entryId)
     {
+        if (BuildEntryMenu(entryId) is { } menu) OpenDockContextMenu(menu);
+    }
+
+    private ContextMenu? BuildEntryMenu(string entryId)
+    {
         if (_services is null)
         {
-            return;
+            return null;
         }
 
         var entry = _services.Library.Find(entryId);
 
         if (entry is null)
         {
-            return;
+            return null;
         }
-
-        _autoHide?.PushSuppress(DateTime.UtcNow);
 
         var menu = new ContextMenu
         {
             Placement = PlacementMode.MousePoint,
         };
-        var foregroundBefore = WindowControl.GetForegroundWindow();
-        nint menuHandle = 0;
-        menu.Opened += (_, _) => menuHandle = (PresentationSource.FromVisual(menu) as System.Windows.Interop.HwndSource)?.Handle ?? 0;
-
         _ = menu.Items.Add(MenuItem("打开", () => OpenEntry(entryId, minimizeIfForeground: false)));
+        var elevated = MenuItem("以管理员身份运行", () =>
+        {
+            var result = _services.Launch.LaunchAsAdministrator(entryId);
+            if (!result.Succeeded) ShowFailureNotice(result.Message ?? "管理员启动未完成。");
+        });
+        elevated.IsEnabled = _services.Launch.CanRunAsAdministrator(entryId);
+        _ = menu.Items.Add(elevated);
 
         if (entry.Kind == AppItemKind.Folder)
         {
             _ = menu.Items.Add(MenuItem("在面板中查看内容", () => ShowFolderPanel(entry)));
         }
 
+        _ = menu.Items.Add(new Separator());
+        AddIconMenuItems(menu, entryId);
         _ = menu.Items.Add(new Separator());
 
         if (entry.IsTargetMissing)
@@ -864,14 +894,7 @@ public partial class DockWindow : GlassWindow
 
         _ = menu.Items.Add(MenuItem("从 Dock 移除", () => OnUnpinRequested(this, entryId)));
 
-        menu.Closed += (_, _) =>
-        {
-            _autoHide?.PopSuppress(DateTime.UtcNow);
-            RestorePopupForeground(foregroundBefore, menuHandle);
-        };
-
-        _ = WindowActivation.TryBringToForeground(Handle);
-        menu.IsOpen = true;
+        return menu;
     }
 
     /// <summary>重新定位对话框：选一个真实存在的新目标，交给维护服务。</summary>
@@ -1172,7 +1195,53 @@ public partial class DockWindow : GlassWindow
     /// <summary>请求宿主切换启动台；按钮点击附带按钮当前的物理屏幕矩形。</summary>
     private void RequestLauncherToggle(PixelRect? sourceBounds = null) => _toggleLauncher?.Invoke(sourceBounds);
 
-    private void OnLauncherButtonClick(object sender, RoutedEventArgs e) => RequestLauncherToggle(GetLauncherButtonPixelBounds());
+    private bool _launcherWasOpenOnPress;
+    private bool _launcherReleaseClickPending;
+    private int _launcherPressGeneration;
+
+    private void OnLauncherButtonPreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        _launcherPressGeneration++;
+        _launcherWasOpenOnPress = _launcherContainerActive;
+        _launcherReleaseClickPending = false;
+    }
+
+    private void OnLauncherButtonPreviewMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        _launcherReleaseClickPending = true;
+        ClearLauncherPressAfterInput();
+    }
+
+    private void OnLauncherButtonLostMouseCapture(object sender, MouseEventArgs e) => ClearLauncherPressAfterInput();
+
+    private void ClearLauncherPressAfterInput()
+    {
+        var generation = _launcherPressGeneration;
+        // Button releases capture before raising Click. Clear canceled gestures after
+        // that event, without clearing a new press that arrived in the meantime.
+        _ = Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, new Action(() =>
+        {
+            if (_launcherPressGeneration == generation)
+            {
+                _launcherWasOpenOnPress = false;
+                _launcherReleaseClickPending = false;
+            }
+        }));
+    }
+
+    private void OnLauncherButtonClick(object sender, RoutedEventArgs e)
+    {
+        // PreviewMouseDown can run without Button ever acquiring capture. A
+        // canceled press then has no LostMouseCapture event; only a real release
+        // Click may consume that gesture's close intent, not a later invocation.
+        var wasOpenOnPress = _launcherReleaseClickPending && _launcherWasOpenOnPress;
+        _launcherWasOpenOnPress = false;
+        _launcherReleaseClickPending = false;
+        // Deactivation can hide the launcher synchronously when motion is reduced.
+        // This gesture already closed it; mouse-up must not open it again.
+        if (wasOpenOnPress && !_launcherContainerActive) return;
+        RequestLauncherToggle(GetLauncherButtonPixelBounds());
+    }
 
     /// <summary>Read the launcher button's current physical screen rectangle after Dock layout.</summary>
     public PixelRect? GetLauncherButtonPixelBounds()
@@ -1228,14 +1297,14 @@ public partial class DockWindow : GlassWindow
     public void StopForPrimaryDisplayChange()
     {
         _frameTimer?.Stop();
-        Hide();
+        HideSurface();
     }
 
     public void ResumeAfterPrimaryDisplayChange(bool show)
     {
         RebuildAutoHide();
         RefreshDisplayPlacement();
-        if (show && !_performanceSleepRequested) Show();
+        if (show && !_performanceSleepRequested) ShowSurface();
     }
 
     public void PositionOnDisplay()
@@ -1287,7 +1356,8 @@ public partial class DockWindow : GlassWindow
     private void ApplySlide(PixelRect restingRect, double slideOffsetPixels)
     {
         var slidePixels = (int)Math.Round(slideOffsetPixels * SlideOutDirection(), MidpointRounding.AwayFromZero);
-        var concealed = restingRect.Height > 0 && Math.Abs(slidePixels) >= restingRect.Height;
+        var thickness = IsVertical ? restingRect.Width : restingRect.Height;
+        var concealed = thickness > 0 && Math.Abs(slidePixels) >= thickness;
         // HWND equality describes layout, not the pixels painted while hidden.
         // Retire old glass only once the entire panel is clipped, so every reveal
         // prepares current content without disturbing the visible hide animation.
@@ -1304,8 +1374,9 @@ public partial class DockWindow : GlassWindow
                 _ = DisplayService.MoveWindowToPixelRect(Handle, fixedWindow);
             var scale = Math.Max(.01, session.Display.ScaleFactor);
             var visualOffsetDip = slidePixels / scale;
-            DockSlideTransform.Y = visualOffsetDip;
-            _slidePanelBoundsDip = new Rect(0, visualOffsetDip, ActualWidth, ActualHeight);
+            DockSlideTransform.X = IsVertical ? visualOffsetDip : 0;
+            DockSlideTransform.Y = IsVertical ? 0 : visualOffsetDip;
+            _slidePanelBoundsDip = new Rect(DockSlideTransform.X, DockSlideTransform.Y, ActualWidth, ActualHeight);
             if (ActualWidth > 0 && ActualHeight > 0)
             {
                 // Match the launcher: a fixed desktop texture with a moving GPU lens.
@@ -1314,11 +1385,13 @@ public partial class DockWindow : GlassWindow
                 var hiddenOffsetDip = _fullyHiddenOffsetPixels * SlideOutDirection() / scale;
                 GlassSurface.SetPanelShape(_slidePanelBoundsDip.Value, PanelCornerRadius.TopLeft);
                 GlassSurface.SetContainerTransitionBounds(
-                    new Rect(0, Math.Min(0, hiddenOffsetDip), ActualWidth,
+                    IsVertical
+                        ? new Rect(Math.Min(0, hiddenOffsetDip), 0, ActualWidth + Math.Abs(hiddenOffsetDip), ActualHeight)
+                        : new Rect(0, Math.Min(0, hiddenOffsetDip), ActualWidth,
                         ActualHeight + Math.Abs(hiddenOffsetDip)));
                 SetSharedPanelClip(_slidePanelBoundsDip.Value, PanelCornerRadius.TopLeft);
             }
-            var shadowStrength = Math.Clamp(1 - Math.Abs(visualOffsetDip) / Math.Max(1, ActualHeight), 0, 1);
+            var shadowStrength = Math.Clamp(1 - Math.Abs(visualOffsetDip) / Math.Max(1, IsVertical ? ActualWidth : ActualHeight), 0, 1);
             SetTransitionShadowShape(Math.Abs(visualOffsetDip) < .01
                     ? null
                     : _slidePanelBoundsDip,
@@ -1328,22 +1401,30 @@ public partial class DockWindow : GlassWindow
 
         // Unbound design/test windows keep their legacy placement behavior. AppHost binds
         // every production GlassWindow to one immutable PrimaryDisplaySession.
-        DockSlideTransform.Y = 0;
+        DockSlideTransform.X = DockSlideTransform.Y = 0;
         SetTransitionShadowShape(null, 0);
-        var rect = restingRect with { Y = restingRect.Y + slidePixels };
+        var rect = TranslateSlide(restingRect, slidePixels);
         _ = DisplayService.MoveWindowToPixelRect(Handle, rect);
     }
 
     /// <summary>内容滑出方向：底部 Dock 向下 +1，顶部 Dock 向上 −1。</summary>
     private int SlideOutDirection()
-        => Settings.Placement == DockPlacement.TopCenter ? -1 : 1;
+        => Settings.Placement is DockPlacement.TopCenter or DockPlacement.LeftCenter ? -1 : 1;
+
+    private PixelRect TranslateSlide(PixelRect rect, int offset) => IsVertical
+        ? rect with { X = rect.X + offset }
+        : rect with { Y = rect.Y + offset };
 
     /// <summary>内容完全隐藏所需的物理像素偏移，窗口 HWND 本身始终留在主屏内。</summary>
     private static int SlideOutDistancePixels(PixelRect restingRect, PixelRect displayBounds, DockPlacement placement)
     {
-        var distanceToDisplayEdge = placement == DockPlacement.TopCenter
-            ? restingRect.Bottom - displayBounds.Y
-            : displayBounds.Bottom - restingRect.Y;
+        var distanceToDisplayEdge = placement switch
+        {
+            DockPlacement.LeftCenter => restingRect.Right - displayBounds.X,
+            DockPlacement.RightCenter => displayBounds.Right - restingRect.X,
+            DockPlacement.TopCenter => restingRect.Bottom - displayBounds.Y,
+            _ => displayBounds.Bottom - restingRect.Y,
+        };
 
         // Dock 靠工作区边缘停靠，工作区与显示器边缘之间可能有任务栏；再多移两像素，
         // 避免物理像素取整或窗口表面边界留下细线。
@@ -1483,7 +1564,7 @@ public partial class DockWindow : GlassWindow
             _edgeRevealedDuringSuppression = fullscreen || covered;
             _autoHide.ForceShown(now);
         }
-        else if (fullscreen || covered)
+        else if (!IsFixedDesktopLayer && (fullscreen || covered))
         {
             if (_revealLocked)
             {
@@ -1529,7 +1610,7 @@ public partial class DockWindow : GlassWindow
     private PixelRect GetVisibleDockRect()
     {
         var slidePixels = (int)Math.Round(_slideOffsetPixels * SlideOutDirection(), MidpointRounding.AwayFromZero);
-        var translated = _restingRect with { Y = _restingRect.Y + slidePixels };
+        var translated = TranslateSlide(_restingRect, slidePixels);
         if (PrimaryDisplaySession is null) return translated;
         var left = Math.Max(_restingRect.X, translated.X);
         var top = Math.Max(_restingRect.Y, translated.Y);
@@ -1569,6 +1650,8 @@ public partial class DockWindow : GlassWindow
 
     protected override void OnClosed(EventArgs e)
     {
+        StopNativeForegroundExperiment();
+        CloseForegroundSource();
         _frameTimer?.Stop();
         _failureNoticeTimer?.Stop();
         if (_dockSettings is not null)

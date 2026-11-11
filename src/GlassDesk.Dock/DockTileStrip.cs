@@ -61,11 +61,22 @@ public sealed class DockTileStrip : Border
 
     private readonly List<DockTileModel> _models = [];
     private readonly List<Border> _tiles = [];
+    private readonly List<RadialGradientBrush> _pressGlows = [];
 
     private readonly DockRenderLoop _animationLoop;
+    internal bool IsForegroundAnimationActive=>_animationLoop.IsActive;
+    internal void UseForegroundFrames(Action? request)=>_animationLoop.UseExternalFrames(request);
+    internal void AdvanceForegroundFrame()=>_animationLoop.AdvanceExternalFrame();
     private bool _pointerActive;
     private double _pointerPosition = double.NaN;
     private int _hoveredTileIndex = -1;
+    private int _pressedTileIndex = -1;
+    private double[] _pressScale = [];
+    private double[] _pressVelocity = [];
+    private double[] _pressGlow = [];
+
+    private bool _vertical;
+    private double Along(Point point) => _vertical ? point.Y : point.X;
 
     private double _iconSize = 48;
     private double _spacing = 8;
@@ -95,6 +106,28 @@ public sealed class DockTileStrip : Border
     internal bool IsDragging => _dragActive;
     private int _dragStartIndex = -1;
 
+    // ---- 长按拖拽（长按 350ms 后图标跟随鼠标，约束在 Dock 栏内） ----
+    private System.Windows.Threading.DispatcherTimer? _pressTimer;
+    private Border? _pressTile;
+    private Point _pressGrabPoint;
+    private bool _longPressDrag;
+    private Border? _dragGhost;
+    private TranslateTransform? _dragGhostMotion;
+    private string? _dragGhostEntryId;
+    private readonly Canvas _dragOverlay;
+
+    /// <summary>幽灵实际所在的画布；宿主要求时是窗口级画布，否则退回本条自己的覆盖层。</summary>
+    private Canvas? _ghostLayer;
+
+    /// <summary>按下时鼠标在幽灵内部的偏移，跟手时用它抵消，图标才不会跳到指针左上角。</summary>
+    private Point _ghostGrab;
+
+    /// <summary>
+    /// 长按拖拽时幽灵所在的画布。宿主设成窗口级画布，图标才能沿整条 Dock 跟随鼠标；
+    /// 不设则退回本条内部的覆盖层（只在本条范围内移动）。
+    /// </summary>
+    internal Canvas? DragOverlay { get; set; }
+
     /// <summary>栏内是否收到过本次拖拽的 Drop（顺序已在那一刻提交）。</summary>
     private bool _droppedInStrip;
 
@@ -115,7 +148,7 @@ public sealed class DockTileStrip : Border
     private TileGeometry[] _paintedGeometry = [];
     private TileGeometry[] _targetGeometry = [];
     private int[] _paintOrder = [];
-    private readonly IComparer<int> _paintOrderComparer;
+    private readonly Comparer<int> _paintOrderComparer;
 
     /// <summary>注入排序状态机并启用内部拖拽。</summary>
     public void SetReorderModel(DockReorderModel? reorder)
@@ -176,11 +209,16 @@ public sealed class DockTileStrip : Border
         // Esc 取消的记录点：WPF 只对发起拖拽的元素触发这个事件，
         // 而 DoDragDrop 的源就是这个控件。
         AddHandler(DragDrop.QueryContinueDragEvent, new QueryContinueDragEventHandler(OnQueryContinueDrag));
+        AddHandler(Mouse.PreviewMouseUpEvent, new MouseButtonEventHandler(OnPreviewMouseUp), true);
+        AddHandler(Keyboard.PreviewKeyDownEvent, new KeyEventHandler(OnPreviewKeyDown), true);
+
+        _dragOverlay = new Canvas { Background = Brushes.Transparent, IsHitTestVisible = false };
 
         var overlay = new Grid { Background = Brushes.Transparent };
         _ = overlay.Children.Add(_scroller);
         _ = overlay.Children.Add(_leadingFade);
         _ = overlay.Children.Add(_trailingFade);
+        _ = overlay.Children.Add(_dragOverlay);
 
         Child = overlay;
 
@@ -188,6 +226,10 @@ public sealed class DockTileStrip : Border
         Unloaded += (_, _) => ResetHover();
         IsVisibleChanged += (_, e) => { if (e.NewValue is false) ResetHover(); };
     }
+
+    /// <summary>Versions content/layout rebuilds for the opt-in retained source.
+    /// Pose updates stay in the existing actual visual tree.</summary>
+    public ulong ForegroundDrawingVersion {get;private set;}
 
     /// <summary>
     /// 整行重建。磁贴集合变化时调用；尺寸设置走 <see cref="SetMetrics"/>。
@@ -199,7 +241,7 @@ public sealed class DockTileStrip : Border
     /// </remarks>
     public void SetTiles(IReadOnlyList<DockTileModel> tiles)
     {
-        ArgumentNullException.ThrowIfNull(tiles);
+        ArgumentNullException.ThrowIfNull(tiles);ForegroundDrawingVersion++;
 
         _models.Clear();
         _models.AddRange(tiles);
@@ -220,6 +262,7 @@ public sealed class DockTileStrip : Border
 
         _canvas.Children.Clear();
         _tiles.Clear();
+        _pressGlows.Clear();
 
         for (var index = 0; index < _models.Count; index++)
         {
@@ -236,23 +279,44 @@ public sealed class DockTileStrip : Border
         _pointerActive = false;
         _pointerPosition = double.NaN;
         _hoveredTileIndex = -1;
+        _pressedTileIndex = -1;
+        _pressScale = Enumerable.Repeat(1.0, _tiles.Count).ToArray();
+        _pressVelocity = new double[_tiles.Count];
+        _pressGlow = new double[_tiles.Count];
         UpdateTileLayout();
         PaintFrame(null);
     }
 
     /// <summary>应用尺寸设置并重排。滚动封顶也在这里生效。</summary>
-    public void SetMetrics(double iconSize, double spacing, double peak, double verticalPadding, double maxContentWidth)
+    public void SetMetrics(double iconSize, double spacing, double peak, double verticalPadding, double maxContentWidth, bool vertical = false)
     {
+        var oldMetrics=(_iconSize,_spacing,_peak,_verticalPadding,_maxContentWidth);
         _iconSize = Math.Max(1, iconSize);
         _spacing = Math.Max(0, spacing);
         _peak = Math.Max(1, peak);
         _verticalPadding = Math.Max(0, verticalPadding);
         _maxContentWidth = Math.Max(0, maxContentWidth);
+        if(oldMetrics!=(_iconSize,_spacing,_peak,_verticalPadding,_maxContentWidth))ForegroundDrawingVersion++;
 
         // 封顶必须落到**实际布局**上，否则视口会随内容无限变宽：
         // 磁贴只会被窗口裁掉、滚不动也点不到。这里把上限设在控件自身的 MaxWidth 上，
         // 内部的 ScrollViewer 因此拿到有限视口，横向滚动条（隐藏样式）才真正工作。
-        MaxWidth = _maxContentWidth > 0 ? _maxContentWidth : double.PositiveInfinity;
+        if (_vertical != vertical)
+        {
+            _vertical = vertical;
+            _pointerActive = false;
+            ForegroundDrawingVersion++;
+            ScrollToHorizontalOffset(0);
+        }
+        var limit = _maxContentWidth > 0 ? _maxContentWidth : double.PositiveInfinity;
+        MaxWidth = vertical ? double.PositiveInfinity : limit;
+        MaxHeight = vertical ? limit : double.PositiveInfinity;
+        HorizontalAlignment = vertical ? HorizontalAlignment.Center : HorizontalAlignment.Stretch;
+        _canvas.HorizontalAlignment = vertical ? HorizontalAlignment.Center : HorizontalAlignment.Left;
+        _scroller.HorizontalScrollBarVisibility = vertical ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Hidden;
+        _scroller.VerticalScrollBarVisibility = vertical ? ScrollBarVisibility.Hidden : ScrollBarVisibility.Disabled;
+        ConfigureFade(_leadingFade, true);
+        ConfigureFade(_trailingFade, false);
 
         UpdateTileLayout();
         PaintFrame(CurrentPointerOrNull());
@@ -294,6 +358,9 @@ public sealed class DockTileStrip : Border
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Opacity = model.IsMissing ? 0.4 : 1,
             };
+            // Fractional Dock sizes and hover scales need area filtering. The
+            // default linear mode drops partially covered pixels on icon edges.
+            RenderOptions.SetBitmapScalingMode(icon, BitmapScalingMode.HighQuality);
             Bind(icon, Image.WidthProperty, model, nameof(DockTileModel.IconSize));
             Bind(icon, Image.HeightProperty, model, nameof(DockTileModel.IconSize));
             body = icon;
@@ -317,19 +384,36 @@ public sealed class DockTileStrip : Border
         System.Windows.Automation.AutomationProperties.SetName(body, model.DisplayName);
         System.Windows.Automation.AutomationProperties.SetAutomationId(body, "dock-tile:" + model.EntryId);
 
-        var dot = new System.Windows.Shapes.Ellipse
+        var dot = new Border
         {
-            Width = 5,
             Height = 5,
+            CornerRadius = new CornerRadius(2.5),
             HorizontalAlignment = HorizontalAlignment.Center,
             Margin = new Thickness(0, 2, 0, 0),
         };
-        Bind(dot, System.Windows.Shapes.Shape.FillProperty, model, nameof(DockTileModel.DotBrush));
+        Bind(dot, WidthProperty, model, nameof(DockTileModel.IndicatorWidth));
+        Bind(dot, BackgroundProperty, model, nameof(DockTileModel.IndicatorBrush));
         Bind(dot, VisibilityProperty, model, nameof(DockTileModel.RunningVisibility));
 
         var content = new StackPanel();
         _ = content.Children.Add(body);
         _ = content.Children.Add(dot);
+
+        var pressGlow = new RadialGradientBrush
+        {
+            Center = new Point(.5, .48),
+            GradientOrigin = new Point(.5, .48),
+            RadiusX = .72,
+            RadiusY = .72,
+            Opacity = 0,
+            GradientStops = new GradientStopCollection
+            {
+                new(Color.FromArgb(75, 255, 255, 255), 0),
+                new(Color.FromArgb(24, 255, 255, 255), .55),
+                new(Colors.Transparent, 1),
+            },
+        };
+        _pressGlows.Add(pressGlow);
 
         var tile = new Border
         {
@@ -337,7 +421,7 @@ public sealed class DockTileStrip : Border
             RenderTransform = new ScaleTransform(1, 1),
             RenderTransformOrigin = new Point(0.5, 0.5),
             Cursor = Cursors.Hand,
-            Background = Brushes.Transparent,
+            Background = pressGlow,
             ToolTip = model.ToolTipText,
             DataContext = model,
         };
@@ -354,21 +438,60 @@ public sealed class DockTileStrip : Border
         return tile;
     }
 
-    /// <summary>按下磁贴：记录起点与条目，等待移动阈值后才真正起拖。</summary>
+    /// <summary>按下磁贴：记录起点与条目，启动长按计时器。</summary>
     private void OnTileMouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not Border { DataContext: DockTileModel model })
+        if (sender is not Border { DataContext: DockTileModel model } tile)
         {
             return;
         }
 
         _pressedEntryId = model.EntryId;
         _pressPosition = e.GetPosition(this);
+        _pressedTileIndex = _models.FindIndex(item => item.EntryId == model.EntryId);
+        EnsureAnimating();
+        _pressTile = tile;
+        _pressGrabPoint = e.GetPosition(tile);
+
+        _pressTimer?.Stop();
+        _pressTimer = new System.Windows.Threading.DispatcherTimer(
+            System.Windows.Threading.DispatcherPriority.Input, Dispatcher)
+        { Interval = TimeSpan.FromMilliseconds(350) };
+        _pressTimer.Tick += (_, _) =>
+        {
+            _pressTimer?.Stop();
+            _pressTimer = null;
+            if (_pressedEntryId is not null && _pressTile is not null
+                && Mouse.LeftButton == MouseButtonState.Pressed)
+                StartLongPressDrag(_pressTile);
+        };
+        _pressTimer.Start();
     }
 
-    /// <summary>按住并移动超过阈值 → 进入拖放模态循环（阻塞到松手/取消）。</summary>
+    /// <summary>
+    /// 按住并移动：
+    /// - 计时器尚未触发时移动超过 4px → 取消计时器，进入原有 OLE 拖放；
+    /// - 已进入长按拖拽模式 → 更新幽灵位置与排序预览。
+    /// </summary>
     private void OnTileMouseMove(object sender, MouseEventArgs e)
     {
+        if (_longPressDrag)
+        {
+            UpdateLongPressDrag();
+            return;
+        }
+
+        if (_pressTimer is not null && _pressedEntryId is not null)
+        {
+            var position = e.GetPosition(this);
+            if ((position - _pressPosition).Length >= 4)
+            {
+                _pressTimer.Stop();
+                _pressTimer = null;
+                _pressTile = null;
+            }
+        }
+
         if (_pressedEntryId is null || _dragActive
             || e.LeftButton != MouseButtonState.Pressed
             || _reorder is null)
@@ -376,15 +499,15 @@ public sealed class DockTileStrip : Border
             return;
         }
 
-        var position = e.GetPosition(this);
-        var distance = (position - _pressPosition).Length;
-
+        var distance = (e.GetPosition(this) - _pressPosition).Length;
         if (distance < 4)
         {
             return;
         }
 
         _dragActive = true;
+        _pressedTileIndex = -1;
+        EnsureAnimating();
         _droppedInStrip = false;
         _dragCancelReason = DragCancelReason.None;
 
@@ -432,7 +555,278 @@ public sealed class DockTileStrip : Border
             _dragActive = false;
             _droppedInStrip = false;
             _pressedEntryId = null;
+            _pressTile = null;
             _dragStartIndex = -1;
+        }
+    }
+
+    // ---- 长按拖拽（长按 350ms 后图标跟随鼠标，约束在 Dock 栏内） ----
+
+    private void StartLongPressDrag(Border tile)
+    {
+        if (_reorder is null || _pressedEntryId is null || _dragActive) return;
+
+        _longPressDrag = true;
+        _dragActive = true;
+        _pressedTileIndex = -1;
+        _droppedInStrip = false;
+        _dragCancelReason = DragCancelReason.None;
+
+        var draggedEntryId = _pressedEntryId;
+        _dragGhostEntryId = draggedEntryId;
+        var candidateIds = ReorderCandidateIds.ToArray();
+        _dragStartIndex = Array.IndexOf(candidateIds, draggedEntryId);
+        _reorder.Begin(candidateIds);
+
+        var layer = DragOverlay ?? _dragOverlay;
+        _ghostLayer = layer;
+        _dragGhost = CreateGhost(tile);
+        layer.Children.Add(_dragGhost);
+
+        // 起点按画布坐标算，并且记下鼠标在幽灵里的偏移：跟手时减掉它，
+        // 图标才会「抓着哪儿就从哪儿起」，而不是跳到指针的左上角。
+        var ghostOrigin = tile.TranslatePoint(new Point(0, 0), layer);
+        _ghostGrab = new Point(_pressGrabPoint.X, _pressGrabPoint.Y);
+        _dragGhostMotion = new TranslateTransform(ghostOrigin.X, ghostOrigin.Y);
+        var transforms = new TransformGroup();
+        transforms.Children.Add(new ScaleTransform(1.12, 1.12));
+        transforms.Children.Add(_dragGhostMotion);
+        _dragGhost.RenderTransform = transforms;
+        _dragGhost.RenderTransformOrigin = new Point(0.5, 0.5);
+
+        tile.Opacity = 0;
+        tile.IsHitTestVisible = false;
+
+        _ = Mouse.Capture(this, CaptureMode.SubTree);
+        _animationLoop.Start();
+    }
+
+    private void UpdateLongPressDrag()
+    {
+        if (_dragGhost is null || _dragGhostMotion is null) return;
+
+        var layer = _ghostLayer ?? _dragOverlay;
+        var ghostW = _dragGhost.Width > 0 ? _dragGhost.Width : _iconSize;
+        var ghostH = _dragGhost.Height > 0 ? _dragGhost.Height : _iconSize;
+
+        var cursor = Mouse.GetPosition(layer);
+        var desiredX = cursor.X - _ghostGrab.X;
+        var desiredY = cursor.Y - _ghostGrab.Y;
+
+        // 约束在画布内：宿主给的是窗口级画布，就等于「整条 Dock 栏」。
+        desiredX = Math.Clamp(desiredX, 0, Math.Max(0, layer.ActualWidth - ghostW));
+        desiredY = Math.Clamp(desiredY, 0, Math.Max(0, layer.ActualHeight - ghostH));
+
+        _dragGhostMotion.X = desiredX;
+        _dragGhostMotion.Y = desiredY;
+
+        // 实时排序预览：幽灵中心换回本条内容坐标，插入边界只认内容坐标。
+        if (_reorder?.IsActive == true && _dragGhostEntryId is not null)
+        {
+            var centerInLayer = new Point(desiredX + ghostW / 2, desiredY + ghostH / 2);
+            var centerInStrip = PointFromScreen(layer.PointToScreen(centerInLayer));
+            var contentX = ToContentX(Along(centerInStrip));
+            var firstCenter = DockMagnification.SlotCenter(0, _iconSize, _spacing, _peak);
+            var targetIndex = (int)Math.Round((contentX - firstCenter) / (_iconSize + _spacing));
+            _reorder.PreviewMove(_dragGhostEntryId, targetIndex);
+            ApplyPreviewOrder();
+        }
+    }
+
+    /// <summary>
+    /// 把排序预览落到画面上：只重排「应用磁贴」这一段，内置入口位置不动。
+    /// 顺序没变就直接返回，避免每帧白算一次布局。
+    /// </summary>
+    private void ApplyPreviewOrder()
+    {
+        if (_reorder is null || AppTileCount < 2)
+        {
+            return;
+        }
+
+        var order = _reorder.Order;
+
+        if (order.Count != AppTileCount)
+        {
+            return;
+        }
+
+        var changed = false;
+
+        for (var index = 0; index < AppTileCount; index++)
+        {
+            if (!string.Equals(_models[index].EntryId, order[index], StringComparison.Ordinal))
+            {
+                changed = true;
+                break;
+            }
+        }
+
+        if (!changed)
+        {
+            return;
+        }
+
+        var pressedId = _pressedTileIndex >= 0 && _pressedTileIndex < _models.Count
+            ? _models[_pressedTileIndex].EntryId : null;
+        var byId = new Dictionary<string, (DockTileModel Model, Border Tile, TileGeometry Geometry,
+            RadialGradientBrush Brush, double PressScale, double Velocity, double Glow)>(AppTileCount, StringComparer.Ordinal);
+
+        for (var index = 0; index < AppTileCount; index++)
+        {
+            byId[_models[index].EntryId] = (_models[index], _tiles[index], _paintedGeometry[index],
+                _pressGlows[index], _pressScale[index], _pressVelocity[index], _pressGlow[index]);
+        }
+
+        for (var index = 0; index < AppTileCount; index++)
+        {
+            if (!byId.TryGetValue(order[index], out var entry))
+            {
+                return;
+            }
+
+            _models[index] = entry.Model;
+            _tiles[index] = entry.Tile;
+            _paintedGeometry[index] = entry.Geometry;
+            _pressGlows[index] = entry.Brush;
+            _pressScale[index] = entry.PressScale;
+            _pressVelocity[index] = entry.Velocity;
+            _pressGlow[index] = entry.Glow;
+        }
+
+        _pressedTileIndex = pressedId is null ? -1 : _models.FindIndex(model => model.EntryId == pressedId);
+        if (ThemeService.Current?.AnimationsEnabled == false)
+        {
+            PaintFrame(CurrentPointerOrNull());
+        }
+        else
+        {
+            PaintGeometry(_paintedGeometry);
+            if (IsVisible) _animationLoop.Start();
+        }
+    }
+
+    private void EndLongPressDrag(bool commit)
+    {
+        if (!_longPressDrag) return;
+
+        var entryId = _dragGhostEntryId;
+        var hadActiveReorder = _reorder?.IsActive == true;
+
+        if (_pressTile is not null)
+        {
+            _pressTile.Opacity = 1;
+            _pressTile.IsHitTestVisible = true;
+        }
+
+        if (_dragGhost is not null)
+        {
+            (_ghostLayer ?? _dragOverlay).Children.Remove(_dragGhost);
+            _dragGhost = null;
+        }
+        _ghostLayer = null;
+        _dragGhostMotion = null;
+        _dragGhostEntryId = null;
+
+        _longPressDrag = false;
+        _dragActive = false;
+        _droppedInStrip = false;
+        _pressedEntryId = null;
+        _pressTile = null;
+        _dragStartIndex = -1;
+        _pressedTileIndex = -1;
+        if (Mouse.Captured == this) Mouse.Capture(null);
+
+        if (commit && hadActiveReorder && entryId is not null && _reorder is not null)
+        {
+            // 预览已经是用户看到的那一版，直接提交；落点不用再算一次。
+            var outcome = _reorder.Commit();
+            if (outcome == ReorderOutcome.SaveFailed)
+            {
+                System.Windows.MessageBox.Show(
+                    "排序没能保存，可能是数据文件暂时写不了。顺序已恢复原样。",
+                    "GlassDesk",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+            ApplyPreviewOrder();
+            ReorderFinished?.Invoke(this, EventArgs.Empty);
+        }
+        else if (hadActiveReorder && _reorder is not null)
+        {
+            _ = _reorder.Cancel();
+            ApplyPreviewOrder();
+            ReorderFinished?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private Border CreateGhost(Border source)
+    {
+        if (source.DataContext is not DockTileModel model) return new Border();
+
+        FrameworkElement body;
+        if (model.Icon is { } iconSource)
+        {
+            body = new Image
+            {
+                Source = iconSource,
+                Stretch = Stretch.Uniform,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Width = model.IconSize,
+                Height = model.IconSize,
+            };
+        }
+        else
+        {
+            body = new TextBlock
+            {
+                Text = model.Glyph ?? "?",
+                FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                FontSize = model.IconSize,
+            };
+        }
+
+        var ghost = new Border
+        {
+            Width = source.ActualWidth > 0 ? source.ActualWidth : _iconSize,
+            Height = source.ActualHeight > 0 ? source.ActualHeight : _iconSize + 12,
+            Background = Brushes.Transparent,
+            Child = body,
+            IsHitTestVisible = false,
+        };
+
+        ghost.Effect = new System.Windows.Media.Effects.DropShadowEffect
+        {
+            BlurRadius = 14,
+            ShadowDepth = 5,
+            Opacity = 0.28,
+        };
+
+        return ghost;
+    }
+
+    private void OnPreviewMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_longPressDrag && e.ChangedButton == MouseButton.Left)
+        {
+            e.Handled = true;
+            UpdateLongPressDrag();
+            EndLongPressDrag(commit: true);
+        }
+        _pressTimer?.Stop();
+        _pressTimer = null;
+        _pressedEntryId = null;
+        _pressedTileIndex = -1;
+    }
+
+    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (_longPressDrag && e.Key == Key.Escape)
+        {
+            e.Handled = true;
+            EndLongPressDrag(commit: false);
         }
     }
 
@@ -569,7 +963,7 @@ public sealed class DockTileStrip : Border
         }
 
         // OLE DragOver/Drop 参数携带的是本次事件的目标坐标；滚动偏移只加一次。
-        var viewportX = e.GetPosition(_scroller).X;
+        var viewportX = Along(e.GetPosition(_scroller));
         if (double.IsNaN(viewportX))
         {
             return;
@@ -578,6 +972,7 @@ public sealed class DockTileStrip : Border
         var insertionIndex = IndexForInsert(ToContentX(viewportX));
         var targetIndex = insertionIndex > _dragStartIndex ? insertionIndex - 1 : insertionIndex;
         _reorder.PreviewMove(entryId, targetIndex);
+        ApplyPreviewOrder();
     }
 
     private bool IsInternalTileDrag(IDataObject data, out string entryId)
@@ -626,6 +1021,9 @@ public sealed class DockTileStrip : Border
 
     private void OnTileMouseUp(object sender, MouseButtonEventArgs e)
     {
+        if (_longPressDrag || _dragActive || e.Handled) return;
+        _pressedTileIndex = -1;
+        EnsureAnimating();
         // 命中不以 sender 为准，也不在这里重算几何：用**最后一次绘制帧**做判定
         // （视觉即所得）。重算会在动画中途与屏幕上的画面分叉。
         // 换算走「视口坐标 → 内容坐标」这一条路（只加一次偏移）。
@@ -657,6 +1055,12 @@ public sealed class DockTileStrip : Border
     {
         base.OnMouseMove(e);
 
+        if (_longPressDrag)
+        {
+            UpdateLongPressDrag();
+            return;
+        }
+
         _pointerActive = true;
 
         // 目标位置先记录，插值交给帧循环——鼠标事件风暴不再每条都触发重排。
@@ -675,13 +1079,19 @@ public sealed class DockTileStrip : Border
         NotifyPointerLeft();
     }
 
+    protected override void OnLostMouseCapture(MouseEventArgs e)
+    {
+        base.OnLostMouseCapture(e);
+        if (_longPressDrag && !IsMouseCaptureWithin) EndLongPressDrag(commit: false);
+    }
+
     protected override void OnMouseWheel(MouseWheelEventArgs e)
     {
         base.OnMouseWheel(e);
 
         if (CanScroll)
         {
-            _scroller.ScrollToHorizontalOffset(_scroller.HorizontalOffset - e.Delta);
+            ScrollToHorizontalOffset(HorizontalOffset - e.Delta);
             e.Handled = true;
         }
     }
@@ -701,7 +1111,7 @@ public sealed class DockTileStrip : Border
         // 相对本控件（= 视口）取坐标，不相对画布。
         var position = Mouse.GetPosition(this);
 
-        return double.IsNaN(position.X) ? null : position.X;
+        return double.IsNaN(Along(position)) ? null : Along(position);
     }
 
     /// <summary>指针在滚动画布内容坐标系内的位置，已包含实际滚动变换。</summary>
@@ -710,7 +1120,7 @@ public sealed class DockTileStrip : Border
         // 画布自身的坐标变换已经反映 ScrollViewer 偏移；这里不能再额外加偏移。
         var position = Mouse.GetPosition(_canvas);
 
-        return double.IsNaN(position.X) ? null : position.X;
+        return double.IsNaN(Along(position)) ? null : Along(position);
     }
 
     /// <summary>
@@ -720,7 +1130,7 @@ public sealed class DockTileStrip : Border
     /// 输入必须是视口坐标。相对画布读到的位置已经是内容坐标，不要再经过这里——
     /// 那会把偏移加两遍（见 <see cref="PointerViewportPosition"/>）。
     /// </remarks>
-    public double ToContentX(double viewportX) => viewportX + _scroller.HorizontalOffset;
+    public double ToContentX(double viewportX) => viewportX + HorizontalOffset;
 
     /// <summary>
     /// 用<strong>视口内</strong>的坐标解析命中（滚动后仍正确）。
@@ -732,16 +1142,20 @@ public sealed class DockTileStrip : Border
     public int ResolveHitAtViewportX(double viewportX) => ResolveHit(ToContentX(viewportX));
 
     /// <summary>滚动到指定横向偏移（DIP）。诊断与测试用。</summary>
-    public void ScrollToHorizontalOffset(double offset) => _scroller.ScrollToHorizontalOffset(offset);
+    public void ScrollToHorizontalOffset(double offset)
+    {
+        if (_vertical) _scroller.ScrollToVerticalOffset(offset);
+        else _scroller.ScrollToHorizontalOffset(offset);
+    }
 
     /// <summary>当前横向滚动偏移（DIP）。诊断与测试用。</summary>
-    public double HorizontalOffset => _scroller.HorizontalOffset;
+    public double HorizontalOffset => _vertical ? _scroller.VerticalOffset : _scroller.HorizontalOffset;
 
     /// <summary>当前视口宽度（DIP）。诊断与测试用。</summary>
-    public double ViewportWidth => _scroller.ViewportWidth;
+    public double ViewportWidth => _vertical ? _scroller.ViewportHeight : _scroller.ViewportWidth;
 
     /// <summary>滚到最右端。诊断与测试用。</summary>
-    public void ScrollToEnd() => _scroller.ScrollToRightEnd();
+    public void ScrollToEnd() => ScrollToHorizontalOffset(double.PositiveInfinity);
 
     private void EnsureAnimating()
     {
@@ -752,15 +1166,29 @@ public sealed class DockTileStrip : Border
     /// <summary>动画帧：所有磁贴同时追随当前指针对应的目标缩放，全部到位后停帧。</summary>
     private bool OnFrame(double deltaSeconds)
     {
+        if (_longPressDrag)
+        {
+            if (Keyboard.IsKeyDown(Key.Escape))
+            {
+                _dragCancelReason = DragCancelReason.Escape;
+                EndLongPressDrag(commit: false);
+            }
+            else if (Mouse.LeftButton != MouseButtonState.Pressed)
+            {
+                EndLongPressDrag(commit: true);
+            }
+            else UpdateLongPressDrag();
+        }
         var targetPointer = CurrentPointerOrNull();
         // Resolve the latest pointer once per frame, rather than for every queued mouse event.
         _hoveredTileIndex = targetPointer is { } position ? FindHoveredTile(position) : -1;
         if (ThemeService.Current?.AnimationsEnabled == false)
         {
+            SnapPressFeedback();
             PaintFrame(targetPointer);
-            return true;
+            return !_longPressDrag;
         }
-        return AnimateFrame(targetPointer, deltaSeconds);
+        return AnimateFrame(targetPointer, deltaSeconds) && !_longPressDrag;
     }
 
     private void ResetHover()
@@ -770,6 +1198,14 @@ public sealed class DockTileStrip : Border
         _pointerPosition = double.NaN;
         _hoveredTileIndex = -1;
         PaintFrame(null);
+        if (_longPressDrag)
+        {
+            EndLongPressDrag(commit: false);
+        }
+        _pressTimer?.Stop();
+        _pressTimer = null;
+        _pressTile = null;
+        _pressedEntryId = null;
     }
 
     /// <summary>
@@ -792,26 +1228,82 @@ public sealed class DockTileStrip : Border
         DockMagnification.ComputeInto(targets, _iconSize, _spacing, _peak, pointerPosition);
         ApplyHoveredPeak(targets, pointerPosition);
         var geometry = _paintedGeometry;
-        var allSettled = true;
+        var allSettled = AdvancePressFeedback(deltaSeconds);
 
         for (var index = 0; index < targets.Length; index++)
         {
-            var currentScale = _tiles[index].RenderTransform is ScaleTransform transform
-                ? transform.ScaleX
-                : 1.0;
+            var currentScale = geometry[index].Scale;
             var targetScale = targets[index].Scale;
             var nextScale = DockHoverScale.Advance(currentScale, targetScale, deltaSeconds);
+            var nextCenter = DockHoverScale.Advance(geometry[index].Center, targets[index].Center, deltaSeconds);
 
-            if (nextScale != targetScale)
+            if (nextScale != targetScale || nextCenter != targets[index].Center)
             {
                 allSettled = false;
             }
 
-            geometry[index] = new TileGeometry(targets[index].Center, nextScale);
+            geometry[index] = new TileGeometry(nextCenter, nextScale);
         }
 
         PaintGeometry(geometry);
         return allSettled;
+    }
+
+    /// <summary>给按下的图标一个短促的凝胶式压缩；松开时欠阻尼回弹。</summary>
+    private bool AdvancePressFeedback(double deltaSeconds)
+    {
+        if (_pressScale.Length != _tiles.Count) return true;
+        var seconds = Math.Clamp(deltaSeconds, 0, .05);
+        var allSettled = true;
+
+        for (var index = 0; index < _pressScale.Length; index++)
+        {
+            var target = index == _pressedTileIndex ? .94 : 1.0;
+            var displacement = _pressScale[index] - target;
+            var velocity = _pressVelocity[index];
+            const double frequency = 22;
+            const double damping = .68;
+            var dampedFrequency = frequency * Math.Sqrt(1 - damping * damping);
+            var decay = Math.Exp(-damping * frequency * seconds);
+            var sine = Math.Sin(dampedFrequency * seconds);
+            var cosine = Math.Cos(dampedFrequency * seconds);
+            var coefficient = (velocity + damping * frequency * displacement) / dampedFrequency;
+            var wave = displacement * cosine + coefficient * sine;
+            var next = target + decay * wave;
+            var nextVelocity = decay * (dampedFrequency * (-displacement * sine + coefficient * cosine)
+                - damping * frequency * wave);
+
+            if (Math.Abs(next - target) < .0005 && Math.Abs(nextVelocity) < .01)
+            {
+                next = target;
+                nextVelocity = 0;
+            }
+            else
+            {
+                allSettled = false;
+            }
+
+            _pressScale[index] = Math.Clamp(next, .9, 1.04);
+            _pressVelocity[index] = nextVelocity;
+            var glowTarget = index == _pressedTileIndex ? 1.0 : 0.0;
+            _pressGlow[index] += (glowTarget - _pressGlow[index]) * (1 - Math.Exp(-18 * seconds));
+            if (Math.Abs(_pressGlow[index] - glowTarget) < .005) _pressGlow[index] = glowTarget;
+            else allSettled = false;
+            if (index < _pressGlows.Count) _pressGlows[index].Opacity = .46 * _pressGlow[index];
+        }
+
+        return allSettled;
+    }
+
+    private void SnapPressFeedback()
+    {
+        for (var index = 0; index < _pressScale.Length; index++)
+        {
+            _pressScale[index] = index == _pressedTileIndex ? .94 : 1;
+            _pressVelocity[index] = 0;
+            _pressGlow[index] = 0;
+            if (index < _pressGlows.Count) _pressGlows[index].Opacity = 0;
+        }
     }
 
     private void ApplyHoveredPeak(TileGeometry[] geometry, double? pointerPosition)
@@ -854,13 +1346,15 @@ public sealed class DockTileStrip : Border
             _paintOrder = Enumerable.Range(0, count).ToArray();
         }
         DockMagnification.ComputeInto(_paintedGeometry, _iconSize, _spacing, _peak, null);
-        _canvas.Width = DockMagnification.RequiredLength(count, _iconSize, _spacing, _peak);
-        _canvas.Height = RequiredThickness;
-        var halfOverhangThickness = (_canvas.Height - _iconSize) / 2;
+        _canvas.Width = _vertical ? RequiredThickness : RequiredLength;
+        _canvas.Height = _vertical ? RequiredLength : RequiredThickness;
+        var halfOverhangThickness = (RequiredThickness - _iconSize) / 2;
         for (var index = 0; index < count; index++)
         {
-            Canvas.SetLeft(_tiles[index], _paintedGeometry[index].Center - _iconSize / 2);
-            Canvas.SetTop(_tiles[index], halfOverhangThickness);
+            var start = _paintedGeometry[index].Center - _iconSize / 2;
+            _tiles[index].Width = _vertical ? _iconSize : double.NaN;
+            Canvas.SetLeft(_tiles[index], _vertical ? halfOverhangThickness : start);
+            Canvas.SetTop(_tiles[index], _vertical ? start : halfOverhangThickness);
         }
         UpdateGroupDivider(_paintedGeometry);
         UpdateFades();
@@ -870,13 +1364,25 @@ public sealed class DockTileStrip : Border
     {
         // z 序取绘制与命中共同的那一份：缩放大的在上，重叠处可见者即被点中者。
         var order = _paintOrder;
-        Array.Sort(order, _paintOrderComparer);
+        // 绝大多数动画帧的相对缩放次序没有变化（例如鼠标停在同一枚图标上时）。
+        // 这时保留上一帧已排好的顺序，避免每个合成帧都做 O(n log n) 排序；缩放
+        // 曲线让两枚图标跨越时，下方检查会立即发现逆序并恢复完整排序。
+        if (!IsPaintOrderCurrent(order))
+        {
+            Array.Sort(order, _paintOrderComparer);
+        }
 
         for (var rank = 0; rank < order.Length; rank++)
         {
             var index = order[rank];
             var tile = _tiles[index];
-            var scale = geometry[index].Scale;
+            var scale = geometry[index].Scale * (index < _pressScale.Length ? _pressScale[index] : 1);
+            var left = geometry[index].Center - _iconSize / 2;
+            if (_vertical)
+            {
+                if (Canvas.GetTop(tile) != left) Canvas.SetTop(tile, left);
+            }
+            else if (Canvas.GetLeft(tile) != left) Canvas.SetLeft(tile, left);
 
             // order 的第 0 项是「最上层」，而 ZIndex 越大越靠上——所以是**取反**赋值。
             // 早先写成 Panel.SetZIndex(tile, rank) 时，递增的 rank 把最小的磁贴放到了最上层，
@@ -891,6 +1397,27 @@ public sealed class DockTileStrip : Border
             }
         }
 
+    }
+
+    /// <summary>
+    /// 当前绘制顺序是否仍符合最新几何的「大缩放在上」规则。
+    /// </summary>
+    /// <remarks>
+    /// 只检查相邻项即可验证整个已排序数组。该检查是 O(n)，而完整排序是
+    /// O(n log n)；它让静止悬停及缓动收尾阶段不必反复排序，同时保留原有
+    /// <see cref="DockMagnification.CompareDrawOrder"/> 作为唯一排序规则。
+    /// </remarks>
+    private bool IsPaintOrderCurrent(int[] order)
+    {
+        for (var index = 1; index < order.Length; index++)
+        {
+            if (_paintOrderComparer.Compare(order[index - 1], order[index]) > 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -911,9 +1438,11 @@ public sealed class DockTileStrip : Border
         var lastAppCenter = geometry[AppTileCount - 1].Center;
         var firstEntryCenter = geometry[AppTileCount].Center;
 
-        Canvas.SetLeft(_groupDivider, (lastAppCenter + firstEntryCenter) / 2);
-        Canvas.SetTop(_groupDivider, _iconSize * 0.15);
-        _groupDivider.Height = _iconSize * 0.7;
+        var center = (lastAppCenter + firstEntryCenter) / 2;
+        Canvas.SetLeft(_groupDivider, _vertical ? _iconSize * 0.15 : center);
+        Canvas.SetTop(_groupDivider, _vertical ? center : _iconSize * 0.15);
+        _groupDivider.Width = _vertical ? _iconSize * 0.7 : 1;
+        _groupDivider.Height = _vertical ? 1 : _iconSize * 0.7;
         _groupDivider.Visibility = Visibility.Visible;
 
         // 分隔线不参与命中的重叠归属（它不可点击），层级压在磁贴之下即可。
@@ -968,14 +1497,28 @@ public sealed class DockTileStrip : Border
     {
         var scrollable = CanScroll;
 
-        _leadingFade.Visibility = scrollable && _scroller.HorizontalOffset > 1
+        _leadingFade.Visibility = scrollable && HorizontalOffset > 1
             ? Visibility.Visible
             : Visibility.Collapsed;
 
-        var maxOffset = Math.Max(0, _scroller.ExtentWidth - _scroller.ViewportWidth);
-        _trailingFade.Visibility = scrollable && _scroller.HorizontalOffset < maxOffset - 1
+        var maxOffset = Math.Max(0, (_vertical ? _scroller.ExtentHeight : _scroller.ExtentWidth) - ViewportWidth);
+        _trailingFade.Visibility = scrollable && HorizontalOffset < maxOffset - 1
             ? Visibility.Visible
             : Visibility.Collapsed;
+    }
+
+    private void ConfigureFade(Border fade, bool leading)
+    {
+        fade.Width = _vertical ? double.NaN : 28;
+        fade.Height = _vertical ? 28 : double.NaN;
+        fade.HorizontalAlignment = _vertical ? HorizontalAlignment.Stretch
+            : leading ? HorizontalAlignment.Left : HorizontalAlignment.Right;
+        fade.VerticalAlignment = !_vertical ? VerticalAlignment.Stretch
+            : leading ? VerticalAlignment.Top : VerticalAlignment.Bottom;
+        var gradient = (LinearGradientBrush)fade.Background;
+        var edge = leading ? 0 : 1;
+        gradient.StartPoint = _vertical ? new Point(.5, edge) : new Point(edge, .5);
+        gradient.EndPoint = _vertical ? new Point(.5, 1 - edge) : new Point(1 - edge, .5);
     }
 
     private static Border CreateFade(double direction)

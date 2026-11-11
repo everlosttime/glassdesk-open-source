@@ -76,6 +76,9 @@ function Assert-NoReparsePoints {
 function Assert-NotForbiddenPayloadPath {
     param([string]$Path)
     $segments = $Path.Split('/')
+    if ($Path -match '(?i)\.py[cow]?$' -and $Path -notmatch '^components/battery-engine/') {
+        throw "Forbidden payload Python source: '$Path'."
+    }
     foreach ($segment in $segments) {
         if ($segment -match '^(?i)(\.git|obj|tests?|test-results|sdk|ref|referenceassemblies|src|packages|node_modules)$') {
             throw "Forbidden payload path: '$Path'."
@@ -83,6 +86,39 @@ function Assert-NotForbiddenPayloadPath {
     }
     if ($Path -match '(?i)(\.pdb$|\.cs$|\.csproj$|\.slnx?$|\.props$|\.targets$|\.ps1$|\.psm1$|\.psd1$|\.nupkg$|project\.assets\.json$|\.Tests?\.dll$|\.TestAdapter\.dll$|^testhost|^Microsoft\.TestPlatform|^Microsoft\.CodeCoverage|^Microsoft\.CodeAnalysis|^Microsoft\.Build|^NuGet\.|^dotnet\.exe$|^csc\.dll$|^vbc\.dll$|^MSBuild\.dll$)') {
         throw "Forbidden payload file: '$Path'."
+    }
+}
+
+function Assert-BatteryEnginePayload {
+    param([object]$PayloadManifest, [bool]$Required)
+    $files = Assert-ManifestEntries -Manifest $PayloadManifest -Context 'payload'
+    $prefix = 'components/battery-engine/'
+    $actual = @($files.Keys | Where-Object { $_.StartsWith($prefix) })
+    if ($actual.Count -eq 0 -and -not $Required) { return }
+    $lockPath = Join-Path $PSScriptRoot 'battery-engine.lock.json'
+    if (-not (Test-Path -LiteralPath $lockPath -PathType Leaf)) { throw 'Missing trusted battery engine lock.' }
+    $component = Read-JsonFile -Path $lockPath
+    if ($component.schemaVersion -ne 1 -or $component.upstreamCommit -cne 'bbcb779be4633ecf9183f53409de118dc9cb1fd6') {
+        throw 'Unsupported battery engine lock.'
+    }
+    $approved = Assert-ManifestEntries -Manifest ([pscustomobject]@{files=$component.payloadFiles}) -Context 'battery engine'
+    $manifestName = $prefix + 'component-manifest.json'
+    if (-not $files.ContainsKey($manifestName) -or
+        $files[$manifestName].Length -ne (Get-Item -LiteralPath $lockPath).Length -or
+        $files[$manifestName].Sha256 -ne (Get-Sha256HexFromFile -Path $lockPath)) {
+        throw 'Missing or modified battery engine component manifest.'
+    }
+    foreach ($name in $approved.Keys) {
+        $fullName = $prefix + $name
+        if (-not $files.ContainsKey($fullName) -or $files[$fullName].Length -ne $approved[$name].Length -or
+            $files[$fullName].Sha256 -ne $approved[$name].Sha256) {
+            throw "Missing or modified pinned battery engine payload: '$fullName'."
+        }
+    }
+    foreach ($name in $actual) {
+        if ($name -ne $manifestName -and -not $approved.ContainsKey($name.Substring($prefix.Length))) {
+            throw "Unapproved battery engine payload: '$name'."
+        }
     }
 }
 
@@ -166,10 +202,16 @@ function Assert-RequiredPayloadLicenses {
     param([object]$PayloadManifest)
     $names = @{}
     foreach ($entry in $PayloadManifest.files) { $names[[string]$entry.relativePath.ToLowerInvariant()] = $true }
-    foreach ($required in @('license.txt', 'thirdpartynotices.txt', 'windows-sdk-license.txt', 'inno-setup-license.txt', 'unicode-license.txt', 'third-party-notices.md')) {
+    foreach ($required in @('license.txt', 'dotnet-license.txt', 'thirdpartynotices.txt', 'windows-sdk-license.txt', 'inno-setup-license.txt', 'unicode-license.txt', 'third-party-notices.md')) {
         if (-not $names.ContainsKey($required)) { throw "Missing required payload license or notice: '$required'." }
     }
     if (-not $names.ContainsKey('release-notes.md')) { throw "Missing required release-notes.md from payload." }
+    if ($names.ContainsKey('glassdesk.nearby.dll')) {
+        foreach ($required in @('ASPNETCORE-LICENSE.txt', 'ASPNETCORE-THIRD-PARTY-NOTICES.txt',
+            'Microsoft.AspNetCore.Server.Kestrel.Core.dll', 'Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.dll', 'Microsoft.AspNetCore.Http.dll')) {
+            if (-not $names.ContainsKey($required.ToLowerInvariant())) { throw "Missing Nearby runtime or license: '$required'." }
+        }
+    }
 }
 
 function Assert-DeliveryChecksums {
@@ -245,6 +287,41 @@ try {
     $checksumManifest = Read-JsonFile -Path (Join-Path $root 'SHA256SUMS.json')
     Assert-ReleaseIdentity -Release $release -PayloadManifest $payloadManifest -Toolchain $toolchain -BuildReport $buildReport
     Assert-RequiredPayloadLicenses -PayloadManifest $payloadManifest
+    $requiresBatteryEngine = $release.PSObject.Properties['batteryEngineCompanion'] -and $release.batteryEngineCompanion -eq $true
+    Assert-BatteryEnginePayload -PayloadManifest $payloadManifest -Required ([bool]$requiresBatteryEngine)
+    if ($release.PSObject.Properties['headsetControlCompanion'] -and $release.headsetControlCompanion -eq $true) {
+        $batteryPayload = Assert-ManifestEntries -Manifest $payloadManifest -Context 'payload'
+        foreach ($name in @('headsetcontrol-windows-x86_64.exe', 'headsetcontrol-4.2.0.tar.gz', 'license.txt', 'notice.txt', 'hidapi-0.15.0.tar.gz', 'hidapi-license.txt')) {
+            if (-not $batteryPayload.ContainsKey(('components/headsetcontrol/' + $name))) {
+                throw "Missing HeadsetControl component: '$name'."
+            }
+        }
+        $pinnedHeadsetHashes = @{
+            'components/headsetcontrol/headsetcontrol-windows-x86_64.exe' = '81acae4c083aaa40a2e9c1bce7b3dd9625e74b9d9ee96384bb43b2dff7ff0fa5'
+            'components/headsetcontrol/headsetcontrol-4.2.0.tar.gz' = 'bab9046b33d487730d5d46537811be4036f107e4c44ba3a47293426a038e7da7'
+            'components/headsetcontrol/license.txt' = 'f01e72be1ec09516d50f7b728338ee92cfb3cc36d6efa477cb2fbcbd040d70c5'
+            'components/headsetcontrol/hidapi-0.15.0.tar.gz' = '5d84dec684c27b97b921d2f3b73218cb773cf4ea915caee317ac8fc73cef8136'
+            'components/headsetcontrol/hidapi-license.txt' = '30eb1bef29b46f8ba7ab8b416035dbd93cb034a45481dd97815b944284582cd2'
+        }
+        foreach ($name in $pinnedHeadsetHashes.Keys) {
+            if ($batteryPayload[$name].Sha256 -ne $pinnedHeadsetHashes[$name]) { throw "HeadsetControl asset differs from pinned version: '$name'." }
+        }
+        foreach ($name in @('batterymonitor-license.txt', 'mchose-tray-license.txt', 'rapoo-tray-license.txt', 'compatibility.md')) {
+            if (-not $batteryPayload.ContainsKey(('licenses/peripheral-battery/' + $name))) {
+                throw "Missing peripheral battery attribution: '$name'."
+            }
+        }
+        }
+    if ($release.PSObject.Properties['naiwaCompanion'] -and $release.naiwaCompanion -eq $true) {
+        $payloadFiles = Assert-ManifestEntries -Manifest $payloadManifest -Context 'payload'
+        $expectedNaiwa = @('components/naiwa/glassdesk.naiwa.exe', 'components/naiwa/glassdesk.naiwa.exe.config', 'components/naiwa/license.txt')
+        foreach ($name in $expectedNaiwa) {
+            if (-not $payloadFiles.ContainsKey($name)) { throw "Missing required companion payload: '$name'." }
+        }
+        foreach ($name in $payloadFiles.Keys) {
+            if ($name.StartsWith('components/naiwa/') -and $name -notin $expectedNaiwa) { throw "Unexpected companion payload: '$name'." }
+        }
+    }
     $installerLicense = Get-Item -LiteralPath (Join-Path $root 'INNO-SETUP-LICENSE.txt') -Force
     if ($installerLicense.Length -le 0) { throw 'Inno Setup license file is empty.' }
     Assert-PayloadArchive -ZipPath (Join-Path $root $zipName) -PayloadManifest $payloadManifest

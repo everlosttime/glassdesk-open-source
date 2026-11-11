@@ -61,31 +61,86 @@ internal sealed class GlassBackgroundLayer : IDisposable
     internal CaptureTiming? LastCaptureTiming { get; private set; }
     public static TimeSpan LiveFrameInterval => TimeSpan.FromMilliseconds(16);
     public static TimeSpan TransitionFrameInterval => LiveFrameInterval;
-    private readonly SharedBackdropFeed _compatible = new();
+    private readonly SharedBackdropFeed _compatible;
     private readonly SharedBackdropFeed _wallpaperFeed = new((region, _, trace) =>
         new IsolatedDesktopSceneCapture(region, GlassBackdropSource.Wallpaper, trace));
+    private readonly SharedBackdropFeed _desktopOnlyFeed = new((region, _, trace) =>
+        DesktopSceneCaptureFactory.CreateDesktopOnly(region, trace));
+    private bool _desktopOnly;
     private long _pendingSince;
     private GlassBackgroundFrame? _basic;
     private SamplePixelPool _extensionPool = new();
     private bool _sleeping;
-    internal bool RequiresBasicBackground { get; private set; }
-    internal object InspectPerformance() => new
-    { live = _compatible.InspectPerformance(), wallpaper = _wallpaperFeed.InspectPerformance() };
-
-    public GlassBackgroundFrame? Capture(PixelRect region, int width, int height, double radius, bool allowDesktop)
+    private readonly bool _useOpaqueCaptureFallback;
+    private bool _rejectedWallpaper;
+    private bool _usingLiveCapture;
+    internal GlassBackgroundLayer() : this(WindowsCapabilities.BuildNumber) { }
+    internal GlassBackgroundLayer(int windowsBuild, SharedBackdropFeed? compatible = null)
     {
+        _useOpaqueCaptureFallback = windowsBuild >= 22000;
+        _compatible = compatible ?? new();
+    }
+    internal bool RequiresBasicBackground { get; private set; }
+    internal bool UsesTranslucentCaptureFallback => !_useOpaqueCaptureFallback;
+    internal bool MustDiscardUnverifiedMaterial => _usingLiveCapture && !_useOpaqueCaptureFallback
+        && (_desktopOnly ? _desktopOnlyFeed.Failure is not null
+            : _rejectedWallpaper || _compatible.Failure is not null);
+    internal object InspectPerformance() => new
+    { live = _compatible.InspectPerformance(), wallpaper = _wallpaperFeed.InspectPerformance(),
+        desktopOnly = _desktopOnlyFeed.InspectPerformance(), desktopOnlySelected = _desktopOnly };
+
+    internal void SetAnimationActive(bool active, double? targetHertz = null)
+    {
+        _compatible.SetAnimationActive(active, targetHertz);
+        _wallpaperFeed.SetAnimationActive(active, targetHertz);
+        _desktopOnlyFeed.SetAnimationActive(active, targetHertz);
+    }
+
+    internal void SetInteractionActive(bool active)
+    {
+        _compatible.SetInteractionActive(active);
+        _wallpaperFeed.SetInteractionActive(active);
+        _desktopOnlyFeed.SetInteractionActive(active);
+    }
+
+    public GlassBackgroundFrame? Capture(PixelRect region, int width, int height, double radius, bool allowDesktop,
+        bool desktopOnly = false)
+    {
+        if (_desktopOnly != desktopOnly) { Suspend(); _desktopOnly = desktopOnly; }
+        _usingLiveCapture=allowDesktop;
         if (GlassDesk.UI.BackdropRecovery.RequiresBasicRendering)
         {
             RequiresBasicBackground = true;
-            _compatible.Suspend(); _wallpaperFeed.Suspend(); return Basic(width, height);
+            _compatible.Suspend(); _wallpaperFeed.Suspend(); _desktopOnlyFeed.Suspend(); return Basic(width, height);
         }
+        if (desktopOnly)
+        {
+            _compatible.Suspend(); _wallpaperFeed.Suspend();
+            RequiresBasicBackground = false;
+            if (_desktopOnlyFeed.TryRead(region, width, height, out var desktop) && desktop is not null)
+            {
+                LastCaptureTiming = Describe(desktop);
+                return GlassBackgroundFrame.FromCapture(desktop);
+            }
+            return null; // Await desktop pixels; never fall back to the composed screen.
+        }
+        _desktopOnlyFeed.Suspend();
         if (allowDesktop) _wallpaperFeed.Suspend();
         if (allowDesktop && _compatible.TryRead(region, width, height, out var captured)
             && captured is not null)
         {
-            _pendingSince = 0; RequiresBasicBackground = false;
-            LastCaptureTiming = Describe(captured);
-            return GlassBackgroundFrame.FromCapture(captured);
+            if(_useOpaqueCaptureFallback || captured.Source!=GlassBackdropSource.Wallpaper)
+            {
+                _rejectedWallpaper=false;
+                _pendingSince = 0; RequiresBasicBackground = false;
+                LastCaptureTiming = Describe(captured);
+                return GlassBackgroundFrame.FromCapture(captured);
+            }
+            // Recovery may have sampled the hidden static wallpaper underneath a
+            // dynamic desktop. That is not a validated live scene on Windows 10.
+            // Release its reader lease and use the agreed translucent fallback.
+            captured.Dispose();
+            _rejectedWallpaper=true;
         }
 
         // Tooltips/menus deliberately stop screen capture. Replay only the previous safe
@@ -107,7 +162,11 @@ internal sealed class GlassBackgroundLayer : IDisposable
             // A recoverable worker failure is still a pending replacement. Keep the
             // surface's already validated material until this same deadline expires;
             // retries must not start another deadline or clear a completed texture.
-            RequiresBasicBackground = System.Diagnostics.Stopwatch.GetElapsedTime(_pendingSince) >= TimeSpan.FromSeconds(3);
+            // Win10 may have neither a working offscreen WGC scene nor readable
+            // wallpaper metadata. Expiring a reveal snapshot must then return to
+            // ambient glass, rather than turning the Dock into an opaque black bar.
+            RequiresBasicBackground = _useOpaqueCaptureFallback
+                && System.Diagnostics.Stopwatch.GetElapsedTime(_pendingSince) >= TimeSpan.FromSeconds(3);
             if (!RequiresBasicBackground) return null;
             return Basic(width, height);
         }
@@ -153,18 +212,23 @@ internal sealed class GlassBackgroundLayer : IDisposable
 
     public void Suspend()
     {
+        _rejectedWallpaper=false;
+        SetAnimationActive(false);
         _compatible.Suspend();
         _wallpaperFeed.Suspend();
+        _desktopOnlyFeed.Suspend();
         _pendingSince = 0; RequiresBasicBackground = false;
         LastCaptureTiming = null;
     }
 
     public void SetPerformanceSleeping(bool sleeping)
     {
+        _rejectedWallpaper=false;
         _sleeping = sleeping;
         if (sleeping) { _extensionPool.Dispose(); _extensionPool = new(); }
         _compatible.SetPerformanceSleeping(sleeping);
         _wallpaperFeed.SetPerformanceSleeping(sleeping);
+        _desktopOnlyFeed.SetPerformanceSleeping(sleeping);
         _basic = null;
         LastCaptureTiming = null;
         _pendingSince = 0; RequiresBasicBackground = false;
@@ -175,6 +239,7 @@ internal sealed class GlassBackgroundLayer : IDisposable
         _extensionPool.Dispose();
         _compatible.Dispose();
         _wallpaperFeed.Dispose();
+        _desktopOnlyFeed.Dispose();
         _basic = null;
         LastCaptureTiming = null;
         _pendingSince = 0; RequiresBasicBackground = false;

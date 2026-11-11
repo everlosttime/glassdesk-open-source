@@ -1,0 +1,4292 @@
+{
+  "passed": false,
+  "decision": "inconclusive",
+  "originalIconsVisible": false,
+  "restoredHiddenVisibility": true,
+  "hiddenCompleted": 30,
+  "shownCompleted": 30,
+  "failure": null,
+  "stopwatchFrequency": 10000000,
+  "channelOrder": "B,G,R",
+  "stabilityTolerance": 0,
+  "comparisonTolerance": 2,
+  "minimumSamplesPerCategory": 50,
+  "repetitionThreshold": 3,
+  "repeatStats": [
+    {
+      "iconsVisible": false,
+      "wallpaperRepeatedMismatchPoints": 0,
+      "iconRepeatedMismatchPoints": 0,
+      "maximumRepeatCount": 0
+    },
+    {
+      "iconsVisible": true,
+      "wallpaperRepeatedMismatchPoints": 0,
+      "iconRepeatedMismatchPoints": 0,
+      "maximumRepeatCount": 0
+    }
+  ],
+  "rounds": [
+    {
+      "iconsVisible": false,
+      "round": 1,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:57.3809869+00:00",
+        "StartTicks": 213160695222,
+        "EndTicks": 213161025028,
+        "elapsedMs": 32.9806
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:57.416756+00:00",
+        "StartTicks": 213161052878,
+        "EndTicks": 213161230648,
+        "elapsedMs": 17.777
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:57.4373923+00:00",
+        "StartTicks": 213161259241,
+        "EndTicks": 213161448536,
+        "elapsedMs": 18.9295
+      },
+      "tripletMs": 75.3314,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 2,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:57.5479288+00:00",
+        "StartTicks": 213162364604,
+        "EndTicks": 213162567288,
+        "elapsedMs": 20.2684
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:57.5707275+00:00",
+        "StartTicks": 213162592591,
+        "EndTicks": 213162767760,
+        "elapsedMs": 17.5169
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:57.591221+00:00",
+        "StartTicks": 213162797526,
+        "EndTicks": 213162983105,
+        "elapsedMs": 18.5579
+      },
+      "tripletMs": 61.8501,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 3,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:57.6873795+00:00",
+        "StartTicks": 213163759114,
+        "EndTicks": 213163949790,
+        "elapsedMs": 19.0676
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:57.7093324+00:00",
+        "StartTicks": 213163978640,
+        "EndTicks": 213164183362,
+        "elapsedMs": 20.4722
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:57.7324439+00:00",
+        "StartTicks": 213164209755,
+        "EndTicks": 213164454358,
+        "elapsedMs": 24.4603
+      },
+      "tripletMs": 69.5244,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 4,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:57.8732887+00:00",
+        "StartTicks": 213165618216,
+        "EndTicks": 213165822723,
+        "elapsedMs": 20.4507
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:57.8960912+00:00",
+        "StartTicks": 213165846228,
+        "EndTicks": 213166010803,
+        "elapsedMs": 16.4575
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:57.9154886+00:00",
+        "StartTicks": 213166040201,
+        "EndTicks": 213166247929,
+        "elapsedMs": 20.7728
+      },
+      "tripletMs": 62.9713,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 5,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.0116706+00:00",
+        "StartTicks": 213167002021,
+        "EndTicks": 213167202848,
+        "elapsedMs": 20.0827
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.0343707+00:00",
+        "StartTicks": 213167229023,
+        "EndTicks": 213167443902,
+        "elapsedMs": 21.4879
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.058322+00:00",
+        "StartTicks": 213167468538,
+        "EndTicks": 213167665249,
+        "elapsedMs": 19.6711
+      },
+      "tripletMs": 66.3228,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 6,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.151572+00:00",
+        "StartTicks": 213168401035,
+        "EndTicks": 213168637719,
+        "elapsedMs": 23.6684
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.1783901+00:00",
+        "StartTicks": 213168669219,
+        "EndTicks": 213168864827,
+        "elapsedMs": 19.5608
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.2006803+00:00",
+        "StartTicks": 213168892121,
+        "EndTicks": 213169141384,
+        "elapsedMs": 24.9263
+      },
+      "tripletMs": 74.0349,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 7,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.3372861+00:00",
+        "StartTicks": 213170258176,
+        "EndTicks": 213170454115,
+        "elapsedMs": 19.5939
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.3592822+00:00",
+        "StartTicks": 213170478138,
+        "EndTicks": 213170692319,
+        "elapsedMs": 21.4181
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.3832868+00:00",
+        "StartTicks": 213170718184,
+        "EndTicks": 213170923515,
+        "elapsedMs": 20.5331
+      },
+      "tripletMs": 66.5339,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 8,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.52002+00:00",
+        "StartTicks": 213172085515,
+        "EndTicks": 213172262654,
+        "elapsedMs": 17.7139
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.5390553+00:00",
+        "StartTicks": 213172275868,
+        "EndTicks": 213172468015,
+        "elapsedMs": 19.2147
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.5598064+00:00",
+        "StartTicks": 213172483379,
+        "EndTicks": 213172688737,
+        "elapsedMs": 20.5358
+      },
+      "tripletMs": 60.3222,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 9,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.6593395+00:00",
+        "StartTicks": 213173478711,
+        "EndTicks": 213173696238,
+        "elapsedMs": 21.7527
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.6824209+00:00",
+        "StartTicks": 213173709525,
+        "EndTicks": 213173887782,
+        "elapsedMs": 17.8257
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.7024706+00:00",
+        "StartTicks": 213173910021,
+        "EndTicks": 213174116925,
+        "elapsedMs": 20.6904
+      },
+      "tripletMs": 63.8214,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 10,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.8000258+00:00",
+        "StartTicks": 213174885576,
+        "EndTicks": 213175064951,
+        "elapsedMs": 17.9375
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.8195051+00:00",
+        "StartTicks": 213175080367,
+        "EndTicks": 213175261271,
+        "elapsedMs": 18.0904
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.839257+00:00",
+        "StartTicks": 213175277887,
+        "EndTicks": 213175508689,
+        "elapsedMs": 23.0802
+      },
+      "tripletMs": 62.3113,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 11,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.9687032+00:00",
+        "StartTicks": 213176572348,
+        "EndTicks": 213176773541,
+        "elapsedMs": 20.1193
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:58.9913227+00:00",
+        "StartTicks": 213176798546,
+        "EndTicks": 213176963486,
+        "elapsedMs": 16.494
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.0102799+00:00",
+        "StartTicks": 213176988116,
+        "EndTicks": 213177199005,
+        "elapsedMs": 21.0889
+      },
+      "tripletMs": 62.6657,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 12,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.1394329+00:00",
+        "StartTicks": 213178279646,
+        "EndTicks": 213178482658,
+        "elapsedMs": 20.3012
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.1612327+00:00",
+        "StartTicks": 213178497644,
+        "EndTicks": 213178676924,
+        "elapsedMs": 17.928
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.1806656+00:00",
+        "StartTicks": 213178691973,
+        "EndTicks": 213178910053,
+        "elapsedMs": 21.808
+      },
+      "tripletMs": 63.0407,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 13,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.2783041+00:00",
+        "StartTicks": 213179668358,
+        "EndTicks": 213179858496,
+        "elapsedMs": 19.0138
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.2986758+00:00",
+        "StartTicks": 213179872074,
+        "EndTicks": 213180053188,
+        "elapsedMs": 18.1114
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.3181262+00:00",
+        "StartTicks": 213180066578,
+        "EndTicks": 213180289931,
+        "elapsedMs": 22.3353
+      },
+      "tripletMs": 62.1573,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 14,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.4194482+00:00",
+        "StartTicks": 213181079800,
+        "EndTicks": 213181275575,
+        "elapsedMs": 19.5775
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.4404398+00:00",
+        "StartTicks": 213181289717,
+        "EndTicks": 213181464625,
+        "elapsedMs": 17.4908
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.4593476+00:00",
+        "StartTicks": 213181478794,
+        "EndTicks": 213181700748,
+        "elapsedMs": 22.1954
+      },
+      "tripletMs": 62.0948,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 15,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.5903649+00:00",
+        "StartTicks": 213182788965,
+        "EndTicks": 213182982946,
+        "elapsedMs": 19.3981
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.6111666+00:00",
+        "StartTicks": 213182996985,
+        "EndTicks": 213183171989,
+        "elapsedMs": 17.5004
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.6309613+00:00",
+        "StartTicks": 213183194930,
+        "EndTicks": 213183413401,
+        "elapsedMs": 21.8471
+      },
+      "tripletMs": 62.4436,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 16,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.7598901+00:00",
+        "StartTicks": 213184484216,
+        "EndTicks": 213184695321,
+        "elapsedMs": 21.1105
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.7825+00:00",
+        "StartTicks": 213184710320,
+        "EndTicks": 213184883279,
+        "elapsedMs": 17.2959
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.802395+00:00",
+        "StartTicks": 213184909269,
+        "EndTicks": 213185118693,
+        "elapsedMs": 20.9424
+      },
+      "tripletMs": 63.4477,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 17,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.8990093+00:00",
+        "StartTicks": 213185875409,
+        "EndTicks": 213186063562,
+        "elapsedMs": 18.8153
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.919196+00:00",
+        "StartTicks": 213186077280,
+        "EndTicks": 213186268327,
+        "elapsedMs": 19.1047
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:16:59.9399757+00:00",
+        "StartTicks": 213186285073,
+        "EndTicks": 213186490389,
+        "elapsedMs": 20.5316
+      },
+      "tripletMs": 61.498,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 18,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:00.0376842+00:00",
+        "StartTicks": 213187262158,
+        "EndTicks": 213187452082,
+        "elapsedMs": 18.9924
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:00.0580326+00:00",
+        "StartTicks": 213187465645,
+        "EndTicks": 213187628171,
+        "elapsedMs": 16.2526
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:00.0758677+00:00",
+        "StartTicks": 213187643994,
+        "EndTicks": 213187856635,
+        "elapsedMs": 21.2641
+      },
+      "tripletMs": 59.4477,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 19,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:00.2089183+00:00",
+        "StartTicks": 213188974500,
+        "EndTicks": 213189153717,
+        "elapsedMs": 17.9217
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:00.2292123+00:00",
+        "StartTicks": 213189177440,
+        "EndTicks": 213189337113,
+        "elapsedMs": 15.9673
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:00.2475438+00:00",
+        "StartTicks": 213189360755,
+        "EndTicks": 213189580559,
+        "elapsedMs": 21.9804
+      },
+      "tripletMs": 60.6059,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 20,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:00.3795888+00:00",
+        "StartTicks": 213190681204,
+        "EndTicks": 213190860188,
+        "elapsedMs": 17.8984
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:00.3987974+00:00",
+        "StartTicks": 213190873292,
+        "EndTicks": 213191054197,
+        "elapsedMs": 18.0905
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:00.4183034+00:00",
+        "StartTicks": 213191068351,
+        "EndTicks": 213191296738,
+        "elapsedMs": 22.8387
+      },
+      "tripletMs": 61.5534,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 21,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:00.5184515+00:00",
+        "StartTicks": 213192069830,
+        "EndTicks": 213192274674,
+        "elapsedMs": 20.4844
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:00.5403798+00:00",
+        "StartTicks": 213192289114,
+        "EndTicks": 213192467979,
+        "elapsedMs": 17.8865
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:00.559868+00:00",
+        "StartTicks": 213192483997,
+        "EndTicks": 213192711043,
+        "elapsedMs": 22.7046
+      },
+      "tripletMs": 64.1213,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 22,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:00.6591318+00:00",
+        "StartTicks": 213193476634,
+        "EndTicks": 213193696263,
+        "elapsedMs": 21.9629
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:00.6825523+00:00",
+        "StartTicks": 213193710842,
+        "EndTicks": 213193899523,
+        "elapsedMs": 18.8681
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:00.7029795+00:00",
+        "StartTicks": 213193915111,
+        "EndTicks": 213194130888,
+        "elapsedMs": 21.5777
+      },
+      "tripletMs": 65.4254,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 23,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:00.8311496+00:00",
+        "StartTicks": 213195196811,
+        "EndTicks": 213195404893,
+        "elapsedMs": 20.8082
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:00.853318+00:00",
+        "StartTicks": 213195418497,
+        "EndTicks": 213195607934,
+        "elapsedMs": 18.9437
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:00.8736641+00:00",
+        "StartTicks": 213195621960,
+        "EndTicks": 213195820979,
+        "elapsedMs": 19.9019
+      },
+      "tripletMs": 62.4168,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 24,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.0021322+00:00",
+        "StartTicks": 213196906638,
+        "EndTicks": 213197117909,
+        "elapsedMs": 21.1271
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.0246558+00:00",
+        "StartTicks": 213197131875,
+        "EndTicks": 213197313916,
+        "elapsedMs": 18.2041
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.045262+00:00",
+        "StartTicks": 213197337936,
+        "EndTicks": 213197534866,
+        "elapsedMs": 19.693
+      },
+      "tripletMs": 62.8228,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 25,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.1412611+00:00",
+        "StartTicks": 213198297925,
+        "EndTicks": 213198483074,
+        "elapsedMs": 18.5149
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.1610971+00:00",
+        "StartTicks": 213198496288,
+        "EndTicks": 213198691364,
+        "elapsedMs": 19.5076
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.1821003+00:00",
+        "StartTicks": 213198706321,
+        "EndTicks": 213198898112,
+        "elapsedMs": 19.1791
+      },
+      "tripletMs": 60.0187,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 26,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.2802443+00:00",
+        "StartTicks": 213199687758,
+        "EndTicks": 213199900480,
+        "elapsedMs": 21.2722
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.3029799+00:00",
+        "StartTicks": 213199915116,
+        "EndTicks": 213200103631,
+        "elapsedMs": 18.8515
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.3237465+00:00",
+        "StartTicks": 213200122781,
+        "EndTicks": 213200317654,
+        "elapsedMs": 19.4873
+      },
+      "tripletMs": 62.9896,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 27,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.4505545+00:00",
+        "StartTicks": 213201390860,
+        "EndTicks": 213201565274,
+        "elapsedMs": 17.4414
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.4693232+00:00",
+        "StartTicks": 213201578547,
+        "EndTicks": 213201771748,
+        "elapsedMs": 19.3201
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.4900303+00:00",
+        "StartTicks": 213201785621,
+        "EndTicks": 213201986529,
+        "elapsedMs": 20.0908
+      },
+      "tripletMs": 59.5669,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 28,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.6209357+00:00",
+        "StartTicks": 213203094673,
+        "EndTicks": 213203283812,
+        "elapsedMs": 18.9139
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.6423712+00:00",
+        "StartTicks": 213203309030,
+        "EndTicks": 213203516654,
+        "elapsedMs": 20.7624
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.6655404+00:00",
+        "StartTicks": 213203540720,
+        "EndTicks": 213203756594,
+        "elapsedMs": 21.5874
+      },
+      "tripletMs": 66.1921,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 29,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.759375+00:00",
+        "StartTicks": 213204479065,
+        "EndTicks": 213204708745,
+        "elapsedMs": 22.968
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.7846833+00:00",
+        "StartTicks": 213204732153,
+        "EndTicks": 213204934566,
+        "elapsedMs": 20.2413
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.806249+00:00",
+        "StartTicks": 213204947806,
+        "EndTicks": 213205140536,
+        "elapsedMs": 19.273
+      },
+      "tripletMs": 66.1471,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": false,
+      "round": 30,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 0,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.8996319+00:00",
+        "StartTicks": 213205881634,
+        "EndTicks": 213206064143,
+        "elapsedMs": 18.2509
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.9192546+00:00",
+        "StartTicks": 213206077864,
+        "EndTicks": 213206268249,
+        "elapsedMs": 19.0385
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:01.9399324+00:00",
+        "StartTicks": 213206284644,
+        "EndTicks": 213206492499,
+        "elapsedMs": 20.7855
+      },
+      "tripletMs": 61.0865,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 16000,
+        "Occluded": 16000,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": null
+    },
+    {
+      "iconsVisible": true,
+      "round": 1,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:02.6912862+00:00",
+        "StartTicks": 213213798178,
+        "EndTicks": 213214052083,
+        "elapsedMs": 25.3905
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:02.7180861+00:00",
+        "StartTicks": 213214066178,
+        "EndTicks": 213214263615,
+        "elapsedMs": 19.7437
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:02.7392162+00:00",
+        "StartTicks": 213214277479,
+        "EndTicks": 213214555548,
+        "elapsedMs": 27.8069
+      },
+      "tripletMs": 75.737,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 2,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:02.8927452+00:00",
+        "StartTicks": 213215812767,
+        "EndTicks": 213216060016,
+        "elapsedMs": 24.7249
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:02.932636+00:00",
+        "StartTicks": 213216211676,
+        "EndTicks": 213216403720,
+        "elapsedMs": 19.2044
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:02.9541295+00:00",
+        "StartTicks": 213216426611,
+        "EndTicks": 213216620083,
+        "elapsedMs": 19.3472
+      },
+      "tripletMs": 80.7316,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 3,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:03.096822+00:00",
+        "StartTicks": 213217853534,
+        "EndTicks": 213218071827,
+        "elapsedMs": 21.8293
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:03.1207003+00:00",
+        "StartTicks": 213218092319,
+        "EndTicks": 213218280938,
+        "elapsedMs": 18.8619
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:03.1409677+00:00",
+        "StartTicks": 213218294992,
+        "EndTicks": 213218499994,
+        "elapsedMs": 20.5002
+      },
+      "tripletMs": 64.646,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 4,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:03.2822502+00:00",
+        "StartTicks": 213219707817,
+        "EndTicks": 213219967782,
+        "elapsedMs": 25.9965
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:03.3096003+00:00",
+        "StartTicks": 213219981322,
+        "EndTicks": 213220183741,
+        "elapsedMs": 20.2419
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:03.3322281+00:00",
+        "StartTicks": 213220207600,
+        "EndTicks": 213220409728,
+        "elapsedMs": 20.2128
+      },
+      "tripletMs": 70.1911,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 5,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:03.4684067+00:00",
+        "StartTicks": 213221569381,
+        "EndTicks": 213221781469,
+        "elapsedMs": 21.2088
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:03.4921009+00:00",
+        "StartTicks": 213221806328,
+        "EndTicks": 213221971440,
+        "elapsedMs": 16.5112
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:03.5110504+00:00",
+        "StartTicks": 213221995822,
+        "EndTicks": 213222196229,
+        "elapsedMs": 20.0407
+      },
+      "tripletMs": 62.6848,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 6,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:03.6365862+00:00",
+        "StartTicks": 213223251178,
+        "EndTicks": 213223451250,
+        "elapsedMs": 20.0072
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:03.657938+00:00",
+        "StartTicks": 213223464698,
+        "EndTicks": 213223642652,
+        "elapsedMs": 17.7954
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:03.6775433+00:00",
+        "StartTicks": 213223660750,
+        "EndTicks": 213223866903,
+        "elapsedMs": 20.6153
+      },
+      "tripletMs": 61.5725,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 7,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:03.8082837+00:00",
+        "StartTicks": 213224968152,
+        "EndTicks": 213225155702,
+        "elapsedMs": 18.755
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:03.8294625+00:00",
+        "StartTicks": 213225179943,
+        "EndTicks": 213225343664,
+        "elapsedMs": 16.3721
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:03.8486332+00:00",
+        "StartTicks": 213225371649,
+        "EndTicks": 213225559962,
+        "elapsedMs": 18.8313
+      },
+      "tripletMs": 59.181,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 8,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:03.9775287+00:00",
+        "StartTicks": 213226660602,
+        "EndTicks": 213226860668,
+        "elapsedMs": 20.0066
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:03.9999263+00:00",
+        "StartTicks": 213226884582,
+        "EndTicks": 213227049372,
+        "elapsedMs": 16.479
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.0188091+00:00",
+        "StartTicks": 213227073408,
+        "EndTicks": 213227271570,
+        "elapsedMs": 19.8162
+      },
+      "tripletMs": 61.0968,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 9,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.1323168+00:00",
+        "StartTicks": 213228208482,
+        "EndTicks": 213228402082,
+        "elapsedMs": 19.36
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.1531163+00:00",
+        "StartTicks": 213228416483,
+        "EndTicks": 213228590191,
+        "elapsedMs": 17.3708
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.1721098+00:00",
+        "StartTicks": 213228606413,
+        "EndTicks": 213228827759,
+        "elapsedMs": 22.1346
+      },
+      "tripletMs": 61.9277,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 10,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.3025377+00:00",
+        "StartTicks": 213229910692,
+        "EndTicks": 213230111369,
+        "elapsedMs": 20.0677
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.3255067+00:00",
+        "StartTicks": 213230140388,
+        "EndTicks": 213230344098,
+        "elapsedMs": 20.371
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.3485296+00:00",
+        "StartTicks": 213230370611,
+        "EndTicks": 213230573289,
+        "elapsedMs": 20.2678
+      },
+      "tripletMs": 66.2597,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 11,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.4727666+00:00",
+        "StartTicks": 213231612981,
+        "EndTicks": 213231818823,
+        "elapsedMs": 20.5842
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.4947206+00:00",
+        "StartTicks": 213231832525,
+        "EndTicks": 213232018501,
+        "elapsedMs": 18.5976
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.5150108+00:00",
+        "StartTicks": 213232035427,
+        "EndTicks": 213232229744,
+        "elapsedMs": 19.4317
+      },
+      "tripletMs": 61.6763,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 12,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.641613+00:00",
+        "StartTicks": 213233301445,
+        "EndTicks": 213233481042,
+        "elapsedMs": 17.9597
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.6609324+00:00",
+        "StartTicks": 213233494643,
+        "EndTicks": 213233681207,
+        "elapsedMs": 18.6564
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.6812515+00:00",
+        "StartTicks": 213233697833,
+        "EndTicks": 213233911094,
+        "elapsedMs": 21.3261
+      },
+      "tripletMs": 60.9649,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 13,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.7948452+00:00",
+        "StartTicks": 213234833768,
+        "EndTicks": 213235031918,
+        "elapsedMs": 19.815
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.8160204+00:00",
+        "StartTicks": 213235045521,
+        "EndTicks": 213235224423,
+        "elapsedMs": 17.8902
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.8363305+00:00",
+        "StartTicks": 213235248620,
+        "EndTicks": 213235450410,
+        "elapsedMs": 20.179
+      },
+      "tripletMs": 61.6642,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 14,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.9496158+00:00",
+        "StartTicks": 213236381472,
+        "EndTicks": 213236613994,
+        "elapsedMs": 23.2522
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.9744392+00:00",
+        "StartTicks": 213236629710,
+        "EndTicks": 213236797056,
+        "elapsedMs": 16.7346
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:04.9926459+00:00",
+        "StartTicks": 213236811775,
+        "EndTicks": 213237034465,
+        "elapsedMs": 22.269
+      },
+      "tripletMs": 65.2993,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 15,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:05.1195794+00:00",
+        "StartTicks": 213238081111,
+        "EndTicks": 213238282355,
+        "elapsedMs": 20.1244
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:05.1410726+00:00",
+        "StartTicks": 213238296047,
+        "EndTicks": 213238464648,
+        "elapsedMs": 16.8601
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:05.1592326+00:00",
+        "StartTicks": 213238477643,
+        "EndTicks": 213238691909,
+        "elapsedMs": 21.4266
+      },
+      "tripletMs": 61.0798,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 16,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:05.2885814+00:00",
+        "StartTicks": 213239771129,
+        "EndTicks": 213239986349,
+        "elapsedMs": 21.522
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:05.3120056+00:00",
+        "StartTicks": 213240005373,
+        "EndTicks": 213240167213,
+        "elapsedMs": 16.184
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:05.3294134+00:00",
+        "StartTicks": 213240179451,
+        "EndTicks": 213240394773,
+        "elapsedMs": 21.5322
+      },
+      "tripletMs": 62.3644,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 17,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:05.441931+00:00",
+        "StartTicks": 213241304625,
+        "EndTicks": 213241526677,
+        "elapsedMs": 22.2052
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:05.4654446+00:00",
+        "StartTicks": 213241539768,
+        "EndTicks": 213241715760,
+        "elapsedMs": 17.5992
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:05.486145+00:00",
+        "StartTicks": 213241746765,
+        "EndTicks": 213241951877,
+        "elapsedMs": 20.5112
+      },
+      "tripletMs": 64.7252,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 18,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:05.6121412+00:00",
+        "StartTicks": 213243006727,
+        "EndTicks": 213243192718,
+        "elapsedMs": 18.5991
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:05.632168+00:00",
+        "StartTicks": 213243207002,
+        "EndTicks": 213243390600,
+        "elapsedMs": 18.3598
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:05.6525467+00:00",
+        "StartTicks": 213243410782,
+        "EndTicks": 213243610719,
+        "elapsedMs": 19.9937
+      },
+      "tripletMs": 60.3992,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 19,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:05.7789304+00:00",
+        "StartTicks": 213244674620,
+        "EndTicks": 213244857428,
+        "elapsedMs": 18.2808
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:05.7985343+00:00",
+        "StartTicks": 213244870660,
+        "EndTicks": 213245060009,
+        "elapsedMs": 18.9349
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:05.8190511+00:00",
+        "StartTicks": 213245075829,
+        "EndTicks": 213245289770,
+        "elapsedMs": 21.3941
+      },
+      "tripletMs": 61.515,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 20,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:05.9489172+00:00",
+        "StartTicks": 213246374488,
+        "EndTicks": 213246577465,
+        "elapsedMs": 20.2977
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:05.9705527+00:00",
+        "StartTicks": 213246590848,
+        "EndTicks": 213246770151,
+        "elapsedMs": 17.9303
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:05.9899219+00:00",
+        "StartTicks": 213246784538,
+        "EndTicks": 213246999036,
+        "elapsedMs": 21.4498
+      },
+      "tripletMs": 62.4548,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 21,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:06.104727+00:00",
+        "StartTicks": 213247932586,
+        "EndTicks": 213248122700,
+        "elapsedMs": 19.0114
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:06.1250968+00:00",
+        "StartTicks": 213248136286,
+        "EndTicks": 213248315228,
+        "elapsedMs": 17.8942
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:06.145604+00:00",
+        "StartTicks": 213248341356,
+        "EndTicks": 213248525854,
+        "elapsedMs": 18.4498
+      },
+      "tripletMs": 59.3268,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 22,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:06.2735559+00:00",
+        "StartTicks": 213249620875,
+        "EndTicks": 213249817367,
+        "elapsedMs": 19.6492
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:06.2945861+00:00",
+        "StartTicks": 213249831180,
+        "EndTicks": 213250014599,
+        "elapsedMs": 18.3419
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:06.3156649+00:00",
+        "StartTicks": 213250041965,
+        "EndTicks": 213250235670,
+        "elapsedMs": 19.3705
+      },
+      "tripletMs": 61.4795,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 23,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:06.4266045+00:00",
+        "StartTicks": 213251151359,
+        "EndTicks": 213251357704,
+        "elapsedMs": 20.6345
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:06.4485984+00:00",
+        "StartTicks": 213251371304,
+        "EndTicks": 213251546923,
+        "elapsedMs": 17.5619
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:06.4675775+00:00",
+        "StartTicks": 213251561092,
+        "EndTicks": 213251780412,
+        "elapsedMs": 21.932
+      },
+      "tripletMs": 62.9053,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 24,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:06.595176+00:00",
+        "StartTicks": 213252837075,
+        "EndTicks": 213253032170,
+        "elapsedMs": 19.5095
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:06.6160642+00:00",
+        "StartTicks": 213253045961,
+        "EndTicks": 213253229940,
+        "elapsedMs": 18.3979
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:06.6358421+00:00",
+        "StartTicks": 213253243738,
+        "EndTicks": 213253449095,
+        "elapsedMs": 20.5357
+      },
+      "tripletMs": 61.202,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 25,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:06.7502544+00:00",
+        "StartTicks": 213254387859,
+        "EndTicks": 213254617681,
+        "elapsedMs": 22.9822
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:06.7749166+00:00",
+        "StartTicks": 213254634483,
+        "EndTicks": 213254794301,
+        "elapsedMs": 15.9818
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:06.7936619+00:00",
+        "StartTicks": 213254821936,
+        "EndTicks": 213255030396,
+        "elapsedMs": 20.846
+      },
+      "tripletMs": 64.2537,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 26,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:06.9215339+00:00",
+        "StartTicks": 213256100653,
+        "EndTicks": 213256281212,
+        "elapsedMs": 18.0559
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:06.9410079+00:00",
+        "StartTicks": 213256295397,
+        "EndTicks": 213256469561,
+        "elapsedMs": 17.4164
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:06.9603801+00:00",
+        "StartTicks": 213256489115,
+        "EndTicks": 213256687298,
+        "elapsedMs": 19.8183
+      },
+      "tripletMs": 58.6645,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 27,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:07.0769145+00:00",
+        "StartTicks": 213257654459,
+        "EndTicks": 213257864895,
+        "elapsedMs": 21.0436
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:07.0998677+00:00",
+        "StartTicks": 213257883997,
+        "EndTicks": 213258062781,
+        "elapsedMs": 17.8784
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:07.1191259+00:00",
+        "StartTicks": 213258076577,
+        "EndTicks": 213258297026,
+        "elapsedMs": 22.0449
+      },
+      "tripletMs": 64.2567,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 28,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:07.2446716+00:00",
+        "StartTicks": 213259332031,
+        "EndTicks": 213259526427,
+        "elapsedMs": 19.4396
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:07.2655121+00:00",
+        "StartTicks": 213259540440,
+        "EndTicks": 213259722736,
+        "elapsedMs": 18.2296
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:07.2849792+00:00",
+        "StartTicks": 213259735109,
+        "EndTicks": 213259942089,
+        "elapsedMs": 20.698
+      },
+      "tripletMs": 61.0058,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 29,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:07.398255+00:00",
+        "StartTicks": 213260867865,
+        "EndTicks": 213261120049,
+        "elapsedMs": 25.2184
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:07.4248572+00:00",
+        "StartTicks": 213261133889,
+        "EndTicks": 213261342223,
+        "elapsedMs": 20.8334
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:07.4482971+00:00",
+        "StartTicks": 213261368290,
+        "EndTicks": 213261573893,
+        "elapsedMs": 20.5603
+      },
+      "tripletMs": 70.6028,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    },
+    {
+      "iconsVisible": true,
+      "round": 30,
+      "passed": false,
+      "sufficientSamples": false,
+      "itemCount": 69,
+      "screenBefore": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:07.5692608+00:00",
+        "StartTicks": 213262577922,
+        "EndTicks": 213262775308,
+        "elapsedMs": 19.7386
+      },
+      "printWindow": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:07.5904498+00:00",
+        "StartTicks": 213262789815,
+        "EndTicks": 213262968502,
+        "elapsedMs": 17.8687
+      },
+      "screenAfter": {
+        "physicalScreenBounds": {
+          "Left": 0,
+          "Top": 0,
+          "Right": 2560,
+          "Bottom": 1600,
+          "Width": 2560,
+          "Height": 1600
+        },
+        "StartedUtc": "2026-10-01T10:17:07.6098885+00:00",
+        "StartTicks": 213262984199,
+        "EndTicks": 213263199511,
+        "elapsedMs": 21.5312
+      },
+      "tripletMs": 62.1589,
+      "ShadowGuardPixels": 192,
+      "wallpaper": {
+        "Candidates": 9118,
+        "Occluded": 9118,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      },
+      "icons": {
+        "Candidates": 199200,
+        "Occluded": 199200,
+        "Unstable": 0,
+        "Valid": 0,
+        "Mismatched": 0,
+        "MaxBgrError": [
+          0,
+          0,
+          0
+        ],
+        "Passed": false
+      }
+    }
+  ],
+  "note": "Only statistics saved. Triplets captured in this process. Icon category is anonymous item bounds including labels. Visible non-desktop windows and 128px at 96 DPI shadow guard excluded at all capture boundaries; cursor excluded. Screen references are GDI BitBlt with CAPTUREBLT; this does not prove HDR/scRGB, transient between-boundary overlays or screenshot/recording fidelity. No production integration or sustained performance acceptance."
+}

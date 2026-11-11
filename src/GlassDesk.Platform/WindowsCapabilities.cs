@@ -26,8 +26,8 @@ public static partial class WindowsCapabilities
     /// <summary>官方支持深色模式窗口特性的起始版本。</summary>
     private const int ImmersiveDarkModeBuild = 18985;
 
-    /// <summary>此发行路线最低 Windows 11 21H2。</summary>
-    private const int MinimumSupportedBuild = 22000;
+    /// <summary>Win10 2004 起支持捕获排除；Win10 使用文档化场景捕获。</summary>
+    private const int MinimumSupportedBuild = 19041;
 
     static WindowsCapabilities()
     {

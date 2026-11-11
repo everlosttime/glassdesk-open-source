@@ -14,6 +14,40 @@ namespace GlassDesk.AppServices.Tests;
 /// </summary>
 public class WindowMatcherTests
 {
+    [Fact]
+    public void DeclaredShortcutIdentityStillMatchesItsExeWhenTheWindowHasNoIdentity()
+    {
+        var entry = ProgramEntry(@"D:\QQ\QQ.exe", "QQ");
+        var snapshot = new[]
+        {
+            new WindowIdentityInfo(41, "QQ", 1100, true, @"d:\qq\QQ.exe", null, null),
+            Window(42, imagePath: @"E:\QQ\QQ.exe"),
+            Window(43, imagePath: @"D:\Other\QQ.exe"),
+        };
+
+        var match = Assert.Single(WindowMatcher.MatchWindows(entry, snapshot, entry.AppUserModelId));
+        Assert.Equal(41, match.Handle);
+        Assert.True(match.IsMinimized);
+    }
+
+    [Theory]
+    [InlineData("QQ.Other", null)]
+    [InlineData(null, "QQ.Other")]
+    public void ExactExePathCannotOverrideAConflictingWindowOrProcessIdentity(string? windowIdentity, string? processIdentity)
+    {
+        var entry = ProgramEntry(@"D:\QQ\QQ.exe", "QQ");
+        var snapshot = new[] { Window(1, entry.Target, windowIdentity, processIdentity) };
+        Assert.Empty(WindowMatcher.MatchWindows(entry, snapshot, entry.AppUserModelId));
+    }
+
+    [Fact]
+    public void MissingIdentityDoesNotMatchAnUnrelatedSharedHost()
+    {
+        var entry = ProgramEntry(@"C:\Windows\System32\notepad.exe", "Microsoft.WindowsNotepad_8wekyb3d8bbwe!App");
+        var snapshot = new[] { Window(1, @"C:\Windows\System32\ApplicationFrameHost.exe") };
+        Assert.Empty(WindowMatcher.MatchWindows(entry, snapshot, entry.AppUserModelId));
+    }
+
     private static WindowIdentityInfo Window(
         nint handle,
         string? imagePath = null,

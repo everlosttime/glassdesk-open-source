@@ -3,6 +3,10 @@ using System.Diagnostics;
 
 internal static class CaptureProcessFamily
 {
+    private static string _wallpaperSourceScope=Guid.NewGuid().ToString("N");
+    internal static string WallpaperSourceScope=>Volatile.Read(ref _wallpaperSourceScope);
+    internal static void RetireWallpaperSourceScope(string expected)
+        =>Interlocked.CompareExchange(ref _wallpaperSourceScope,Guid.NewGuid().ToString("N"),expected);
     private static readonly ConcurrentDictionary<int, byte> Workers = new();
     private static readonly ConcurrentDictionary<int, byte> PendingRetirement = new();
     private static readonly object Gate = new();

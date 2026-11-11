@@ -391,7 +391,7 @@ internal static class AppServiceRunner
                 report.AppendLine(CultureInfo.InvariantCulture, $"说明：{outcome.Message}");
             }
 
-            return outcome.Outcome is ActivationOutcome.Activated or ActivationOutcome.Launched or ActivationOutcome.MultipleWindowsFound
+            return outcome.Outcome is ActivationOutcome.Activated or ActivationOutcome.Minimized or ActivationOutcome.Launched or ActivationOutcome.MultipleWindowsFound
                 ? 0
                 : 1;
         }
@@ -744,6 +744,7 @@ internal static class AppServiceRunner
     private static string DescribeActivation(ActivationOutcome outcome) => outcome switch
     {
         ActivationOutcome.Activated => "已把现有窗口提到前台",
+        ActivationOutcome.Minimized => "已最小化当前窗口",
         ActivationOutcome.Launched => "没有已运行的窗口，已启动",
         ActivationOutcome.MultipleWindowsFound => "找到多个窗口，需要用户选择",
         ActivationOutcome.Failed => "失败",

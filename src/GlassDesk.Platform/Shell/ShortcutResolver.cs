@@ -164,6 +164,7 @@ public static class ShortcutResolver
 
             try
             {
+                aumid ??= ReadShellIdentityFromIdList(itemIdList);
                 if (string.IsNullOrWhiteSpace(target))
                 {
                     target = ReadUrlFromIdList(itemIdList) ?? string.Empty;
@@ -252,6 +253,19 @@ public static class ShortcutResolver
     /// <c>file:///C:/...</c> 这样的文件 URL——那不是我们要的「网页」，
     /// 而且它出现的前提本来就是路径字段已经读出了内容，所以这里再挡一道。
     /// </remarks>
+    private static string? ReadShellIdentityFromIdList(nint itemIdList)
+    {
+        if (itemIdList == 0) return null;
+        nint name = 0;
+        try
+        {
+            var hr = Shell32.SHGetNameFromIDList(itemIdList, Shell32.SigdnDesktopAbsoluteParsing, out name);
+            return hr == Ole32.SoK && name != 0
+                ? LaunchTargetIdentity.FromShellTarget(Marshal.PtrToStringUni(name)) : null;
+        }
+        finally { if (name != 0) Ole32.CoTaskMemFree(name); }
+    }
+
     private static string? ReadUrlFromIdList(nint itemIdList)
     {
         if (itemIdList == 0)

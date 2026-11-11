@@ -79,7 +79,7 @@ public partial class DockWindow
             ApplySlide(_restingRect, _slideOffsetPixels);
             PrepareConcealedReveal();
         }
-        if (_showAfterPerformanceSleep && CurrentPrimaryDisplay is not null) Show();
+        if (_showAfterPerformanceSleep && CurrentPrimaryDisplay is not null) ShowSurface();
         NotifyPerformanceSurfaceVisibility();
     }
 
@@ -103,7 +103,7 @@ public partial class DockWindow
         _frameTimer?.Stop();
         GlassSurface.SetPerformanceSleeping(true);
         // Hiding the HWND also stops child hover/reorder render loops and prevents hit testing.
-        if (IsVisible) Hide();
+        if (IsVisible) HideSurface();
         NotifyPerformanceSurfaceVisibility();
     }
 

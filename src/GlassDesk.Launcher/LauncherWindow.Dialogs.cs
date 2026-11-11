@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Media;
 using GlassDesk.AppServices;
 using GlassDesk.Core.Contracts;
 using GlassDesk.Core.Models;
@@ -30,6 +31,11 @@ public partial class LauncherWindow
             if (ShowModalDialog(() => picker.ShowDialog(this))) ImportPaths([picker.FolderName]);
         });
         AddMenu(menu, "网站…", AddWebsite);
+        if (_settings.GroupModeEnabled)
+        {
+            menu.Items.Add(new Separator());
+            AddMenu(menu, "添加分组…", AddFilterGroup);
+        }
         menu.IsOpen = true;
     }
 
@@ -143,9 +149,13 @@ public partial class LauncherWindow
     }
 
     private string[]? AskFields(string title, params (string Label, string Value)[] fields)
+        => AskFields(title, false, fields);
+
+    private string[]? AskFields(string title, bool useMenuBackground, params (string Label, string Value)[] fields)
     {
         var dialog = new GlassPromptWindow
         {
+            UseMenuBackground = useMenuBackground,
             Title = title, Owner = this, WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Width = 430, SizeToContent = SizeToContent.Height, MinHeight = 150,
             ShowInTaskbar = false,
@@ -181,16 +191,36 @@ public partial class LauncherWindow
         actions.Children.Add(cancel);
         actions.Children.Add(save);
         panel.Children.Add(actions);
-        var surface = new Grid();
-        surface.Children.Add(new LiquidGlassSurface { UseLauncherTransparency = true });
-        surface.Children.Add(panel);
-        dialog.Content = surface;
+        SetPromptContent(dialog, panel);
         dialog.Loaded += (_, _) => inputs[0].Focus();
-        return dialog.ShowDialog() == true ? inputs.Select(box => box.Text).ToArray() : null;
+        return ShowModalDialog(dialog.ShowDialog) ? inputs.Select(box => box.Text).ToArray() : null;
+    }
+
+    private void SetPromptContent(GlassPromptWindow dialog, UIElement content)
+    {
+        if (dialog.UseMenuBackground)
+        {
+            var panel = new PhoneBorder
+            {
+                Background = (Brush)FindResource("LiquidControlPopup"),
+                BorderBrush = (Brush)FindResource("LiquidControlEdge"),
+                BorderThickness = new Thickness(1), Child = content,
+            };
+            panel.SetBinding(Border.CornerRadiusProperty, new Binding(nameof(GlassWindow.PanelCornerRadius)) { Source = dialog });
+            dialog.Content = panel;
+            return;
+        }
+        var surface = new Grid();
+        surface.Children.Add(new LiquidGlassSurface { UseLauncherTransparency = true, TransparentWhileLoading = true });
+        surface.Children.Add(content);
+        dialog.Content = surface;
     }
 
     private sealed class GlassPromptWindow : GlassWindow
     {
+        public bool UseMenuBackground { get; init; }
+        protected override bool UseOpaquePanel => UseMenuBackground;
+
         protected override double ResolveCornerRadius(AppearanceSettings appearance) =>
             40;
     }

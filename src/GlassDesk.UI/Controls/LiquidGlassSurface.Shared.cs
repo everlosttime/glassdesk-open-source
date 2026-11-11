@@ -11,9 +11,12 @@ public sealed partial class LiquidGlassSurface
     /// <summary>Draw an existing live material frame, without a capture or bitmap allocation.</summary>
     internal void DrawSharedMaterial(DrawingContext dc, Rect region)
     {
-        BitmapSource? frame = null;
+        if (IsPlainGlass) return;
+        ImageSource? frame = null;
         Rect bounds = default;
-        if (_transitionBackdrop is not null && _transitionBackdropScene?.Equals(_backdropScene) == true)
+        if (NativeStaticSelected && _nativeReady && _nativeBridge is not null)
+        { frame = _nativeBridge.Image; bounds = _nativeBounds; }
+        else if (_transitionBackdrop is not null && _transitionBackdropScene?.Equals(_backdropScene) == true)
         { frame = _transitionBackdrop; bounds = _transitionBackdropBounds; }
         else if (_frame is not null && _frameScene?.Equals(_backdropScene) == true)
         { frame = _frame; bounds = _sampledPanelBounds; }

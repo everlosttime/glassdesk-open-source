@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>GlassCaptureProbe</AssemblyName>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="GlassDesk.UI"><HintPath>$(PayloadDirectory)/GlassDesk.UI.dll</HintPath></Reference>
+    <Reference Include="GlassDesk.Core"><HintPath>$(PayloadDirectory)/GlassDesk.Core.dll</HintPath></Reference>
+    <Reference Include="GlassDesk.Platform"><HintPath>$(PayloadDirectory)/GlassDesk.Platform.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

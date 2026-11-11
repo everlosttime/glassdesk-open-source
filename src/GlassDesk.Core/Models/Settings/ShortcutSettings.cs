@@ -71,8 +71,13 @@ public sealed class ShortcutSettings
 
     public HotkeyDefinition ToggleDesktopIcons { get; set; } = new();
 
-    /// <summary>切换 Dock 被遮挡时的鼠标唤出锁；开启后禁止唤出，关闭后允许鼠标移到 Dock 原位置唤出。</summary>
+    /// <summary>切换 Dock 与信息栏被遮挡时的鼠标唤出锁；开启后阻止鼠标唤出。</summary>
     public HotkeyDefinition ToggleDockRevealLock { get; set; } = new();
+
+    /// <summary>切换游戏休眠；休眠期间仍可用同一快捷键恢复。</summary>
+    public HotkeyDefinition ToggleGameSleep { get; set; } = DefaultGameSleepHotkey();
+
+    private static HotkeyDefinition DefaultGameSleepHotkey() => new() { Enabled = true, Control = true, Alt = true, Key = "G" };
 
     /// <summary>
     /// 热区默认关闭。它很容易被误触发，因此需要用户显式
@@ -103,6 +108,7 @@ public sealed class ShortcutSettings
         PreviousPage ??= new HotkeyDefinition();
         ToggleDesktopIcons ??= new HotkeyDefinition();
         ToggleDockRevealLock ??= new HotkeyDefinition();
+        ToggleGameSleep ??= DefaultGameSleepHotkey();
         MouseBackButton ??= new HotkeyDefinition();
         MouseForwardButton ??= new HotkeyDefinition();
     }

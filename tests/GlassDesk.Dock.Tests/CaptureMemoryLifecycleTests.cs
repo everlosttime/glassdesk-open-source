@@ -7,6 +7,16 @@ namespace GlassDesk.Dock.Tests;
 public sealed class CaptureMemoryLifecycleTests
 {
     [Fact]
+    public void ProductionSamplingRequestsCroppedSourceWithoutDiagnosticCache()
+    {
+        var start=new ProcessStartInfo(CompatibilityProbePath.File("GlassCaptureProbe.exe"));
+        start.ArgumentList.Add("--capture-protocol-fixture");start.ArgumentList.Add("sample-command");
+        using var capture=new IsolatedDesktopSceneCapture(new(0,0,1600,900),start);
+        var frame=capture.TryReadSampled(new(100,200,300,300),80,40,new byte[80*40*4]);
+        Assert.NotNull(frame);Assert.Equal(80,frame.Width);Assert.Equal(40,frame.Height);
+    }
+
+    [Fact]
     public void DiagnosticNativeSnapshotUsesOneSourceFrameAcrossBoundedMappingTiles()
     {
         var start=new ProcessStartInfo(CompatibilityProbePath.File("GlassCaptureProbe.exe"));

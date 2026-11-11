@@ -1,0 +1,201 @@
+{
+  "passed": true,
+  "failure": null,
+  "runs": [
+    {
+      "passed": true,
+      "cadenceMs": 33,
+      "physicalRegion": {
+        "Left": 650,
+        "Top": 310,
+        "Right": 1910,
+        "Bottom": 1290,
+        "Width": 1260,
+        "Height": 980
+      },
+      "width": 641,
+      "height": 498,
+      "elapsedSeconds": 29.994936,
+      "consumerReads": 636,
+      "newFrames": 635,
+      "repeatedFrames": 1,
+      "unavailableFrames": 0,
+      "newFramesObservedPerSecond": 21.17024020321297,
+      "sourceAge": {
+        "count": 636,
+        "meanMs": 16.507130974842763,
+        "p50Ms": 15.8337,
+        "p95Ms": 32.324,
+        "p99Ms": 35.8023,
+        "maxMs": 38.0739
+      },
+      "consumerLookup": {
+        "count": 636,
+        "meanMs": 0.00043647798742138245,
+        "p50Ms": 0.0003,
+        "p95Ms": 0.0009,
+        "p99Ms": 0.0024,
+        "maxMs": 0.0093
+      },
+      "consumerIntervals": {
+        "count": 635,
+        "meanMs": 47.12738488188977,
+        "p50Ms": 46.5996,
+        "p95Ms": 53.0941,
+        "p99Ms": 61.8722,
+        "maxMs": 62.7976
+      },
+      "dispatcherHeartbeat": {
+        "count": 1194,
+        "meanMs": 25.076367420435496,
+        "p50Ms": 30.5124,
+        "p95Ms": 31.7932,
+        "p99Ms": 45.7096,
+        "maxMs": 46.3172
+      },
+      "producer": {
+        "published": 903,
+        "discarded": 0,
+        "failure": null,
+        "capture": {
+          "count": 903,
+          "meanMs": 19.28782768549281,
+          "p50Ms": 19.2578,
+          "p95Ms": 23.3877,
+          "p99Ms": 24.8152,
+          "maxMs": 26.8268
+        },
+        "captureIntervals": {
+          "count": 902,
+          "meanMs": 33.30720920177382,
+          "p50Ms": 33.3283,
+          "p95Ms": 33.5269,
+          "p99Ms": 33.6235,
+          "maxMs": 33.9292
+        },
+        "requestedWait": {
+          "count": 903,
+          "meanMs": 13.710269435215961,
+          "p50Ms": 13.738600000000002,
+          "p95Ms": 16.7757,
+          "p99Ms": 17.4247,
+          "maxMs": 17.9384
+        },
+        "actualWait": {
+          "count": 903,
+          "meanMs": 14.006887596899215,
+          "p50Ms": 14.0691,
+          "p95Ms": 17.1664,
+          "p99Ms": 17.8273,
+          "maxMs": 18.4016
+        }
+      },
+      "cleanStop": true,
+      "probeCpuMs": 5109.375,
+      "peakPrivateMiB": 39.5625,
+      "gcCollections": [
+        226,
+        226,
+        226
+      ]
+    },
+    {
+      "passed": true,
+      "cadenceMs": 40,
+      "physicalRegion": {
+        "Left": 650,
+        "Top": 310,
+        "Right": 1910,
+        "Bottom": 1290,
+        "Width": 1260,
+        "Height": 980
+      },
+      "width": 641,
+      "height": 498,
+      "elapsedSeconds": 29.996353,
+      "consumerReads": 634,
+      "newFrames": 632,
+      "repeatedFrames": 2,
+      "unavailableFrames": 0,
+      "newFramesObservedPerSecond": 21.06922798248174,
+      "sourceAge": {
+        "count": 634,
+        "meanMs": 20.97883943217667,
+        "p50Ms": 21.7467,
+        "p95Ms": 40.1344,
+        "p99Ms": 41.8567,
+        "maxMs": 46.1063
+      },
+      "consumerLookup": {
+        "count": 634,
+        "meanMs": 0.0003810725552050464,
+        "p50Ms": 0.0003,
+        "p95Ms": 0.0007,
+        "p99Ms": 0.001,
+        "maxMs": 0.0212
+      },
+      "consumerIntervals": {
+        "count": 633,
+        "meanMs": 47.24879320695099,
+        "p50Ms": 46.5764,
+        "p95Ms": 60.747,
+        "p99Ms": 62.3304,
+        "maxMs": 70.2438
+      },
+      "dispatcherHeartbeat": {
+        "count": 1197,
+        "meanMs": 25.03771478696742,
+        "p50Ms": 30.4945,
+        "p95Ms": 31.891,
+        "p99Ms": 45.8934,
+        "maxMs": 46.7452
+      },
+      "producer": {
+        "published": 745,
+        "discarded": 1,
+        "failure": null,
+        "capture": {
+          "count": 746,
+          "meanMs": 18.65609142091153,
+          "p50Ms": 18.5464,
+          "p95Ms": 22.6905,
+          "p99Ms": 24.1847,
+          "maxMs": 25.2728
+        },
+        "captureIntervals": {
+          "count": 745,
+          "meanMs": 40.27708429530197,
+          "p50Ms": 40.268,
+          "p95Ms": 40.5236,
+          "p99Ms": 40.5802,
+          "maxMs": 40.6587
+        },
+        "requestedWait": {
+          "count": 746,
+          "meanMs": 21.34255174262735,
+          "p50Ms": 21.4523,
+          "p95Ms": 24.046300000000002,
+          "p99Ms": 24.6072,
+          "maxMs": 24.8891
+        },
+        "actualWait": {
+          "count": 746,
+          "meanMs": 21.593360053619318,
+          "p50Ms": 21.7366,
+          "p95Ms": 24.2994,
+          "p99Ms": 24.8918,
+          "maxMs": 25.241
+        }
+      },
+      "cleanStop": true,
+      "probeCpuMs": 4593.75,
+      "peakPrivateMiB": 38.5546875,
+      "gcCollections": [
+        186,
+        186,
+        186
+      ]
+    }
+  ],
+  "note": "Independent source test, 30 seconds per unchanged 33/40ms material cadence, \u003C=320k sampled pixels; native paint still full shell. Persistent DIBs, immutable latest-only regional snapshots and an own-thread high-resolution waitable timer (no global timer setting changed). Real dispatcher message loop, no polling Sleep. Freshness limit 120ms; acquisition P95 below cadence, producer interval P95 below 1.25 cadences, age P95 below two cadences, lookup P95 below 1ms, no unavailable consumer frames after warmup, at least 80% target published frames, clean shutdown required. Consumer timer rate is reported separately. Dispatcher heartbeat is diagnostic, NOT presented FPS. No glass processing or full scene reconstruction measured; product remains unchanged."
+}

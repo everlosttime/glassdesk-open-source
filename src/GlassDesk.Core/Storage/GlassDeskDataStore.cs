@@ -5,6 +5,7 @@ namespace GlassDesk.Core.Storage;
 /// <summary>加载全部文档的结果，措辞面向用户。</summary>
 public sealed class DataLoadReport
 {
+    public LoadStatus SettingsStatus { get; internal set; }
     public LoadStatus LibraryStatus { get; internal set; }
     /// <summary>值得展示的消息。为空表示所有文件都顺利加载。</summary>
     public List<string> Notices { get; } = [];
@@ -62,7 +63,9 @@ public sealed class GlassDeskDataStore
 
         var report = new DataLoadReport();
 
-        Describe(report, Settings.Load(), "设置");
+        var settingsOutcome = Settings.Load();
+        report.SettingsStatus = settingsOutcome.Status;
+        Describe(report, settingsOutcome, "设置");
         var libraryOutcome = Library.Load();
         report.LibraryStatus = libraryOutcome.Status;
         Describe(report, libraryOutcome, "应用库");

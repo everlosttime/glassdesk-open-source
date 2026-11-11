@@ -1,7 +1,62 @@
+using System.Reflection;
+using System.Runtime.InteropServices;
+
 namespace GlassDesk.Dock.Tests;
 
 public sealed class NativeFrameResizeTests
 {
+    [Fact]
+    public void SmallCropOfLargeFrameKeepsOnlyCropSizedNativeStorage()
+    {
+        using var resize = new NativeFrameResize();
+        var frame = new CapturePixels(3840, 2160, new byte[3840 * 2160 * 4]);
+        resize.Resize(frame, 320, 80, new PixelBounds(120, 1800, 1720, 2000));
+        var bitmap = (nint)typeof(NativeFrameResize).GetField("_sourceBitmap", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(resize)!;
+        Assert.NotEqual(0, GetObjectW(bitmap, Marshal.SizeOf<Bitmap>(), out var storage));
+        Assert.Equal(1600, storage.Width);
+        Assert.Equal(200, storage.Height);
+        Assert.Equal(1600 * 200 * 4, storage.Stride * storage.Height);
+    }
+
+    [Fact]
+    public void ChangesOutsideCropDoNotInvalidateTheImmutableSample()
+    {
+        using var resize = new NativeFrameResize();
+        var frame = new CapturePixels(91, 57, new byte[91 * 57 * 4]);
+        var crop = new PixelBounds(7, 5, 87, 52);
+        var first = resize.Resize(frame, 39, 27, crop);
+        frame.Pixels[0] = 93;
+        Assert.Same(first, resize.Resize(frame, 39, 27, crop));
+    }
+
+    [Theory]
+    [InlineData(80, 47, 39, 27, 7, 5)]
+    [InlineData(81, 49, 180, 83, 7, 5)]
+    [InlineData(1, 1, 7, 5, 7, 5)]
+    [InlineData(91, 50, 39, 27, 0, 5)]
+    public void CroppedPixelsMatchIndependentFullFrameScaling(int cw, int ch, int width, int height, int left, int top)
+    {
+        using var reference = new NativeFrameResize();
+        using var resize = new NativeFrameResize();
+        var frame = new CapturePixels(91, 57, new byte[91 * 57 * 4]);
+        new Random(713).NextBytes(frame.Pixels);
+        var crop = new PixelBounds(left, top, left + cw, top + ch);
+        var extracted = new byte[cw * ch * 4];
+        for (var y = 0; y < ch; y++)
+            frame.Pixels.AsSpan(((y + crop.Top) * frame.Width + crop.Left) * 4, cw * 4).CopyTo(extracted.AsSpan(y * cw * 4));
+        var expected = reference.Resize(new CapturePixels(cw, ch, extracted), width, height);
+        Assert.Equal(expected, resize.Resize(frame, width, height, crop));
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Bitmap
+    {
+        public int Type, Width, Height, Stride;
+        public ushort Planes, BitsPerPixel;
+        public nint Bits;
+    }
+    [DllImport("gdi32.dll")] private static extern int GetObjectW(nint bitmap, int size, out Bitmap result);
+
     [Fact]
     public void ResizeIntoPreservesLegacyPixelsWithoutAllocatingAFrameArray()
     {

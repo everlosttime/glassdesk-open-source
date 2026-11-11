@@ -16,7 +16,7 @@ internal sealed class InteractionController : IDisposable
     private readonly Action<InputAction> _execute;
     private readonly Action<string> _reportError;
     private readonly InteractionSettingsService _settings;
-    private readonly DesktopIconSession _desktopIcons = new();
+    private readonly DesktopIconSession _desktopIcons = new(showOnDispose: true);
     private bool _disposed;
     private volatile bool _desktopAvailable;
     private volatile bool _launcherVisible;
@@ -83,6 +83,7 @@ internal sealed class InteractionController : IDisposable
         InputAction.NextPage or InputAction.PreviousPage => _canNavigatePages,
         InputAction.ToggleDesktopIcons => _desktopAvailable,
         InputAction.ToggleDockRevealLock => true,
+        InputAction.ToggleGameSleep => true,
         _ => false,
     };
 
@@ -92,6 +93,8 @@ internal sealed class InteractionController : IDisposable
         var action = _settings.ResolveAction(id);
         if (CanExecute(action)) _execute(action);
     }
+
+    public bool IsGameSleepHotkey(int id) => _settings.ResolveAction(id) == InputAction.ToggleGameSleep;
 
     public bool? ReadDesktopIcons()
     {
@@ -129,7 +132,7 @@ internal sealed class InteractionController : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        _settings.Dispose();
-        _desktopIcons.Dispose();
+        try { _settings.Dispose(); }
+        finally { _desktopIcons.Dispose(); }
     }
 }

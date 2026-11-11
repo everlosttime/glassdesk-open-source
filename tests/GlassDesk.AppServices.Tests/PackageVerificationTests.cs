@@ -32,6 +32,40 @@ public sealed class PackageVerificationTests : IDisposable
     }
 
     [Fact]
+    public void BatteryCompanionDeclarationRequiresExecutableLicenseAndSource()
+    {
+        var fixture = CandidateFixture.Create(_root);
+        var manifest = JsonNode.Parse(File.ReadAllText(fixture.ReleaseManifest))!;
+        manifest["headsetControlCompanion"] = true;
+        File.WriteAllText(fixture.ReleaseManifest, manifest.ToJsonString());
+        var result = RunVerifier(fixture);
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("HeadsetControl", result.Output, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void BatteryEngineDeclarationRequiresPinnedRuntimeSourceAndLicenses()
+    {
+        var fixture = CandidateFixture.Create(_root);
+        var manifest = JsonNode.Parse(File.ReadAllText(fixture.ReleaseManifest))!;
+        manifest["batteryEngineCompanion"] = true;
+        File.WriteAllText(fixture.ReleaseManifest, manifest.ToJsonString());
+        var result = RunVerifier(fixture);
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("battery engine", result.Output, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void BatteryEngineDirectoryCannotApproveAnUnpinnedPythonScript()
+    {
+        var fixture = CandidateFixture.Create(_root);
+        fixture.AddPayloadFile("components/battery-engine/unapproved.py", Encoding.UTF8.GetBytes("print('unapproved')"));
+        var result = RunVerifier(fixture);
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("battery engine", result.Output, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void 有效的未签名候选包通过且校验不改动输入()
     {
         var fixture = CandidateFixture.Create(_root);
@@ -139,6 +173,9 @@ public sealed class PackageVerificationTests : IDisposable
     [InlineData("GlassDesk.pdb")]
     [InlineData("src/GlassDeskWindow.cs")]
     [InlineData("sdk/hostpolicy.dll")]
+    [InlineData("run.py")]
+    [InlineData("run.pyw")]
+    [InlineData("components/other/reader.py")]
     public void 即使清单与哈希匹配也拒绝测试SDK和源码内容(string path)
     {
         var fixture = CandidateFixture.Create(_root);
@@ -180,6 +217,7 @@ public sealed class PackageVerificationTests : IDisposable
 
     [Theory]
     [InlineData("LICENSE.txt")]
+    [InlineData("DOTNET-LICENSE.txt")]
     [InlineData("ThirdPartyNotices.txt")]
     [InlineData("WINDOWS-SDK-LICENSE.txt")]
     [InlineData("INNO-SETUP-LICENSE.txt")]
@@ -194,6 +232,22 @@ public sealed class PackageVerificationTests : IDisposable
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("license", result.Output, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("ASPNETCORE-LICENSE.txt")]
+    [InlineData("ASPNETCORE-THIRD-PARTY-NOTICES.txt")]
+    [InlineData("Microsoft.AspNetCore.Server.Kestrel.Core.dll")]
+    public void NearbyPayloadRequiresServerRuntimeAndItsNotices(string missing)
+    {
+        var fixture = CandidateFixture.Create(_root);
+        foreach (var file in new[] { "GlassDesk.Nearby.dll", "ASPNETCORE-LICENSE.txt", "ASPNETCORE-THIRD-PARTY-NOTICES.txt",
+            "Microsoft.AspNetCore.Server.Kestrel.Core.dll", "Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.dll", "Microsoft.AspNetCore.Http.dll" })
+            fixture.AddPayloadFile(file, Encoding.UTF8.GetBytes("fixture"));
+        fixture.RemovePayloadFile(missing);
+        var result = RunVerifier(fixture);
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains(missing, result.Output, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -289,7 +343,8 @@ public sealed class PackageVerificationTests : IDisposable
             _payload.AddRange(
             [
                 new("GlassDesk.exe", [0x4D, 0x5A, 0x01]),
-                new("LICENSE.txt", Encoding.UTF8.GetBytes("Microsoft .NET Library License")),
+                new("LICENSE.txt", Encoding.UTF8.GetBytes("GlassDesk application license")),
+                new("DOTNET-LICENSE.txt", Encoding.UTF8.GetBytes("Microsoft .NET Library License")),
                 new("ThirdPartyNotices.txt", Encoding.UTF8.GetBytes(".NET third-party notices")),
                 new("WINDOWS-SDK-LICENSE.txt", Encoding.UTF8.GetBytes("Microsoft Windows SDK license")),
                 new("INNO-SETUP-LICENSE.txt", Encoding.UTF8.GetBytes("Inno Setup license")),

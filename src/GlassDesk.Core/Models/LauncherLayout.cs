@@ -15,6 +15,12 @@ public sealed class LauncherLayout
 {
     public List<LauncherPage> Pages { get; set; } = [];
 
+    /// <summary>分组模式的独立平铺顺序；文件夹结构仍由 Pages 保存。</summary>
+    public List<string> FlatOrder { get; set; } = [];
+
+    /// <summary>搜索框下方的筛选分组，成员可重复属于不同分组。</summary>
+    public List<LauncherGroup> FilterGroups { get; set; } = [];
+
     /// <summary>Version 2 records explicit launcher membership, independently of Dock.</summary>
     public int SchemaVersion { get; set; }
 

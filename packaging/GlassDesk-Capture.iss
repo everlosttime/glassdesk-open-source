@@ -35,7 +35,7 @@ ArchitecturesInstallIn64BitMode=x64os
 UsePreviousAppDir=yes
 CloseApplications=yes
 RestartApplications=no
-MinVersion=10.0.22000
+MinVersion=10.0.19041
 UninstallDisplayName=GlassDesk
 UninstallDisplayIcon={app}\GlassDesk.exe
 SetupIconFile=..\src\GlassDesk.App\Assets\GlassDesk.ico
@@ -75,3 +75,5 @@ function IsGlassDeskUpdate: Boolean;
 begin
   Result := ExpandConstant('{param:GLASSDESKUPDATE|0}') = '1';
 end;
+
+#include "InstallerUpgrade.iss"

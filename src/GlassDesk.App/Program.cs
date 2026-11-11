@@ -7,6 +7,7 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        if (Platform.Network.NearbyFirewall.RunConfigurationIfRequested(args, out var firewallExitCode)) return firewallExitCode;
         // Capture helpers own native resources only. Loading the desktop Application
         // and its theme dictionaries before the pipe handshake delays every cold reveal.
         if (UI.BackdropCaptureWorker.RunIfRequested(args, out var exitCode)) return exitCode;

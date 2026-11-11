@@ -95,6 +95,8 @@ public sealed class LayoutStore
             Launcher.Pages = lastSaved.Pages;
             Launcher.ExcludedAppIds = lastSaved.ExcludedAppIds;
             Launcher.SchemaVersion = lastSaved.SchemaVersion;
+            Launcher.FlatOrder = lastSaved.FlatOrder;
+            Launcher.FilterGroups = lastSaved.FilterGroups;
             throw;
         }
     }
@@ -109,6 +111,8 @@ public sealed class LayoutStore
         Launcher.Pages = committed.Pages;
         Launcher.ExcludedAppIds = committed.ExcludedAppIds;
         Launcher.SchemaVersion = committed.SchemaVersion;
+        Launcher.FlatOrder = committed.FlatOrder;
+        Launcher.FilterGroups = committed.FilterGroups;
         SaveLauncher();
         return true;
     }
@@ -166,6 +170,7 @@ public sealed class LayoutStore
 
         // 已经空无一物的分组没有理由继续留在网格上。
         removed += RemoveEmptyGroups();
+        LauncherFilterRules.Normalize(Launcher);
 
         return removed;
     }

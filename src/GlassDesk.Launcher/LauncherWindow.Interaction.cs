@@ -99,12 +99,23 @@ public partial class LauncherWindow
         else
         {
             AddMenu(menu, "打开", () => ActivateEntry(id));
+            var elevated = new MenuItem { Header = "以管理员身份运行", IsEnabled = _services?.Launch.CanRunAsAdministrator(id) == true };
+            elevated.Click += (_, _) =>
+            {
+                if (_services is null) return;
+                var result = _services.Launch.LaunchAsAdministrator(id);
+                if (result.Succeeded) CloseWithTransition();
+                else ShowNotice(result.Message ?? "管理员启动未完成。");
+            };
+            menu.Items.Add(elevated);
             AddMenu(menu, "编辑名称、图标和别名", () => EditEntry(id));
+            if (_settings.GroupModeEnabled)
+                AddFilterGroupMenuOnOpen(menu, id);
             if (_services?.Library.Find(id)?.IsTargetMissing == true)
                 AddMenu(menu, "重新定位…", () => RelocateEntry(id));
             var group = _workspace?.Layout.Pages.SelectMany(page => page.Slots)
                 .SingleOrDefault(item => item.Group?.ItemIds.Contains(id) == true)?.Group;
-            if (group is not null)
+            if (group is not null && !_settings.GroupModeEnabled)
             {
                 var index = group.ItemIds.IndexOf(id);
                 if (index > 0)
@@ -117,7 +128,7 @@ public partial class LauncherWindow
         return menu;
     }
 
-    private static void AddMenu(ContextMenu menu, string title, Action action)
+    private static void AddMenu(ItemsControl menu, string title, Action action)
     {
         var item = new MenuItem { Header = title };
         item.Click += (_, _) => action();

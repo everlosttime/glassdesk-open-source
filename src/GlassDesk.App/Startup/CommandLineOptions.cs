@@ -146,6 +146,9 @@ public sealed class CommandLineOptions
     /// </remarks>
     public bool Exit { get; private init; }
 
+    /// <summary>独立的卸载辅助入口；不加载用户数据。</summary>
+    public bool RestoreDesktopIcons { get; private init; }
+
     public string? AcceptanceDataRoot { get; private init; }
 
     public string? AcceptanceReport { get; private init; }
@@ -173,6 +176,7 @@ public sealed class CommandLineOptions
         var autostart = false;
         var help = false;
         var exit = false;
+        var restoreDesktopIcons = false;
         string? acceptanceDataRoot = null;
         string? acceptanceReport = null;
         var unknown = new List<string>();
@@ -258,6 +262,10 @@ public sealed class CommandLineOptions
                     exit = true;
                     break;
 
+                case "--restore-desktop-icons":
+                    restoreDesktopIcons = true;
+                    break;
+
                 case "--help":
                 case "-h":
                 case "/?":
@@ -272,6 +280,8 @@ public sealed class CommandLineOptions
 
         var phaseAcceptance = verb is AppServiceVerb.Phase3Acceptance or AppServiceVerb.Phase4Acceptance
             or AppServiceVerb.Phase5Acceptance or AppServiceVerb.Phase6Acceptance;
+        if (restoreDesktopIcons && args.Count != 1)
+            unknown.Add("--restore-desktop-icons 必须单独使用");
         if (autostart && (selfTest || diagnose || showLauncher || showSettings || exit || help
             || sample != AppearanceSample.None || verb != AppServiceVerb.None
             || acceptanceDataRoot is not null || acceptanceReport is not null || unknown.Count > 0))
@@ -294,6 +304,7 @@ public sealed class CommandLineOptions
             Autostart = autostart,
             Sample = sample,
             Exit = exit,
+            RestoreDesktopIcons = restoreDesktopIcons,
             AcceptanceDataRoot = acceptanceDataRoot,
             AcceptanceReport = acceptanceReport,
             Help = help,
@@ -349,7 +360,8 @@ public sealed class CommandLineOptions
                              隔离诊断数据和报告（仍会创建诊断窗口，需可用测试桌面）
           --show-launcher    显示启动台（已在运行则通知现有实例）
           --show-settings    显示设置中心（已在运行则通知现有实例）
-          --autostart        登录启动（已在运行则直接退出，不唤起界面）
+          --autostart        开机自启动（进入用户桌面时运行；已运行则退出）
+          --restore-desktop-icons  显示 Windows 桌面图标后退出，不读取用户数据
           --sample-light     以浅色外观启动（用于产出样例，不写回设置）
           --sample-dark      以深色外观启动
           --sample-degraded  以不请求系统材质的降级外观启动

@@ -3,7 +3,7 @@ internal readonly record struct CaptureTrace(string Stage,string Reason,long AtT
     long WindowHandle=0,uint WindowProcess=0,string? WindowClass=null,int ErrorCode=0,
     int SurfaceId=0,string? Surface=null,string? MaterialSource=null,bool? Visible=null,bool? Active=null,bool? Sleeping=null,
     int SceneHash=0,int Width=0,int Height=0,double NearBlackFraction=-1,double TransparentFraction=-1,double MeanChannel=-1,
-    int WorkerProcess=0);
+    int WorkerProcess=0,string? Detail=null);
 
 internal sealed class CaptureTraceLog
 {

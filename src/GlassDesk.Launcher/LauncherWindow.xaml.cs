@@ -17,6 +17,8 @@ namespace GlassDesk.Launcher;
 public partial class LauncherWindow : GlassWindow
 {
     protected override bool UseLauncherTextBrightness => true;
+    protected override bool UseVisualShadowOpacity => Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_VISUAL_SHADOW_OPACITY") == "1";
+    protected override bool UseNativeIndependentShadow => Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_NATIVE_SHADOW") is null or "1";
 
     protected override byte ResolveAcrylicTintAlpha(GlassDesk.UI.Theming.GlassPalette palette) => palette.IsDark ? (byte)54 : (byte)66;
 
@@ -48,17 +50,29 @@ public partial class LauncherWindow : GlassWindow
     private double _panelDipPerPixel = 1;
     private Rect? _transitionPanelBoundsDip;
     private double _transitionPanelRadiusDip;
+    private readonly bool _reuseStablePlacement = Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_PLACEMENT_REUSE") == "1";
+    private bool _panelLayoutCurrent;
+    private (PixelRect Panel, PixelRect Host, double DipPerPixel, double Radius) _panelLayoutKey;
     public event EventHandler? NavigationAvailabilityChanged;
-    public bool CanNavigatePages => IsVisible && !_imeComposing && !_transformActive;
+    public bool CanNavigatePages => IsVisible && !_imeComposing && !_transformActive
+        && _keepOpenWhileModalCount == 0 && !_filterTransitionActive && _filterPressedChip is null
+        && _view.OpenGroupId is null && _displayedFolderId is null;
 
     public LauncherWindow()
     {
+        // Prime the same product-family exclusions used by the capture owner
+        // before the surface takes its initial scene snapshot. Otherwise the
+        // first worker startup removes installed bars from that snapshot's scene.
+        _ = CaptureProcessFamily.Snapshot();
         InitializeComponent();
-        Closed += (_, _) => { _noticeTimer?.Stop(); CancelDrag(); ResetFolderPresentation(); StopPageSlide(); _iconLoader.Dispose(); };
-        PageViewport.SizeChanged += (_, _) => StopPageSlide();
+        GlassSurface.ReuseSceneQueriesWithinTurn = Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_SCENE_REUSE") == "1";
+        GlassSurface.ValidateSceneDuringPaint = Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_DEFER_PAINT_SCENE_CHECKS") != "1";
+        GlassSurface.RequireFreshRetainedReveal = _retainRevealGrid;
+        Closed += (_, _) => { DisposeUnifiedTransition(); StopFilterTransition(); _noticeTimer?.Stop(); CancelDrag(); ResetFolderPresentation(); StopPageSlide(); _iconLoader.Dispose(); };
+        PageViewport.SizeChanged += (_, _) => { if (_filterTransitionActive) RenderTiles(); StopPageSlide(); };
         Deactivated += OnLauncherDeactivated;
         IsVisibleChanged += OnVisibilityChanged;
-        Loaded += (_, _) => RefreshLibrary();
+        Loaded += (_, _) => RefreshLibrary(reuseUnchanged: true);
         TextCompositionManager.AddPreviewTextInputStartHandler(SearchBox, (_, _) => { _imeComposing = true; NavigationAvailabilityChanged?.Invoke(this, EventArgs.Empty); });
         TextCompositionManager.AddPreviewTextInputUpdateHandler(SearchBox, (_, _) => { _imeComposing = true; NavigationAvailabilityChanged?.Invoke(this, EventArgs.Empty); });
         TextCompositionManager.AddPreviewTextInputHandler(SearchBox, (_, _) => { _imeComposing = false; NavigationAvailabilityChanged?.Invoke(this, EventArgs.Empty); });
@@ -67,6 +81,8 @@ public partial class LauncherWindow : GlassWindow
     public void AttachServices(AppServiceHost services, bool libraryAvailable)
     {
         _services = services;
+        _flatProjection = null;
+        _filterButtonsKey = null;
         _workspace = new LauncherWorkspace(services, libraryAvailable);
         RefreshLibrary();
     }
@@ -74,10 +90,15 @@ public partial class LauncherWindow : GlassWindow
     public void ApplySettings(LauncherSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
+        StopFilterTransition();
+        CancelDrag();
+        ResetFolderPresentation();
+        if (!settings.GroupModeEnabled) _activeFilterGroupId = null;
         _settings = settings;
         _view.SetGrid(Math.Clamp(settings.Rows, 2, 10), Math.Clamp(settings.Columns, 2, 12));
         PositionOnWorkingArea();
         RefreshLibrary();
+        PreloadIcons();
     }
 
     public void PrepareToShow()
@@ -97,6 +118,16 @@ public partial class LauncherWindow : GlassWindow
     {
         if (!IsLoaded || _services is null || _workspace is null) return;
         if (!reuseUnchanged) _iconLoader.Clear();
+
+        // 由隐藏状态再次打开时，绝大多数情况库、布局、页码和面板尺寸都还没有变化。
+        // 这些值已包含在最后一次渲染键里，因此可以直接复用保留的可视树；没必要在
+        // 动画首帧前再创建一份布局草稿并遍历整个应用库做 Reconcile。只要任一版本或
+        // 可视状态变化，下面原有流程仍会完整协调并重建需要更新的内容。
+        if (reuseUnchanged && _lastTilesRenderKey == CurrentTilesRenderKey())
+        {
+            RenderTiles(reuseUnchanged: true);
+            return;
+        }
         try
         {
             _workspace.Reconcile(_view.Capacity);
@@ -124,6 +155,9 @@ public partial class LauncherWindow : GlassWindow
         PositionOnDisplay(session?.Display ?? DisplayService.Primary());
     }
     public void PositionOnDisplay(DisplayInfo? display)
+        => PositionOnDisplayCore(display, deferHostPlacement: false);
+
+    private void PositionOnDisplayCore(DisplayInfo? display, bool deferHostPlacement)
     {
         var session = PrimaryDisplaySession;
         if (session is { IsAvailable: false }) return;
@@ -147,7 +181,13 @@ public partial class LauncherWindow : GlassWindow
         _panelDipPerPixel = dipPerPixel;
         var host = preserveExpandedHost ? existingHost : rect;
         _transformHostBounds = host;
+        if (_reuseStablePlacement && _panelLayoutCurrent
+            && _panelLayoutKey == (rect, host, _panelDipPerPixel, PanelCornerRadius.TopLeft)
+            && Handle != 0 && DisplayService.GetWindowPixelBounds(Handle) == host) return;
         SetPanelRootLayout(rect, host, _panelDipPerPixel);
+        // Reveal computes the final expanded host next. Do not synchronously
+        // resize the retired layered HWND to a panel-sized intermediate surface.
+        if (deferHostPlacement) return;
         if (preserveExpandedHost) return;
         Width = display.ToDips(host.Width);
         Height = display.ToDips(host.Height);
@@ -162,6 +202,8 @@ public partial class LauncherWindow : GlassWindow
 
     private void SetPanelRootLayout(PixelRect panelBounds, PixelRect hostBounds, double dipPerPixel)
     {
+        var key = (panelBounds, hostBounds, dipPerPixel, PanelCornerRadius.TopLeft);
+        if (_reuseStablePlacement && _panelLayoutCurrent && _panelLayoutKey == key) return;
         var panel = new Rect(
             (panelBounds.X - hostBounds.X) * dipPerPixel,
             (panelBounds.Y - hostBounds.Y) * dipPerPixel,
@@ -179,6 +221,8 @@ public partial class LauncherWindow : GlassWindow
         SetSharedPanelGeometry(geometry);
         ContainerTransformClipRoot.Clip = geometry;
         SetTransitionShadowShape(panel, _transitionPanelRadiusDip);
+        _panelLayoutKey = key;
+        _panelLayoutCurrent = true;
     }
 
     private static bool ContainsPixelRect(PixelRect outer, PixelRect inner) =>
@@ -186,6 +230,7 @@ public partial class LauncherWindow : GlassWindow
 
     private void OnLauncherDeactivated(object? sender, EventArgs e)
     {
+        CancelFilterGroupDrag();
         if (_keepOpenWhileModalCount > 0 || _dragEdit is not null) return;
 
         _ = Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, new Action(() =>
@@ -222,9 +267,15 @@ public partial class LauncherWindow : GlassWindow
 
     private bool ShowModalDialog(Func<bool?> showDialog)
     {
+        if (_filterTransitionActive) RenderTiles();
         _keepOpenWhileModalCount++;
+        NavigationAvailabilityChanged?.Invoke(this, EventArgs.Empty);
         try { return showDialog() == true; }
-        finally { _keepOpenWhileModalCount = Math.Max(0, _keepOpenWhileModalCount - 1); }
+        finally
+        {
+            _keepOpenWhileModalCount = Math.Max(0, _keepOpenWhileModalCount - 1);
+            NavigationAvailabilityChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
     public void NavigatePage(int delta)
     {
@@ -240,6 +291,9 @@ public partial class LauncherWindow : GlassWindow
     }
     public void RefreshDiagnostics()
     {
+        var visibility = _notice is null ? Visibility.Collapsed : Visibility.Visible;
+        if (StatusText.Visibility != visibility || _notice is not null && StatusText.Text != _notice)
+            _unifiedContentRevision++;
         if (_notice is null)
         {
             StatusText.Visibility = Visibility.Collapsed;
@@ -262,6 +316,7 @@ public partial class LauncherWindow : GlassWindow
         NavigationAvailabilityChanged?.Invoke(this, EventArgs.Empty);
         if (e.NewValue is false)
         {
+            StopFilterTransition();
             StopPageSlide();
             _preparedForShow = false;
             AbortContainerTransform();

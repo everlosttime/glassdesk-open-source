@@ -9,6 +9,35 @@ namespace GlassDesk.Dock.Tests;
 public sealed class GlassBackdropPerformanceTests(ITestOutputHelper output)
 {
     [Theory]
+    [InlineData(1, 7, .6, 0)]
+    [InlineData(2, 9, .8, .5)]
+    [InlineData(3, 11, 1, 1)]
+    [InlineData(32, 17, .6, .5)]
+    [InlineData(33, 19, 1, 0)]
+    [InlineData(740, 432, .83, .2)]
+    public void FrostedAnimationFilterPreservesEveryChannelAtEdgesAndVectorTails(int width, int height,
+        double strength, double clarity)
+    {
+        var source = new byte[width * height * 4];
+        new Random(7319).NextBytes(source);
+        var expected = source.ToArray();
+        var scratch = new byte[source.Length];
+        var size = new Size(width * 1.5, height * 1.5);
+        var sigma = (12 + 8 * (1 - clarity)) * (.7 + .3 * strength);
+        for (var pass = 0; pass < 3; pass++)
+        {
+            Box(expected, scratch, width, height, Radius(sigma / 1.5, pass), true);
+            Box(scratch, expected, width, height, Radius(sigma / 1.5, pass), false);
+        }
+        for (var i = 0; i < expected.Length; i += 4)
+        for (var c = 0; c < 3; c++) expected[i + c] = Byte(expected[i + c] * (1 - .5 * (1 - clarity)) + 24 * .5 * (1 - clarity));
+        var actual = new byte[source.Length];
+        AndroidLiquidGlassRenderer.RenderFrostedBackdropInto(source, actual, scratch,
+            width, height, size, true, strength, clarity);
+        Assert.Equal(expected, actual);
+    }
+
+    [Theory]
     [InlineData(1, 1, true, .2, .2, false)]
     [InlineData(19, 73, false, .17, .2, true)]
     [InlineData(740, 432, true, .2, .2, true)]

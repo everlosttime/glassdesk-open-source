@@ -33,6 +33,17 @@ public sealed class LauncherIconMemoryTests
     }
 
     [Fact]
+    public void FailedDecodeCanBeRetriedWhenTheIconBecomesAvailable()
+    {
+        StaTest.Run(() =>
+        {
+            using var loader = (IDisposable)Activator.CreateInstance(LoaderType, nonPublic: true)!;
+            Assert.Null(Load(loader, "temporarily-missing", () => null).WaitAsync(TimeSpan.FromSeconds(3)).GetAwaiter().GetResult());
+            Assert.NotNull(Load(loader, "temporarily-missing", () => Image(32, 32)).WaitAsync(TimeSpan.FromSeconds(3)).GetAwaiter().GetResult());
+        });
+    }
+
+    [Fact]
     public void SleepingDefersQueuedDecodeAndResumesWithoutLosingRequest()
     {
         StaTest.Run(() =>

@@ -17,6 +17,88 @@ namespace GlassDesk.Dock.Tests;
 public sealed class LauncherBackgroundWorkTests
 {
     [Fact]
+    public void HiddenStartupWarmsOtherPagesBeforeTheyAreOpened()
+    {
+        StaTest.Run(() =>
+        {
+            var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "GlassDesk-icon-prewarm-" + Guid.NewGuid().ToString("N")));
+            LauncherWindow? window = null;
+            using var entered = new ManualResetEventSlim(); using var release = new ManualResetEventSlim();
+            try
+            {
+                var data = new GlassDeskDataStore(new AppPaths(root)); data.LoadAll();
+                data.Settings.Current.Launcher.Rows = 2; data.Settings.Current.Launcher.Columns = 2;
+                data.Settings.Current.Launcher.GroupModeEnabled = false;
+                for (var i = 0; i < 5; i++)
+                {
+                    var icon = Path.Combine(root, $"icon-{i}.png");
+                    File.WriteAllBytes(icon, GlassDesk.Core.Imaging.PngWriter.EncodeBgra([0, 240, 0, 255], 1, 1));
+                    data.Library.Add(new AppEntry { Id = "warm-" + i, DisplayName = "Warm " + i, Target = "missing", CustomIconPath = icon });
+                }
+                using var services = new AppServiceHost(data);
+                window = new LauncherWindow();
+                ((LiquidGlassSurface)window.FindName("GlassSurface")!).SetPerformanceSleeping(true);
+                window.AttachServices(services, true); window.ApplySettings(data.Settings.Current.Launcher);
+                var loader = typeof(LauncherWindow).GetField("_iconLoader", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(window)!;
+                loader.GetType().GetMethod("LoadAsync", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(loader,
+                    ["after-prewarm", (Func<BitmapImage?>)(() => { entered.Set(); release.Wait(TimeSpan.FromSeconds(5)); return null; })]);
+                Assert.True(entered.Wait(TimeSpan.FromSeconds(3)));
+                Assert.False(window.IsVisible);
+                window.Show(); window.NavigatePage(1);
+                typeof(LauncherWindow).GetMethod("StopPageSlide", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
+                var grid = (UniformGrid)window.FindName("TileGrid")!;
+                Assert.Single(grid.Children.Cast<UIElement>());
+                Assert.True(HasImage(grid.Children[0]), "An unopened page should use prewarmed pixels without waiting for the worker.");
+            }
+            finally
+            {
+                release.Set(); window?.Close();
+                if (Path.GetDirectoryName(root) != Path.TrimEndingDirectorySeparator(Path.GetTempPath())) throw new IOException("Unexpected cleanup boundary.");
+                if (Directory.Exists(root)) Directory.Delete(root, true);
+            }
+        });
+    }
+
+    [Fact]
+    public void DeepSleepReopensWithDecodedIconsEvenWhenTheWorkerIsBusy()
+    {
+        StaTest.Run(() =>
+        {
+            var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "GlassDesk-icon-deep-sleep-" + Guid.NewGuid().ToString("N")));
+            LauncherWindow? window = null;
+            using var entered = new ManualResetEventSlim(); using var release = new ManualResetEventSlim();
+            try
+            {
+                var data = new GlassDeskDataStore(new AppPaths(root)); data.LoadAll();
+                var icon = Path.Combine(root, "custom.png");
+                File.WriteAllBytes(icon, GlassDesk.Core.Imaging.PngWriter.EncodeBgra([0, 240, 0, 255], 1, 1));
+                data.Library.Add(new AppEntry { Id = "deep-sleep", DisplayName = "Deep sleep", Target = "missing", CustomIconPath = icon });
+                using var services = new AppServiceHost(data);
+                window = new LauncherWindow();
+                ((LiquidGlassSurface)window.FindName("GlassSurface")!).SetPerformanceSleeping(true);
+                window.AttachServices(services, true); window.ApplySettings(data.Settings.Current.Launcher); window.Show();
+                var grid = (UniformGrid)window.FindName("TileGrid")!;
+                global::Program.Pump(TimeSpan.FromMilliseconds(200));
+                Assert.True(HasImage(grid.Children[0]));
+                window.Hide(); window.SetBackgroundWorkSuspended(true); window.SetPerformanceSleeping(true);
+                var loader = typeof(LauncherWindow).GetField("_iconLoader", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(window)!;
+                loader.GetType().GetMethod("LoadAsync", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(loader,
+                    ["busy-after-wake", (Func<BitmapImage?>)(() => { entered.Set(); release.Wait(TimeSpan.FromSeconds(5)); return null; })]);
+                window.SetPerformanceSleeping(false); window.SetBackgroundWorkSuspended(false);
+                Assert.True(entered.Wait(TimeSpan.FromSeconds(2)));
+                window.PositionOnWorkingArea(); window.PrepareToShow();
+                Assert.True(HasImage(grid.Children[0]), "Previously decoded icons must be present before Show, without waiting for the icon worker.");
+            }
+            finally
+            {
+                release.Set(); window?.Close();
+                if (Path.GetDirectoryName(root) != Path.TrimEndingDirectorySeparator(Path.GetTempPath())) throw new IOException("Unexpected cleanup boundary.");
+                if (Directory.Exists(root)) Directory.Delete(root, true);
+            }
+        });
+    }
+
+    [Fact]
     public void AnIconQueuedBeforeHideAppearsOnItsRetainedTileAfterResume()
     {
         StaTest.Run(() =>
@@ -61,6 +143,9 @@ public sealed class LauncherBackgroundWorkTests
     private static bool HasImage(DependencyObject root)
     {
         if (root is Image { Source: BitmapSource }) return true;
+        // New tiles already own their icon before WPF realizes the button template.
+        if (root is ContentControl { Content: DependencyObject content } && HasImage(content)) return true;
+        if (root is Decorator { Child: { } child } && HasImage(child)) return true;
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
             if (HasImage(VisualTreeHelper.GetChild(root, i))) return true;
         return false;

@@ -126,7 +126,9 @@ internal static unsafe class WgcWindowCapture
             Check(RoGetActivationFactory(text, ref iid, out factory));
             var itemId = new Guid("79c3f95b-31f7-4ec2-a464-632ef5d30760");
             var create = (delegate* unmanaged[Stdcall]<nint, nint, Guid*, nint*, int>)(*(nint**)factory)[3];
-            Check(create(factory, handle, &itemId, &result));
+            var hr = create(factory, handle, &itemId, &result);
+            if (hr < 0)
+                throw new COMException($"IGraphicsCaptureItemInterop.CreateForWindow failed (0x{hr:X8}).", hr);
             return WinRT.MarshalInterface<GraphicsCaptureItem>.FromAbi(result);
         }
         finally
@@ -151,7 +153,7 @@ internal static unsafe class WgcWindowCapture
         private byte[]? _reusablePixels;
 
         internal CapturePixels ReadPixels(nint device, nint context, Direct3D11CaptureFrame frame,
-            Action<CaptureTrace>? trace = null, bool reusePixels = false)
+            Action<CaptureTrace>? trace = null, bool reusePixels = false, PixelBounds? crop = null)
         {
             nint surface = 0, access = 0, texture = 0;
             try
@@ -166,6 +168,12 @@ internal static unsafe class WgcWindowCapture
                 var width = frame.ContentSize.Width; var height = frame.ContentSize.Height;
                 if (width <= 0 || height <= 0 || width > desc.Width || height > desc.Height || (long)width * height > 16_000_000)
                     throw new InvalidOperationException("Controlled capture extent is invalid or exceeds the probe budget.");
+                if(crop is {} area)
+                {
+                    if(area.Left<0 || area.Top<0 || area.Right>width || area.Bottom>height || area.Width<=0 || area.Height<=0)
+                        throw new ArgumentOutOfRangeException(nameof(crop));
+                    width=area.Width;height=area.Height;desc.Width=(uint)width;desc.Height=(uint)height;
+                }
                 desc.Usage = 3; desc.BindFlags = 0; desc.CpuAccessFlags = 0x20000; desc.MiscFlags = 0;
                 if (_staging == 0 || _device != device || !SameTexture(_description, desc))
                 {
@@ -173,10 +181,16 @@ internal static unsafe class WgcWindowCapture
                     nint staging = 0;
                     Check(((delegate* unmanaged[Stdcall]<nint, TextureDesc*, nint, nint*, int>)(*(nint**)device)[5])(device, &desc, 0, &staging));
                     _staging = staging; _device = device; _description = desc;
-                    trace?.Invoke(new("ReadbackResource", "Created", Stopwatch.GetTimestamp()));
+                    trace?.Invoke(new("ReadbackResource", "Created", Stopwatch.GetTimestamp(),Width:width,Height:height));
                 }
                 else trace?.Invoke(new("ReadbackResource", "Reused", Stopwatch.GetTimestamp()));
-                ((delegate* unmanaged[Stdcall]<nint, nint, nint, void>)(*(nint**)context)[47])(context, _staging, texture);
+                if(crop is {} boxArea)
+                {
+                    var box=new TextureBox{Left=(uint)boxArea.Left,Top=(uint)boxArea.Top,Right=(uint)boxArea.Right,Bottom=(uint)boxArea.Bottom,Back=1};
+                    ((delegate* unmanaged[Stdcall]<nint,nint,uint,uint,uint,uint,nint,uint,TextureBox*,void>)(*(nint**)context)[46])
+                        (context,_staging,0,0,0,0,texture,0,&box);
+                }
+                else ((delegate* unmanaged[Stdcall]<nint, nint, nint, void>)(*(nint**)context)[47])(context, _staging, texture);
                 MappedResource mapped;
                 Check(((delegate* unmanaged[Stdcall]<nint, nint, uint, uint, uint, MappedResource*, int>)(*(nint**)context)[14])(context, _staging, 0, 1, 0, &mapped));
                 try
@@ -210,6 +224,9 @@ internal static unsafe class WgcWindowCapture
             Release(ref _staging); _device = 0; _description = default; _reusablePixels = null;
         }
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct TextureBox {public uint Left,Top,Front,Right,Bottom,Back;}
 
     [StructLayout(LayoutKind.Sequential)]
     private struct TextureDesc

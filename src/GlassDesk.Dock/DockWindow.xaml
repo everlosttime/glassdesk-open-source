@@ -3,9 +3,11 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:GlassDesk.UI.Controls;assembly=GlassDesk.UI"
+    MaterialTarget="Dock"
     Title="GlassDesk Dock"
     AutomationProperties.Name="GlassDesk 程序坞"
     ShowInTaskbar="False"
+    ShowActivated="False"
     SizeToContent="WidthAndHeight"
     WindowStartupLocation="Manual"
     Topmost="True"
@@ -42,6 +44,9 @@
 
     <Grid ClipToBounds="True">
       <!-- Glass remains in screen coordinates; the live shared silhouette slides over it. -->
+      <Border x:Name="NativeForegroundInputCarrier" Background="#01000000"
+              Visibility="Collapsed" IsHitTestVisible="False" />
+      <Grid x:Name="ForegroundPresentationCarrier">
       <controls:LiquidGlassSurface x:Name="GlassSurface" />
       <Grid x:Name="DockVisualRoot" ClipToBounds="True" RenderTransformOrigin="0,0">
         <Grid.RenderTransform>
@@ -49,42 +54,55 @@
         </Grid.RenderTransform>
         <StackPanel x:Name="DockContentLayer" Orientation="Vertical" Margin="10,8">
 
-      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+      <StackPanel x:Name="DockEntryRow" Orientation="Horizontal" VerticalAlignment="Center">
         <Button x:Name="LauncherButton" Width="48" Height="64" Margin="0,0,8,0" Padding="0"
                 Style="{StaticResource DockEntryButton}"
                 Background="Transparent" BorderThickness="0"
                 ToolTip="启动台" AutomationProperties.Name="打开启动台"
+                Tag="entry:launcher" MouseRightButtonUp="OnBuiltinIconContextMenu"
                 MouseEnter="OnEntryMouseEnter" MouseLeave="OnEntryMouseLeave"
+                PreviewMouseLeftButtonDown="OnLauncherButtonPreviewMouseDown"
+                PreviewMouseLeftButtonUp="OnLauncherButtonPreviewMouseUp"
+                LostMouseCapture="OnLauncherButtonLostMouseCapture"
                 Click="OnLauncherButtonClick">
           <controls:PhoneBorder x:Name="LaunchpadTile" Width="48" Height="48" CornerRadius="16"
                      Background="Transparent" BorderThickness="0">
-            <controls:LaunchpadGlyph OutlineBrush="{Binding DockBuiltinIconBrush, RelativeSource={RelativeSource AncestorType=Window}}"
-                                    IsFilled="{Binding LaunchpadIconFilled, RelativeSource={RelativeSource AncestorType=Window}}" />
+            <Grid>
+              <controls:LaunchpadGlyph x:Name="LauncherDefaultGlyph" OutlineBrush="{Binding DockBuiltinIconBrush, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      IsFilled="{Binding LaunchpadIconFilled, RelativeSource={RelativeSource AncestorType=Window}}" />
+              <Image x:Name="LauncherCustomIcon" Stretch="Uniform" Visibility="Collapsed" RenderOptions.BitmapScalingMode="HighQuality" />
+            </Grid>
           </controls:PhoneBorder>
         </Button>
         <Button x:Name="ThisPcButton" Width="48" Height="64" Margin="0,0,8,0" Padding="0"
                 Style="{StaticResource DockEntryButton}"
                 Background="Transparent" BorderThickness="0"
                 ToolTip="此电脑" AutomationProperties.Name="打开此电脑"
+                Tag="entry:this-pc" MouseRightButtonUp="OnBuiltinIconContextMenu"
                 MouseEnter="OnEntryMouseEnter" MouseLeave="OnEntryMouseLeave"
                 Click="OnThisPcButtonClick">
           <Viewbox x:Name="ThisPcTile" Width="48" Height="48" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <Canvas Width="48" Height="48">
+            <Grid Width="48" Height="48">
+            <Canvas x:Name="ThisPcDefaultGlyph" Width="48" Height="48">
               <Path Data="M6,6 H42 Q45,6 45,9 V29 Q45,32 42,32 H6 Q3,32 3,29 V9 Q3,6 6,6 Z M24,32 V39 M15,40 H33"
                     Fill="Transparent"
                     Stroke="{Binding DockBuiltinIconBrush, RelativeSource={RelativeSource AncestorType=Window}}"
                     StrokeThickness="3.5" StrokeLineJoin="Round"
                     StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
             </Canvas>
+            <Image x:Name="ThisPcCustomIcon" Stretch="Uniform" Visibility="Collapsed" RenderOptions.BitmapScalingMode="HighQuality" />
+            </Grid>
           </Viewbox>
         </Button>
         <Button x:Name="DesktopIconsButton" Width="48" Height="64" Margin="0,0,8,0" Padding="0"
                 Style="{StaticResource DockEntryButton}"
                 ToolTip="切换桌面图标显示" AutomationProperties.Name="切换桌面图标显示"
+                Tag="entry:desktop-icons" MouseRightButtonUp="OnBuiltinIconContextMenu"
                 MouseEnter="OnEntryMouseEnter" MouseLeave="OnEntryMouseLeave"
                 Click="OnDesktopIconsButtonClick">
           <Viewbox x:Name="DesktopIconsTile" Width="48" Height="48" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <Canvas Width="48" Height="48">
+            <Grid Width="48" Height="48">
+            <Canvas x:Name="DesktopIconsDefaultGlyph" Width="48" Height="48">
               <Path Data="M6,6 H42 Q45,6 45,9 V29 Q45,32 42,32 H6 Q3,32 3,29 V9 Q3,6 6,6 Z M24,32 V39 M15,40 H33"
                     Fill="Transparent"
                     Stroke="{Binding DockBuiltinIconBrush, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -99,6 +117,8 @@
                     StrokeThickness="3.5" StrokeLineJoin="Round"
                     StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
             </Canvas>
+            <Image x:Name="DesktopIconsCustomIcon" Stretch="Uniform" Visibility="Collapsed" RenderOptions.BitmapScalingMode="HighQuality" />
+            </Grid>
           </Viewbox>
         </Button>
         <ContentControl x:Name="TileStripHost"
@@ -115,6 +135,13 @@
           Foreground="{Binding SecondaryForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
 
         </StackPanel>
+      </Grid>
+
+      <!--
+        长按拖拽的幽灵层。放在窗口级而不是磁贴条内部：磁贴条只有应用区那么宽，
+        图标跟手时会被条的裁剪框切断，看起来像「动不了」。
+      -->
+      <Canvas x:Name="DockDragOverlay" IsHitTestVisible="False" />
       </Grid>
     </Grid>
   </Border>

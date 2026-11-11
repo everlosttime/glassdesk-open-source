@@ -8,6 +8,7 @@ public sealed class LauncherViewState
     private int _rows;
     private int _columns;
     private int _browseCount;
+    private int[]? _browsePageCounts;
     private int _searchCount;
     private int _browsePage;
     private int _searchPage;
@@ -35,8 +36,10 @@ public sealed class LauncherViewState
     public int Capacity => _rows * _columns;
     public int ItemCount => IsSearching ? _searchCount : _browseCount;
     public int Page => IsSearching ? _searchPage : _browsePage;
-    public int PageCount => Math.Max(1, (ItemCount + Capacity - 1) / Capacity);
-    public int VisibleCount => Math.Max(0, Math.Min(Capacity, ItemCount - (Page * Capacity)));
+    public int PageCount => !IsSearching && _browsePageCounts is { } counts ? Math.Max(1, counts.Length)
+        : Math.Max(1, (ItemCount + Capacity - 1) / Capacity);
+    public int VisibleCount => !IsSearching && _browsePageCounts is { } counts ? counts.ElementAtOrDefault(Page)
+        : Math.Max(0, Math.Min(Capacity, ItemCount - (Page * Capacity)));
 
     public void SetGrid(int rows, int columns)
     {
@@ -51,7 +54,16 @@ public sealed class LauncherViewState
     {
         ArgumentOutOfRangeException.ThrowIfNegative(count);
         if (IsSearching) _searchCount = count;
-        else _browseCount = count;
+        else { _browseCount = count; _browsePageCounts = null; }
+        ClampPages();
+    }
+
+    public void SetPageCounts(IEnumerable<int> counts)
+    {
+        var pages = counts.ToArray();
+        if (pages.Any(count => count < 0 || count > Capacity)) throw new ArgumentOutOfRangeException(nameof(counts));
+        _browsePageCounts = pages;
+        _browseCount = pages.Sum();
         ClampPages();
     }
 
@@ -79,7 +91,7 @@ public sealed class LauncherViewState
 
     private void ClampPages()
     {
-        _browsePage = Math.Min(_browsePage, Math.Max(0, (_browseCount + Capacity - 1) / Capacity - 1));
+        _browsePage = Math.Min(_browsePage, Math.Max(0, (_browsePageCounts?.Length ?? ((_browseCount + Capacity - 1) / Capacity)) - 1));
         _searchPage = Math.Min(_searchPage, Math.Max(0, (_searchCount + Capacity - 1) / Capacity - 1));
     }
 }
