@@ -31,3 +31,10 @@ Copyright (c) 2026 LIN4RUN
 The separate companion under contrib/Naiwa retains its MIT License.
 Original: https://github.com/LIN4RUN/naiwa-desktop-pet
 See contrib/Naiwa/LICENSE. The project noncommercial terms do not replace these upstream grants.
+
+
+Independent peripheral battery components
+MyFinder Device Battery and GlassDesk battery bridge retain AGPL-3.0-only; see components-src/battery-engine/LICENSE and third_party/myfinder-device-battery/LICENSE.
+See third_party/myfinder-device-battery/THIRD_PARTY_NOTICES.md for upstream MIT/BSD/Python notices and bundled corresponding-source archives.
+HeadsetControl retains GPL-3.0; build/Copy-HeadsetControl.ps1 pins its executable, matching source and licenses.
+The project noncommercial terms do not replace these upstream grants.

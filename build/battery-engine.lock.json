@@ -1,0 +1,1130 @@
+{
+  "schemaVersion": 1,
+  "upstreamRepository": "https://github.com/wushuai0802/myfinder-device-battery",
+  "upstreamVersion": "1.3.9",
+  "upstreamCommit": "bbcb779be4633ecf9183f53409de118dc9cb1fd6",
+  "pythonVersion": "3.14.8",
+  "hidapiVersion": "0.15.0",
+  "copyScriptSha256": "45cd737c4c890af43bfe4473fc64b17eaccbdba7d0b314b41dc753d9659569b1",
+  "vendorFiles": [
+    {
+      "relativePath": "archives/hidapi-0.15.0-cp314-cp314-win_amd64.whl",
+      "length": 67710,
+      "sha256": "df0dd435562654e27ad0c7d045074eb1e1e016b09167dd48a258dec1ce4b9127"
+    },
+    {
+      "relativePath": "archives/hidapi-0.15.0.tar.gz",
+      "length": 184995,
+      "sha256": "ecbc265cbe8b7b88755f421e0ba25f084091ec550c2b90ff9e8ddd4fcd540311"
+    },
+    {
+      "relativePath": "archives/myfinder-device-battery-bbcb779be4633ecf9183f53409de118dc9cb1fd6.zip",
+      "length": 1802062,
+      "sha256": "96d8e871223e1ba9f6892d067bb31cf6da23e8d26e7890ee80a2fd7c88705eaf"
+    },
+    {
+      "relativePath": "archives/python-3.14.8-embed-amd64.zip",
+      "length": 12601679,
+      "sha256": "a93abe456ab01bd96d7a085b3cdb6566b3063f4241360d114142fbdb07f0a310"
+    },
+    {
+      "relativePath": "archives/Python-3.14.8.tar.xz",
+      "length": 24130644,
+      "sha256": "c2215904f02b175596dc49351585104f4bc20341e1c47378b26a2c274360ce73"
+    },
+    {
+      "relativePath": "archives/Python-3.14.8.tar.xz.sigstore",
+      "length": 8262,
+      "sha256": "eb619890946a6a9c51190fe1b3a4c500f224bc17785ef8cf480ed5312cfe36c0"
+    },
+    {
+      "relativePath": "dependencies.lock.json",
+      "length": 835,
+      "sha256": "a1a10fb6d95de59eda817d4dcaf114d3090c27c99cebdad820b8861dfe94b168"
+    },
+    {
+      "relativePath": "dependency-materials.json",
+      "length": 856,
+      "sha256": "a7a8df58f8b4abac211f29da3ac6c87aefbaaafe2741c402af1e77f86436fe2c"
+    },
+    {
+      "relativePath": "engine/battery_hid.py",
+      "length": 20109,
+      "sha256": "43756e7e60ee7be7dab49d5f23ba5c4ba8fc19ab72321fd37178c5711383c5f7"
+    },
+    {
+      "relativePath": "engine/by_keyboard.py",
+      "length": 960,
+      "sha256": "5a354292402634ab8d188f6d7d8b29077149991317c2eeef86bc16f1733a79d4"
+    },
+    {
+      "relativePath": "engine/catalog.py",
+      "length": 5686,
+      "sha256": "eca94616bbb32d11579dc5ae354edad2edd5638f0da26811a17dac15488e1bd6"
+    },
+    {
+      "relativePath": "engine/compatibility.json",
+      "length": 25223,
+      "sha256": "d0e30506a11f134763c55aae559f21e7565ca3ee8331a45bf614ed3c3a316f7e"
+    },
+    {
+      "relativePath": "engine/dependencies.lock.json",
+      "length": 835,
+      "sha256": "a1a10fb6d95de59eda817d4dcaf114d3090c27c99cebdad820b8861dfe94b168"
+    },
+    {
+      "relativePath": "engine/device_pack_schema.json",
+      "length": 3861,
+      "sha256": "94128e3e4a245a97d5f3f0521bb95973cbe196080e5157a5b858ff78c8c9b2e5"
+    },
+    {
+      "relativePath": "engine/device_pack.py",
+      "length": 10532,
+      "sha256": "15766427580eb8b52f0d3474670e127240c82b4407a82115e69ae1306991c6c9"
+    },
+    {
+      "relativePath": "engine/isolation.py",
+      "length": 8711,
+      "sha256": "7ca397c92c4a01eb348ad7956d29ad382c075d6d98c291670fabb209ffb9e073"
+    },
+    {
+      "relativePath": "engine/known_ids.py",
+      "length": 15121,
+      "sha256": "02cd23363855ef78b4941cca04038b33a5301c5f9aa33b7f14554cfebdc1ac5b"
+    },
+    {
+      "relativePath": "engine/licenses/HaloBattery-MIT.txt",
+      "length": 1103,
+      "sha256": "52705d98979fc1e7ef212a6db50c53739f15efa3b6ae53e584dc54686c4dc56b"
+    },
+    {
+      "relativePath": "engine/mchose_keyboard_hid.py",
+      "length": 8783,
+      "sha256": "a32b4b98e6ba3f2a2959f986bbe9254914c0a7e25cccaf9ab333e95b28674b9e"
+    },
+    {
+      "relativePath": "engine/providers/__init__.py",
+      "length": 685,
+      "sha256": "a60a002836c4d0bcb5cbbdb30cbf364deca9e9bae55881b162bb2a3a206dd9c2"
+    },
+    {
+      "relativePath": "engine/providers/am_infinity.py",
+      "length": 7028,
+      "sha256": "c53eaaed8429419f81e413d3519f9fce0f4c32b425501b3980579d734be6abfd"
+    },
+    {
+      "relativePath": "engine/providers/astro.py",
+      "length": 5826,
+      "sha256": "e01a6a84732496a7125bd19502aeddc2e5dd1a094bd8df3f07146a1c9c2725ab"
+    },
+    {
+      "relativePath": "engine/providers/asus.py",
+      "length": 9253,
+      "sha256": "e89bbf5dcb85081b510c3d1384026761d9b57dbf23d317d556ba4a0090db350e"
+    },
+    {
+      "relativePath": "engine/providers/atk_headset.py",
+      "length": 1854,
+      "sha256": "242e074a22f3d259e94dbeda636877f9d3fbf3377f3be9e33a01d708409a8eca"
+    },
+    {
+      "relativePath": "engine/providers/audeze.py",
+      "length": 28106,
+      "sha256": "8336d83b8e308244d66b144deb008b22d2d5673ed2e2b1f0cef1c8bd1d252989"
+    },
+    {
+      "relativePath": "engine/providers/barracuda.py",
+      "length": 9104,
+      "sha256": "3e7797e6716afc8e72bd8e15d088b4e3812b00e860327431ec0a0f6ac60a6891"
+    },
+    {
+      "relativePath": "engine/providers/base.py",
+      "length": 3388,
+      "sha256": "d02524db3579ab4697c0a203eb7aef2cd8875ff065b420eae9972c3fb7ca40fc"
+    },
+    {
+      "relativePath": "engine/providers/blackshark.py",
+      "length": 7824,
+      "sha256": "a202ef5fabd56b032471528922cb643761df357c7b58e306be33c82ac850e84f"
+    },
+    {
+      "relativePath": "engine/providers/blackshark2020.py",
+      "length": 6416,
+      "sha256": "1ffa116c91f31dcecaeda39cde61df5de0345ba9e242c87d43aac27ef85edf9f"
+    },
+    {
+      "relativePath": "engine/providers/bluetooth.py",
+      "length": 24905,
+      "sha256": "9b809290ca56a5c6c381ba72990192082ddba22922fef771a9e5ffa2b6d17596"
+    },
+    {
+      "relativePath": "engine/providers/corsair.py",
+      "length": 25621,
+      "sha256": "e33a882d3a44b1b45b8716009e76963dc779fe3a72f14aaaebc1d7ddae8525a8"
+    },
+    {
+      "relativePath": "engine/providers/dareu.py",
+      "length": 3227,
+      "sha256": "2c956df334e16f7b3f331d9533abe308063573947c89d01083ba6fc25964fca9"
+    },
+    {
+      "relativePath": "engine/providers/eweadn_s9pro.py",
+      "length": 3658,
+      "sha256": "6014801b4f9cf7728f91ed442cd4dacd65ea01958308a9dcccc313b37dbc4bc1"
+    },
+    {
+      "relativePath": "engine/providers/eweadn.py",
+      "length": 1315,
+      "sha256": "f373876a637618a06332f74c618b167dec161d9ce0e299926785879637bd3518"
+    },
+    {
+      "relativePath": "engine/providers/fa6x_passive.py",
+      "length": 8367,
+      "sha256": "2a87515572689d42a8dcbd5dc253decf89c6e875a40ea5f8b19419dfdd9f9d67"
+    },
+    {
+      "relativePath": "engine/providers/flydigi.py",
+      "length": 1339,
+      "sha256": "4be1cb798a81c6565d0390e197b99916433313ed1af3fe7bd631f81b7fb7e234"
+    },
+    {
+      "relativePath": "engine/providers/g3m.py",
+      "length": 1048,
+      "sha256": "520c397ec971eba8d8d49eb2720721c3b9bcf15bcf1e5f6426c3991ca848349b"
+    },
+    {
+      "relativePath": "engine/providers/gwolves.py",
+      "length": 15998,
+      "sha256": "41920d73e62844f3258929be3e3609d1bad09e74c3ba17b1275d27f6015e9ebc"
+    },
+    {
+      "relativePath": "engine/providers/hidlist.py",
+      "length": 6455,
+      "sha256": "b7285467aab65742dd33689cb8a6d8e9fe9abadc6a6c022f1c2919a02650bd5d"
+    },
+    {
+      "relativePath": "engine/providers/hyperx_alpha2.py",
+      "length": 6417,
+      "sha256": "a8ef57c3073e31ee2a7d45cbf9040f6de843cfca9c665bb6c6909f3cc6dc0b19"
+    },
+    {
+      "relativePath": "engine/providers/hyperx_cloud3.py",
+      "length": 11204,
+      "sha256": "3ab1cb269d6fb5cc2642aa560e15cf83786710860dd39a6fe280414567199801"
+    },
+    {
+      "relativePath": "engine/providers/hyperx_cloud3s.py",
+      "length": 9071,
+      "sha256": "7891e9d0bf26bf94152a828f97c74905f97792c461883cc94904b6641754b3b7"
+    },
+    {
+      "relativePath": "engine/providers/hyperx.py",
+      "length": 5246,
+      "sha256": "78ee72aa1bda87884493f957e8a0e0caac83378f7dd8d4a4aac353ca2160d281"
+    },
+    {
+      "relativePath": "engine/providers/jbl.py",
+      "length": 10115,
+      "sha256": "ae41c91cca0a963a13ba1aafaf57e08410e61e1fb925a321620cfc022ef91138"
+    },
+    {
+      "relativePath": "engine/providers/keychron.py",
+      "length": 4974,
+      "sha256": "075d3ddb56184d64d86029f3009285f77a171f03f9b1ba2cde42e7d512b036a4"
+    },
+    {
+      "relativePath": "engine/providers/lamzu.py",
+      "length": 5465,
+      "sha256": "b2e3f22977db1443b64ae77f86dd53150ff4d372b62a9731dfa851e38c0c1ca6"
+    },
+    {
+      "relativePath": "engine/providers/lofree.py",
+      "length": 6849,
+      "sha256": "876d63f65f24e3ce58b07456d0b65f9d68f48773ea9419817001ee3aa8e55e09"
+    },
+    {
+      "relativePath": "engine/providers/logitech_centurion.py",
+      "length": 12252,
+      "sha256": "0cb8bb33deef201d20eb978101a315be2c7d4dcb6d7a5374501340c5e1299609"
+    },
+    {
+      "relativePath": "engine/providers/logitech.py",
+      "length": 37474,
+      "sha256": "79329f2a3a5c9c96dd0a3cfcba9534899d857898d3ad907c7b1007ee0fceadc4"
+    },
+    {
+      "relativePath": "engine/providers/mchose_by_keyboard.py",
+      "length": 11504,
+      "sha256": "85055f1302da72f0ff31bd6bbe1fc2cd409b9154a80e07b2828157a57f705034"
+    },
+    {
+      "relativePath": "engine/providers/mchose_glw_keyboard.py",
+      "length": 3148,
+      "sha256": "cd65955d4d8b3066e60f923faab3a63fbf37a76003a44f72f847ff2c9465d3e1"
+    },
+    {
+      "relativePath": "engine/providers/mchose_headset.py",
+      "length": 5535,
+      "sha256": "c7445ce58cbdfbcde68468e7b73599415740adf52a7c2fe5b00dcedbe2da1f55"
+    },
+    {
+      "relativePath": "engine/providers/mchose_qhw_keyboard.py",
+      "length": 1605,
+      "sha256": "54ae469252caa97adb03f90f5669b4b2af591a5919b80e1805c5e789b09a4ea5"
+    },
+    {
+      "relativePath": "engine/providers/mchose.py",
+      "length": 31790,
+      "sha256": "bc508df3f394d81272f6d46a896b848332dee6056404608583fb5b06e91b5fa8"
+    },
+    {
+      "relativePath": "engine/providers/moondrop.py",
+      "length": 4831,
+      "sha256": "1fb04359344da714163ae10f09e4881e78d9726e210e8898d309d1ff78b334e5"
+    },
+    {
+      "relativePath": "engine/providers/ninjutso_legacy.py",
+      "length": 3882,
+      "sha256": "5c586b3e8907538bb094eb2a6723db1ce0a9c97a2ace7b2d458abfbc754e711b"
+    },
+    {
+      "relativePath": "engine/providers/nzxt.py",
+      "length": 11420,
+      "sha256": "44962f218e4bd30bd6d842529b2c46959b209598d690133e413613be1174e2d9"
+    },
+    {
+      "relativePath": "engine/providers/profiles.py",
+      "length": 2478,
+      "sha256": "875b9e54c9338be1777d26c26e88bc158cb1b34640815df76ca02586e69e8d84"
+    },
+    {
+      "relativePath": "engine/providers/pulsar.py",
+      "length": 37803,
+      "sha256": "04e553c43eaa9596ab0efc3ad065d4f34038bf6dd585be0775bde79c0fe0aa12"
+    },
+    {
+      "relativePath": "engine/providers/rapoo.py",
+      "length": 13359,
+      "sha256": "eced3a48e2b66f8e55d479d80187d1debb081dc20a1edf85f843990505f4e396"
+    },
+    {
+      "relativePath": "engine/providers/razer_profiles.py",
+      "length": 7486,
+      "sha256": "2e83b506275c47629d43cd345d83dc0d9c0ebe88fc1842b7a34a3caf923161a5"
+    },
+    {
+      "relativePath": "engine/providers/razer.py",
+      "length": 25593,
+      "sha256": "540b07b0ad6abed3f761ea971c2da24d991cdc908b9a56ecf5e0b2ce81be2440"
+    },
+    {
+      "relativePath": "engine/providers/steelseries_elite.py",
+      "length": 11504,
+      "sha256": "75ac60ace223f35463ad1bfdab122510741feb727f8b54d7a66bef50936daf70"
+    },
+    {
+      "relativePath": "engine/providers/steelseries.py",
+      "length": 28056,
+      "sha256": "cefc85018ad64a6cea31a4480c5730724f2e24cf827ab242d68e6bb36e695111"
+    },
+    {
+      "relativePath": "engine/providers/vgn_beiying.py",
+      "length": 2745,
+      "sha256": "550edced1f48faec613b2b25e73310e39938e77fda94b928c19b095312e5efd4"
+    },
+    {
+      "relativePath": "engine/providers/vgn_dragonfly3.py",
+      "length": 1189,
+      "sha256": "e91a2f755b2d6b84de3d088cfd7900d62300b3fb67a3762b88ccea9106c2e4bc"
+    },
+    {
+      "relativePath": "engine/providers/vgn_keyboard.py",
+      "length": 1653,
+      "sha256": "c9870852215af961219f5e5317bf0cbcba03439e0866585669c007dd4ef833bb"
+    },
+    {
+      "relativePath": "engine/providers/wlmouse.py",
+      "length": 10860,
+      "sha256": "0463a9ba8a4270ce9ac8c2251386c529f80cdcb98cf89848b22971056e17009e"
+    },
+    {
+      "relativePath": "engine/providers/xinput.py",
+      "length": 3559,
+      "sha256": "d86ef7e086a303f93854bda4b082fe68ecc0ebbaee279a6c6d7205a3f0013a79"
+    },
+    {
+      "relativePath": "engine/python314._pth.in",
+      "length": 22,
+      "sha256": "10d93ad1f810bd377d879c439462e352c78b973960bdefd35c6dbe3a47360e9b"
+    },
+    {
+      "relativePath": "engine/research/batch2-protocols.md",
+      "length": 25343,
+      "sha256": "81c036b280936e576af823a04b491384845d3005b60129cf132d54bd2c29a2b0"
+    },
+    {
+      "relativePath": "engine/research/batch3-protocols.md",
+      "length": 40379,
+      "sha256": "f40282d0a808529403ccd3265441362801f18f924400e5fb53ca259321771ef4"
+    },
+    {
+      "relativePath": "engine/research/batch4-protocols.md",
+      "length": 34298,
+      "sha256": "876be7d0354fe598d79f2c5eab8a7052264a1696d0a7c14de61fa0e8bfac128d"
+    },
+    {
+      "relativePath": "engine/research/p2-protocols.md",
+      "length": 25052,
+      "sha256": "d6d9556879237bea2225f3a2911c4b420c784ab9de3fadf94db06aeffda6b439"
+    },
+    {
+      "relativePath": "engine/server.py",
+      "length": 76737,
+      "sha256": "1d550fd249e58d5cb50856f209c656a8bf0fd08b443e95dc86141ae570fd0be5"
+    },
+    {
+      "relativePath": "engine/standardhid.py",
+      "length": 6144,
+      "sha256": "c2e61b11bb66fd722b59529e040eaf35f0455e2cae9057eead21d0f11c6d7216"
+    },
+    {
+      "relativePath": "engine/topology.py",
+      "length": 20460,
+      "sha256": "e51dc0ef1c34b1220f573b34470751a425ea2d95fc76a4cb319a9f16f3601a7d"
+    },
+    {
+      "relativePath": "engine/upstream-credits.md",
+      "length": 2431,
+      "sha256": "d77b52aab67ffe8bc79ff2521f58aac3595a70ceddce0c55b353180af5e37c15"
+    },
+    {
+      "relativePath": "engine/upstream-devices.md",
+      "length": 8886,
+      "sha256": "8913eea6d1a6434008564a8d0966c68608bcdcf3b972f804802bbf7585eefae9"
+    },
+    {
+      "relativePath": "engine/upstream-protocols.md",
+      "length": 255281,
+      "sha256": "55a9d5bfbd29f66e4ae9d43dd2e8c68568ed10977dcf4f01aa117914f5e7e31b"
+    },
+    {
+      "relativePath": "LICENSE",
+      "length": 35184,
+      "sha256": "e0eedba615d5cd1b986afb6c5b3a4b1ae33713e7e9dc74d19daec5e3221f9d2e"
+    },
+    {
+      "relativePath": "NOTICE.txt",
+      "length": 1705,
+      "sha256": "c58471b41eb035eda0e6a35e2443fc265d31ad1b5ae68d75e0338113a98f420f"
+    },
+    {
+      "relativePath": "python314._pth",
+      "length": 29,
+      "sha256": "b0ec6efd80c901eacd4f24d1e711cdf13bf50a91972add1d6f15510852bf4e50"
+    },
+    {
+      "relativePath": "THIRD_PARTY_NOTICES.md",
+      "length": 2452,
+      "sha256": "bb81d02f82a3d0bc7f0503952a7a60e793af0e0f960a66e63c33bd2bd56bb3ef"
+    }
+  ],
+  "componentFiles": [
+    {
+      "relativePath": "coverage.json",
+      "length": 14808,
+      "sha256": "b61ddd87923f811027f1d8a6ccd79e84bb42e6afa41fd4ac5a1af19f0e477fd3"
+    },
+    {
+      "relativePath": "glassdesk_bridge.py",
+      "length": 15787,
+      "sha256": "670d430b43ccb0655b8236099ae660c1cbe82522e2f261c81fa6ba794285ca2e"
+    },
+    {
+      "relativePath": "LICENSE",
+      "length": 35184,
+      "sha256": "e0eedba615d5cd1b986afb6c5b3a4b1ae33713e7e9dc74d19daec5e3221f9d2e"
+    },
+    {
+      "relativePath": "native_profiles.py",
+      "length": 8137,
+      "sha256": "98a6211bc070e6e5094b296f4454e18a4606b3eca6546aec07498ee12609c81b"
+    },
+    {
+      "relativePath": "README.md",
+      "length": 2292,
+      "sha256": "6b20fe20e348bea23a3ea1b96c782e3a3d199c6a7131c1fb5a2a8232f5576b55"
+    },
+    {
+      "relativePath": "test_bridge.py",
+      "length": 9697,
+      "sha256": "6433df9b412431598e025f128de8588e51ac54b1d57e1e7810c3930f44ff4c4f"
+    },
+    {
+      "relativePath": "test_native_profiles.py",
+      "length": 12946,
+      "sha256": "dd4344caac59cdaef9eef4840e0f1c18c59b654ccb4dabbc86c40d6edf880fac"
+    },
+    {
+      "relativePath": "update_coverage.py",
+      "length": 2248,
+      "sha256": "5c94bef1aab46a35c2461f370411fccf07824a5399358923ccaef5f6a58af083"
+    }
+  ],
+  "payloadFiles": [
+    {
+      "relativePath": "corresponding-source/glassdesk-battery-engine.zip",
+      "length": 112043,
+      "sha256": "a56b8415d2dadf830a295630588c27e8849f962eb203be7b255129d33a69a67c"
+    },
+    {
+      "relativePath": "corresponding-source/hidapi-0.15.0.tar.gz",
+      "length": 184995,
+      "sha256": "ecbc265cbe8b7b88755f421e0ba25f084091ec550c2b90ff9e8ddd4fcd540311"
+    },
+    {
+      "relativePath": "corresponding-source/myfinder-device-battery-bbcb779be4633ecf9183f53409de118dc9cb1fd6.zip",
+      "length": 1802062,
+      "sha256": "96d8e871223e1ba9f6892d067bb31cf6da23e8d26e7890ee80a2fd7c88705eaf"
+    },
+    {
+      "relativePath": "corresponding-source/Python-3.14.8.tar.xz",
+      "length": 24130644,
+      "sha256": "c2215904f02b175596dc49351585104f4bc20341e1c47378b26a2c274360ce73"
+    },
+    {
+      "relativePath": "corresponding-source/Python-3.14.8.tar.xz.sigstore",
+      "length": 8262,
+      "sha256": "eb619890946a6a9c51190fe1b3a4c500f224bc17785ef8cf480ed5312cfe36c0"
+    },
+    {
+      "relativePath": "coverage.json",
+      "length": 14808,
+      "sha256": "b61ddd87923f811027f1d8a6ccd79e84bb42e6afa41fd4ac5a1af19f0e477fd3"
+    },
+    {
+      "relativePath": "dependency-materials.json",
+      "length": 856,
+      "sha256": "a7a8df58f8b4abac211f29da3ac6c87aefbaaafe2741c402af1e77f86436fe2c"
+    },
+    {
+      "relativePath": "engine/battery_hid.py",
+      "length": 20109,
+      "sha256": "43756e7e60ee7be7dab49d5f23ba5c4ba8fc19ab72321fd37178c5711383c5f7"
+    },
+    {
+      "relativePath": "engine/by_keyboard.py",
+      "length": 960,
+      "sha256": "5a354292402634ab8d188f6d7d8b29077149991317c2eeef86bc16f1733a79d4"
+    },
+    {
+      "relativePath": "engine/catalog.py",
+      "length": 5686,
+      "sha256": "eca94616bbb32d11579dc5ae354edad2edd5638f0da26811a17dac15488e1bd6"
+    },
+    {
+      "relativePath": "engine/compatibility.json",
+      "length": 25223,
+      "sha256": "d0e30506a11f134763c55aae559f21e7565ca3ee8331a45bf614ed3c3a316f7e"
+    },
+    {
+      "relativePath": "engine/dependencies.lock.json",
+      "length": 835,
+      "sha256": "a1a10fb6d95de59eda817d4dcaf114d3090c27c99cebdad820b8861dfe94b168"
+    },
+    {
+      "relativePath": "engine/device_pack_schema.json",
+      "length": 3861,
+      "sha256": "94128e3e4a245a97d5f3f0521bb95973cbe196080e5157a5b858ff78c8c9b2e5"
+    },
+    {
+      "relativePath": "engine/device_pack.py",
+      "length": 10532,
+      "sha256": "15766427580eb8b52f0d3474670e127240c82b4407a82115e69ae1306991c6c9"
+    },
+    {
+      "relativePath": "engine/isolation.py",
+      "length": 8711,
+      "sha256": "7ca397c92c4a01eb348ad7956d29ad382c075d6d98c291670fabb209ffb9e073"
+    },
+    {
+      "relativePath": "engine/known_ids.py",
+      "length": 15121,
+      "sha256": "02cd23363855ef78b4941cca04038b33a5301c5f9aa33b7f14554cfebdc1ac5b"
+    },
+    {
+      "relativePath": "engine/licenses/HaloBattery-MIT.txt",
+      "length": 1103,
+      "sha256": "52705d98979fc1e7ef212a6db50c53739f15efa3b6ae53e584dc54686c4dc56b"
+    },
+    {
+      "relativePath": "engine/mchose_keyboard_hid.py",
+      "length": 8783,
+      "sha256": "a32b4b98e6ba3f2a2959f986bbe9254914c0a7e25cccaf9ab333e95b28674b9e"
+    },
+    {
+      "relativePath": "engine/providers/__init__.py",
+      "length": 685,
+      "sha256": "a60a002836c4d0bcb5cbbdb30cbf364deca9e9bae55881b162bb2a3a206dd9c2"
+    },
+    {
+      "relativePath": "engine/providers/am_infinity.py",
+      "length": 7028,
+      "sha256": "c53eaaed8429419f81e413d3519f9fce0f4c32b425501b3980579d734be6abfd"
+    },
+    {
+      "relativePath": "engine/providers/astro.py",
+      "length": 5826,
+      "sha256": "e01a6a84732496a7125bd19502aeddc2e5dd1a094bd8df3f07146a1c9c2725ab"
+    },
+    {
+      "relativePath": "engine/providers/asus.py",
+      "length": 9253,
+      "sha256": "e89bbf5dcb85081b510c3d1384026761d9b57dbf23d317d556ba4a0090db350e"
+    },
+    {
+      "relativePath": "engine/providers/atk_headset.py",
+      "length": 1854,
+      "sha256": "242e074a22f3d259e94dbeda636877f9d3fbf3377f3be9e33a01d708409a8eca"
+    },
+    {
+      "relativePath": "engine/providers/audeze.py",
+      "length": 28106,
+      "sha256": "8336d83b8e308244d66b144deb008b22d2d5673ed2e2b1f0cef1c8bd1d252989"
+    },
+    {
+      "relativePath": "engine/providers/barracuda.py",
+      "length": 9104,
+      "sha256": "3e7797e6716afc8e72bd8e15d088b4e3812b00e860327431ec0a0f6ac60a6891"
+    },
+    {
+      "relativePath": "engine/providers/base.py",
+      "length": 3388,
+      "sha256": "d02524db3579ab4697c0a203eb7aef2cd8875ff065b420eae9972c3fb7ca40fc"
+    },
+    {
+      "relativePath": "engine/providers/blackshark.py",
+      "length": 7824,
+      "sha256": "a202ef5fabd56b032471528922cb643761df357c7b58e306be33c82ac850e84f"
+    },
+    {
+      "relativePath": "engine/providers/blackshark2020.py",
+      "length": 6416,
+      "sha256": "1ffa116c91f31dcecaeda39cde61df5de0345ba9e242c87d43aac27ef85edf9f"
+    },
+    {
+      "relativePath": "engine/providers/bluetooth.py",
+      "length": 24905,
+      "sha256": "9b809290ca56a5c6c381ba72990192082ddba22922fef771a9e5ffa2b6d17596"
+    },
+    {
+      "relativePath": "engine/providers/corsair.py",
+      "length": 25621,
+      "sha256": "e33a882d3a44b1b45b8716009e76963dc779fe3a72f14aaaebc1d7ddae8525a8"
+    },
+    {
+      "relativePath": "engine/providers/dareu.py",
+      "length": 3227,
+      "sha256": "2c956df334e16f7b3f331d9533abe308063573947c89d01083ba6fc25964fca9"
+    },
+    {
+      "relativePath": "engine/providers/eweadn_s9pro.py",
+      "length": 3658,
+      "sha256": "6014801b4f9cf7728f91ed442cd4dacd65ea01958308a9dcccc313b37dbc4bc1"
+    },
+    {
+      "relativePath": "engine/providers/eweadn.py",
+      "length": 1315,
+      "sha256": "f373876a637618a06332f74c618b167dec161d9ce0e299926785879637bd3518"
+    },
+    {
+      "relativePath": "engine/providers/fa6x_passive.py",
+      "length": 8367,
+      "sha256": "2a87515572689d42a8dcbd5dc253decf89c6e875a40ea5f8b19419dfdd9f9d67"
+    },
+    {
+      "relativePath": "engine/providers/flydigi.py",
+      "length": 1339,
+      "sha256": "4be1cb798a81c6565d0390e197b99916433313ed1af3fe7bd631f81b7fb7e234"
+    },
+    {
+      "relativePath": "engine/providers/g3m.py",
+      "length": 1048,
+      "sha256": "520c397ec971eba8d8d49eb2720721c3b9bcf15bcf1e5f6426c3991ca848349b"
+    },
+    {
+      "relativePath": "engine/providers/gwolves.py",
+      "length": 15998,
+      "sha256": "41920d73e62844f3258929be3e3609d1bad09e74c3ba17b1275d27f6015e9ebc"
+    },
+    {
+      "relativePath": "engine/providers/hidlist.py",
+      "length": 6455,
+      "sha256": "b7285467aab65742dd33689cb8a6d8e9fe9abadc6a6c022f1c2919a02650bd5d"
+    },
+    {
+      "relativePath": "engine/providers/hyperx_alpha2.py",
+      "length": 6417,
+      "sha256": "a8ef57c3073e31ee2a7d45cbf9040f6de843cfca9c665bb6c6909f3cc6dc0b19"
+    },
+    {
+      "relativePath": "engine/providers/hyperx_cloud3.py",
+      "length": 11204,
+      "sha256": "3ab1cb269d6fb5cc2642aa560e15cf83786710860dd39a6fe280414567199801"
+    },
+    {
+      "relativePath": "engine/providers/hyperx_cloud3s.py",
+      "length": 9071,
+      "sha256": "7891e9d0bf26bf94152a828f97c74905f97792c461883cc94904b6641754b3b7"
+    },
+    {
+      "relativePath": "engine/providers/hyperx.py",
+      "length": 5246,
+      "sha256": "78ee72aa1bda87884493f957e8a0e0caac83378f7dd8d4a4aac353ca2160d281"
+    },
+    {
+      "relativePath": "engine/providers/jbl.py",
+      "length": 10115,
+      "sha256": "ae41c91cca0a963a13ba1aafaf57e08410e61e1fb925a321620cfc022ef91138"
+    },
+    {
+      "relativePath": "engine/providers/keychron.py",
+      "length": 4974,
+      "sha256": "075d3ddb56184d64d86029f3009285f77a171f03f9b1ba2cde42e7d512b036a4"
+    },
+    {
+      "relativePath": "engine/providers/lamzu.py",
+      "length": 5465,
+      "sha256": "b2e3f22977db1443b64ae77f86dd53150ff4d372b62a9731dfa851e38c0c1ca6"
+    },
+    {
+      "relativePath": "engine/providers/lofree.py",
+      "length": 6849,
+      "sha256": "876d63f65f24e3ce58b07456d0b65f9d68f48773ea9419817001ee3aa8e55e09"
+    },
+    {
+      "relativePath": "engine/providers/logitech_centurion.py",
+      "length": 12252,
+      "sha256": "0cb8bb33deef201d20eb978101a315be2c7d4dcb6d7a5374501340c5e1299609"
+    },
+    {
+      "relativePath": "engine/providers/logitech.py",
+      "length": 37474,
+      "sha256": "79329f2a3a5c9c96dd0a3cfcba9534899d857898d3ad907c7b1007ee0fceadc4"
+    },
+    {
+      "relativePath": "engine/providers/mchose_by_keyboard.py",
+      "length": 11504,
+      "sha256": "85055f1302da72f0ff31bd6bbe1fc2cd409b9154a80e07b2828157a57f705034"
+    },
+    {
+      "relativePath": "engine/providers/mchose_glw_keyboard.py",
+      "length": 3148,
+      "sha256": "cd65955d4d8b3066e60f923faab3a63fbf37a76003a44f72f847ff2c9465d3e1"
+    },
+    {
+      "relativePath": "engine/providers/mchose_headset.py",
+      "length": 5535,
+      "sha256": "c7445ce58cbdfbcde68468e7b73599415740adf52a7c2fe5b00dcedbe2da1f55"
+    },
+    {
+      "relativePath": "engine/providers/mchose_qhw_keyboard.py",
+      "length": 1605,
+      "sha256": "54ae469252caa97adb03f90f5669b4b2af591a5919b80e1805c5e789b09a4ea5"
+    },
+    {
+      "relativePath": "engine/providers/mchose.py",
+      "length": 31790,
+      "sha256": "bc508df3f394d81272f6d46a896b848332dee6056404608583fb5b06e91b5fa8"
+    },
+    {
+      "relativePath": "engine/providers/moondrop.py",
+      "length": 4831,
+      "sha256": "1fb04359344da714163ae10f09e4881e78d9726e210e8898d309d1ff78b334e5"
+    },
+    {
+      "relativePath": "engine/providers/ninjutso_legacy.py",
+      "length": 3882,
+      "sha256": "5c586b3e8907538bb094eb2a6723db1ce0a9c97a2ace7b2d458abfbc754e711b"
+    },
+    {
+      "relativePath": "engine/providers/nzxt.py",
+      "length": 11420,
+      "sha256": "44962f218e4bd30bd6d842529b2c46959b209598d690133e413613be1174e2d9"
+    },
+    {
+      "relativePath": "engine/providers/profiles.py",
+      "length": 2478,
+      "sha256": "875b9e54c9338be1777d26c26e88bc158cb1b34640815df76ca02586e69e8d84"
+    },
+    {
+      "relativePath": "engine/providers/pulsar.py",
+      "length": 37803,
+      "sha256": "04e553c43eaa9596ab0efc3ad065d4f34038bf6dd585be0775bde79c0fe0aa12"
+    },
+    {
+      "relativePath": "engine/providers/rapoo.py",
+      "length": 13359,
+      "sha256": "eced3a48e2b66f8e55d479d80187d1debb081dc20a1edf85f843990505f4e396"
+    },
+    {
+      "relativePath": "engine/providers/razer_profiles.py",
+      "length": 7486,
+      "sha256": "2e83b506275c47629d43cd345d83dc0d9c0ebe88fc1842b7a34a3caf923161a5"
+    },
+    {
+      "relativePath": "engine/providers/razer.py",
+      "length": 25593,
+      "sha256": "540b07b0ad6abed3f761ea971c2da24d991cdc908b9a56ecf5e0b2ce81be2440"
+    },
+    {
+      "relativePath": "engine/providers/steelseries_elite.py",
+      "length": 11504,
+      "sha256": "75ac60ace223f35463ad1bfdab122510741feb727f8b54d7a66bef50936daf70"
+    },
+    {
+      "relativePath": "engine/providers/steelseries.py",
+      "length": 28056,
+      "sha256": "cefc85018ad64a6cea31a4480c5730724f2e24cf827ab242d68e6bb36e695111"
+    },
+    {
+      "relativePath": "engine/providers/vgn_beiying.py",
+      "length": 2745,
+      "sha256": "550edced1f48faec613b2b25e73310e39938e77fda94b928c19b095312e5efd4"
+    },
+    {
+      "relativePath": "engine/providers/vgn_dragonfly3.py",
+      "length": 1189,
+      "sha256": "e91a2f755b2d6b84de3d088cfd7900d62300b3fb67a3762b88ccea9106c2e4bc"
+    },
+    {
+      "relativePath": "engine/providers/vgn_keyboard.py",
+      "length": 1653,
+      "sha256": "c9870852215af961219f5e5317bf0cbcba03439e0866585669c007dd4ef833bb"
+    },
+    {
+      "relativePath": "engine/providers/wlmouse.py",
+      "length": 10860,
+      "sha256": "0463a9ba8a4270ce9ac8c2251386c529f80cdcb98cf89848b22971056e17009e"
+    },
+    {
+      "relativePath": "engine/providers/xinput.py",
+      "length": 3559,
+      "sha256": "d86ef7e086a303f93854bda4b082fe68ecc0ebbaee279a6c6d7205a3f0013a79"
+    },
+    {
+      "relativePath": "engine/python314._pth.in",
+      "length": 22,
+      "sha256": "10d93ad1f810bd377d879c439462e352c78b973960bdefd35c6dbe3a47360e9b"
+    },
+    {
+      "relativePath": "engine/research/batch2-protocols.md",
+      "length": 25343,
+      "sha256": "81c036b280936e576af823a04b491384845d3005b60129cf132d54bd2c29a2b0"
+    },
+    {
+      "relativePath": "engine/research/batch3-protocols.md",
+      "length": 40379,
+      "sha256": "f40282d0a808529403ccd3265441362801f18f924400e5fb53ca259321771ef4"
+    },
+    {
+      "relativePath": "engine/research/batch4-protocols.md",
+      "length": 34298,
+      "sha256": "876be7d0354fe598d79f2c5eab8a7052264a1696d0a7c14de61fa0e8bfac128d"
+    },
+    {
+      "relativePath": "engine/research/p2-protocols.md",
+      "length": 25052,
+      "sha256": "d6d9556879237bea2225f3a2911c4b420c784ab9de3fadf94db06aeffda6b439"
+    },
+    {
+      "relativePath": "engine/server.py",
+      "length": 76737,
+      "sha256": "1d550fd249e58d5cb50856f209c656a8bf0fd08b443e95dc86141ae570fd0be5"
+    },
+    {
+      "relativePath": "engine/standardhid.py",
+      "length": 6144,
+      "sha256": "c2e61b11bb66fd722b59529e040eaf35f0455e2cae9057eead21d0f11c6d7216"
+    },
+    {
+      "relativePath": "engine/topology.py",
+      "length": 20460,
+      "sha256": "e51dc0ef1c34b1220f573b34470751a425ea2d95fc76a4cb319a9f16f3601a7d"
+    },
+    {
+      "relativePath": "engine/upstream-credits.md",
+      "length": 2431,
+      "sha256": "d77b52aab67ffe8bc79ff2521f58aac3595a70ceddce0c55b353180af5e37c15"
+    },
+    {
+      "relativePath": "engine/upstream-devices.md",
+      "length": 8886,
+      "sha256": "8913eea6d1a6434008564a8d0966c68608bcdcf3b972f804802bbf7585eefae9"
+    },
+    {
+      "relativePath": "engine/upstream-protocols.md",
+      "length": 255281,
+      "sha256": "55a9d5bfbd29f66e4ae9d43dd2e8c68568ed10977dcf4f01aa117914f5e7e31b"
+    },
+    {
+      "relativePath": "glassdesk_bridge.py",
+      "length": 15787,
+      "sha256": "670d430b43ccb0655b8236099ae660c1cbe82522e2f261c81fa6ba794285ca2e"
+    },
+    {
+      "relativePath": "LICENSE",
+      "length": 35184,
+      "sha256": "e0eedba615d5cd1b986afb6c5b3a4b1ae33713e7e9dc74d19daec5e3221f9d2e"
+    },
+    {
+      "relativePath": "native_profiles.py",
+      "length": 8137,
+      "sha256": "98a6211bc070e6e5094b296f4454e18a4606b3eca6546aec07498ee12609c81b"
+    },
+    {
+      "relativePath": "NOTICE.txt",
+      "length": 1705,
+      "sha256": "c58471b41eb035eda0e6a35e2443fc265d31ad1b5ae68d75e0338113a98f420f"
+    },
+    {
+      "relativePath": "runtime/_asyncio.pyd",
+      "length": 78560,
+      "sha256": "58b3e50104db6bf9d76e3d8106f9f477d34109a887d547ee086b0289e6a4e224"
+    },
+    {
+      "relativePath": "runtime/_bz2.pyd",
+      "length": 87776,
+      "sha256": "b02f580daa0b390b2228d2a8186ef119be658c89cc64d0bd909550786ed993f2"
+    },
+    {
+      "relativePath": "runtime/_ctypes.pyd",
+      "length": 143072,
+      "sha256": "b96680c6bcad9e9403711ec0977866325e8e5aab93b56e83c3df6280ae72a82a"
+    },
+    {
+      "relativePath": "runtime/_decimal.pyd",
+      "length": 290016,
+      "sha256": "196c42414c16e804874988783b8a356bf1d012d32e99efbc6e360e94920c46ec"
+    },
+    {
+      "relativePath": "runtime/_elementtree.pyd",
+      "length": 138976,
+      "sha256": "31aff8dca815a05904b5d3020fbdd5bdb596b6a07a36f31728996f28e06dab24"
+    },
+    {
+      "relativePath": "runtime/_hashlib.pyd",
+      "length": 69344,
+      "sha256": "5dee7b9fff3e6d0abe20601b9e62f3a14cd048167ee0b80781131dc81dec9469"
+    },
+    {
+      "relativePath": "runtime/_lzma.pyd",
+      "length": 160992,
+      "sha256": "9099ef451fe61d8feef9e02894902b88fdc8ee404e3f8b7412b150878c973803"
+    },
+    {
+      "relativePath": "runtime/_multiprocessing.pyd",
+      "length": 38624,
+      "sha256": "18041441b3f558925f903bc7af644a4d84b1cd746a4998748b4fffd82e767a6b"
+    },
+    {
+      "relativePath": "runtime/_overlapped.pyd",
+      "length": 58080,
+      "sha256": "eca5d3df23b762c846801194b6c971aae4eb288e1fc2914752b3a6c2df5aebfb"
+    },
+    {
+      "relativePath": "runtime/_queue.pyd",
+      "length": 36576,
+      "sha256": "1e2e1ede7eeaf30a80ece546420dec67a02716e25d3a7c638e4deb0c21e973a1"
+    },
+    {
+      "relativePath": "runtime/_remote_debugging.pyd",
+      "length": 93408,
+      "sha256": "0497ee6846cd92419ada56c091ab675ab6896ad3bfdcf88eec4dcda2cdfd5a4d"
+    },
+    {
+      "relativePath": "runtime/_socket.pyd",
+      "length": 87776,
+      "sha256": "18a77c4e1f4a71ca60b9dbbba809e98cd324f3e1470d091689b87754a8c65588"
+    },
+    {
+      "relativePath": "runtime/_sqlite3.pyd",
+      "length": 133344,
+      "sha256": "e69caeadb409777bce26f78622653558bbb86f08479b412399eaa0e6fd1e44f1"
+    },
+    {
+      "relativePath": "runtime/_ssl.pyd",
+      "length": 192224,
+      "sha256": "49df86fe76ed8fd97bb11a485286b49f5f5ebe953383648976a39c9de6f0524d"
+    },
+    {
+      "relativePath": "runtime/_uuid.pyd",
+      "length": 28384,
+      "sha256": "7e2cdd954b44b1be1fac1c354f774dab5f5becfce59688e62338427b125c62bf"
+    },
+    {
+      "relativePath": "runtime/_wmi.pyd",
+      "length": 40160,
+      "sha256": "5366924c1c96d9c9f82f95967fbf73244d4b4930f39103d7e7ba2b01046e0a46"
+    },
+    {
+      "relativePath": "runtime/_zoneinfo.pyd",
+      "length": 51936,
+      "sha256": "cdf82faa904e557b847a0ac6e97b4274945615fdbd319a28bcaa1f70f740636f"
+    },
+    {
+      "relativePath": "runtime/_zstd.pyd",
+      "length": 503520,
+      "sha256": "526d977236cc63895902977f216bf3ca93a4233489240656b295eafb6f518d07"
+    },
+    {
+      "relativePath": "runtime/hid.cp314-win_amd64.pyd",
+      "length": 111616,
+      "sha256": "64e5d73b1725fffd8da86c004b9fae332fd64cab8de0336979d6645ff5b7c11f"
+    },
+    {
+      "relativePath": "runtime/hidapi-0.15.0.dist-info/licenses/LICENSE-bsd.txt",
+      "length": 1543,
+      "sha256": "dc15d6ced1b80b69c7a2cdacd64e82c8e3d122b01085f6d13513d9a6bd3a8ef1"
+    },
+    {
+      "relativePath": "runtime/hidapi-0.15.0.dist-info/licenses/LICENSE-gpl3.txt",
+      "length": 35821,
+      "sha256": "0b383d5a63da644f628d99c33976ea6487ed89aaa59f0b3257992deac1171e6b"
+    },
+    {
+      "relativePath": "runtime/hidapi-0.15.0.dist-info/licenses/LICENSE-orig.txt",
+      "length": 90,
+      "sha256": "a23996ef783cec2b5329da80899078bed76cf753f22a0381b75026eb36bab65d"
+    },
+    {
+      "relativePath": "runtime/hidapi-0.15.0.dist-info/licenses/LICENSE.txt",
+      "length": 571,
+      "sha256": "c6cc9afd94b596557fccbde465d4d8a3d02f5a109a6f1f6b396f416977d02e1e"
+    },
+    {
+      "relativePath": "runtime/hidapi-0.15.0.dist-info/METADATA",
+      "length": 3847,
+      "sha256": "c8e97b79f9c0b2805941fa9cfc2b62760316bce0e55d88dc13f6e942b910b3c6"
+    },
+    {
+      "relativePath": "runtime/hidapi-0.15.0.dist-info/RECORD",
+      "length": 796,
+      "sha256": "43934c1124487e91ccaed50e154be52a2a0bc4b2b2f595c91a0a0db3528d0cec"
+    },
+    {
+      "relativePath": "runtime/hidapi-0.15.0.dist-info/top_level.txt",
+      "length": 4,
+      "sha256": "6d7c58dcd660932a2661f48478dd83e4057c5c5efd4cd1ff1f95a49c65262ce8"
+    },
+    {
+      "relativePath": "runtime/hidapi-0.15.0.dist-info/WHEEL",
+      "length": 101,
+      "sha256": "ee4e96732e7cf222587b995fe4ad3de4d2e0faea014e713e4fc78727dd86e3fe"
+    },
+    {
+      "relativePath": "runtime/libcrypto-3.dll",
+      "length": 6021880,
+      "sha256": "75495fe0e079ab00d49be740d3c710a0b94e3f74f9648cb7cc9f768fc7f52319"
+    },
+    {
+      "relativePath": "runtime/libffi-8.dll",
+      "length": 39696,
+      "sha256": "eff52743773eb550fcc6ce3efc37c85724502233b6b002a35496d828bd7b280a"
+    },
+    {
+      "relativePath": "runtime/libssl-3.dll",
+      "length": 1308920,
+      "sha256": "8957182a9c385bfd9f3f790921de2ddc614cf91f99edbed4e9e5446a46504e32"
+    },
+    {
+      "relativePath": "runtime/libtommath.dll",
+      "length": 95456,
+      "sha256": "aaea8a20db7a7a96d4bef74ad724c4a02595a9c47659f6cbd6f145af0c97aa78"
+    },
+    {
+      "relativePath": "runtime/LICENSE.txt",
+      "length": 35407,
+      "sha256": "935cf13e19f8c31b497d20b05d73623431a226b230c3599bc30fa3348979bc68"
+    },
+    {
+      "relativePath": "runtime/pyexpat.pyd",
+      "length": 201440,
+      "sha256": "36d775e2c2fa5bbda86ddc7c6ea632414df04f7a403b9e17587c99088d29cd7b"
+    },
+    {
+      "relativePath": "runtime/python.cat",
+      "length": 601161,
+      "sha256": "8d723cf908852e0ae02d6ad4451a0214ce7c7a09aa6d9a4a7fc48024583f8494"
+    },
+    {
+      "relativePath": "runtime/python.exe",
+      "length": 106208,
+      "sha256": "434b361fe0c5960d404974feed493db47f2603a1ace2574312104fbed0182c6f"
+    },
+    {
+      "relativePath": "runtime/python3.dll",
+      "length": 73952,
+      "sha256": "f9acdbcf3383a52353f8d7db3cbda3d3701b1cf7ac3053985fdac766c29e7808"
+    },
+    {
+      "relativePath": "runtime/python314._pth",
+      "length": 29,
+      "sha256": "b0ec6efd80c901eacd4f24d1e711cdf13bf50a91972add1d6f15510852bf4e50"
+    },
+    {
+      "relativePath": "runtime/python314.dll",
+      "length": 6792928,
+      "sha256": "854fe7549eb4b2ac478935a38ae2ca1b774c6fdc3d87f0263fbd697ff86d7149"
+    },
+    {
+      "relativePath": "runtime/python314.zip",
+      "length": 4152838,
+      "sha256": "dfa08b46ce09089b7e6bc139784d5609a07770bab66df8d37938ca9bd508e436"
+    },
+    {
+      "relativePath": "runtime/pythonw.exe",
+      "length": 104672,
+      "sha256": "4e24680bce514188c85ae91323691dcb0364990da0d6319558519e50cbb5a43c"
+    },
+    {
+      "relativePath": "runtime/select.pyd",
+      "length": 33504,
+      "sha256": "a341519a00befc3b86dfddf5938915fed52ded1ad5aab518c57d0b3c8969e835"
+    },
+    {
+      "relativePath": "runtime/sqlite3.dll",
+      "length": 1584864,
+      "sha256": "5c47df970d2e8cc41239754ff167056fcecb1089f876736e51dab5d89f980300"
+    },
+    {
+      "relativePath": "runtime/unicodedata.pyd",
+      "length": 758496,
+      "sha256": "0527fee5192ab4567451d1296533600661571f6ebf9e8f4e0f60b63a4a4fd2e8"
+    },
+    {
+      "relativePath": "runtime/vcruntime140_1.dll",
+      "length": 50112,
+      "sha256": "a7146c08f89fe5b04541ab507cdb59ff7b44534d4ba3c668a426c6450a03434e"
+    },
+    {
+      "relativePath": "runtime/vcruntime140.dll",
+      "length": 178616,
+      "sha256": "d1f4225df2cd877dbf130d5668a021dce3f94118455ff5ec952061c30afc9ce7"
+    },
+    {
+      "relativePath": "runtime/winsound.pyd",
+      "length": 32992,
+      "sha256": "7681b4d88ac96763bb89f018d1c658feeca782d8bfc6d223b06d2ef125780579"
+    },
+    {
+      "relativePath": "THIRD_PARTY_NOTICES.md",
+      "length": 2452,
+      "sha256": "bb81d02f82a3d0bc7f0503952a7a60e793af0e0f960a66e63c33bd2bd56bb3ef"
+    },
+    {
+      "relativePath": "upstream-dependencies.lock.json",
+      "length": 835,
+      "sha256": "a1a10fb6d95de59eda817d4dcaf114d3090c27c99cebdad820b8861dfe94b168"
+    }
+  ]
+}

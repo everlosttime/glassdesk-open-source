@@ -1,4 +1,3 @@
-// Public 1.6.0 adaptation: information-bar-specific implementation is excluded.
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
@@ -23,13 +22,13 @@ public partial class OnboardingWindow : GlassWindow
     private static readonly SolidColorBrush Accent = FrozenBrush(Color.FromRgb(139, 190, 255));
     private static readonly SolidColorBrush Quiet = FrozenBrush(Color.FromRgb(82, 100, 129));
     private static SolidColorBrush FrozenBrush(Color color) { var brush = new SolidColorBrush(color); brush.Freeze(); return brush; }
-    private static readonly string[] Titles = ["把快捷方式添加到 Dock", "从 Dock 移除快捷方式", "通过右上角添加到启动台", "拖到下方红色垃圾桶移除", "从托盘菜单打开设置"];
+    private static readonly string[] Titles = ["把快捷方式添加到 Dock", "从 Dock 移除快捷方式", "通过右上角添加到启动台", "拖到下方红色垃圾桶移除", "从信息栏打开设置"];
     private static readonly string[] Instructions = [
         "按住桌面左侧的“示例快捷方式”，拖到底部 Dock 的 ＋ 位置，再松开鼠标。",
         "在 Dock 的蓝色示例图标上点击鼠标右键，再选择“从 Dock 移除”。",
         "点击 Dock 的九宫格打开启动台，再点右上角“＋ 添加”，添加所选示例。",
         "点击九宫格打开启动台。长按“示例应用”并拖到底部中央的红色垃圾桶，再松开鼠标。",
-        "点击右上角的模拟托盘入口，再选择“设置”。"];
+        "点击右上角信息栏的箭头打开控制中心，再点击控制中心右上角的齿轮。"];
     protected override bool UseOpaquePanel => true;
     public event EventHandler<string>? SettingsPageRequested;
     public void PositionOnPrimary() => CenterOnPrimaryWorkArea();
@@ -67,7 +66,7 @@ public partial class OnboardingWindow : GlassWindow
         MockDock.BorderBrush = _task <= 1 ? Accent : Quiet;
         LauncherToggleButton.BorderBrush = _task is 2 or 3 ? Accent : Quiet;
         AddAppButton.BorderBrush = _task == 2 ? Accent : Quiet;
-        MockTrayIcon.BorderBrush = _task == 4 ? Accent : Quiet;
+        ControlCenterArrowButton.BorderBrush = _task == 4 ? Accent : Quiet;
         SettingsGearButton.BorderBrush = _task == 4 ? Accent : Quiet;
     }
     private void Complete(string message)
@@ -110,21 +109,21 @@ public partial class OnboardingWindow : GlassWindow
         DockExample.Visibility = Visibility.Collapsed;
         Complete("仅移除了 Dock 入口，原应用和文件仍然保留。");
     }
-    private void OnTrayClick(object sender, RoutedEventArgs e)
+    private void OnControlCenterClick(object sender, RoutedEventArgs e)
     {
-        var show = MockTrayMenu.Visibility != Visibility.Visible;
-        HidePopovers(); MockTrayMenu.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
-        if (show && _task == 4 && !_completed) FeedbackText.Text = "托盘菜单已展开。选择“设置”，打开 GlassDesk 设置。";
+        var show = MockControlCenter.Visibility != Visibility.Visible;
+        HidePopovers(); MockControlCenter.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        if (show && _task == 4 && !_completed) FeedbackText.Text = "控制中心已展开。点击它右上角的齿轮，打开 GlassDesk 设置。";
     }
     private void OnSettingsGearClick(object sender, RoutedEventArgs e)
     {
-        if (MockTrayMenu.Visibility != Visibility.Visible) return;
+        if (MockControlCenter.Visibility != Visibility.Visible) return;
         HidePopovers(); MockSettings.Visibility = Visibility.Visible;
-        if (_task == 4) Complete("已学会从托盘菜单打开设置。你可以完成教学，或主动打开真实设置。");
+        if (_task == 4) Complete("已学会从信息栏打开设置。你可以完成教学，或主动打开真实设置。");
     }
     private void HidePopovers()
     {
-        MockPicker.Visibility = MockLauncher.Visibility = MockTrayMenu.Visibility = MockSettings.Visibility = Visibility.Collapsed;
+        MockPicker.Visibility = MockLauncher.Visibility = MockControlCenter.Visibility = MockSettings.Visibility = Visibility.Collapsed;
     }
     private bool Contains(FrameworkElement element, Point point)
     {
@@ -136,8 +135,8 @@ public partial class OnboardingWindow : GlassWindow
     {
         if (!Contains(MockLauncher, position) && !Contains(LauncherToggleButton, position))
             MockPicker.Visibility = MockLauncher.Visibility = Visibility.Collapsed;
-        if (!Contains(MockTrayMenu, position) && !Contains(MockTrayIcon, position))
-            MockTrayMenu.Visibility = Visibility.Collapsed;
+        if (!Contains(MockControlCenter, position) && !Contains(ControlCenterArrowButton, position))
+            MockControlCenter.Visibility = Visibility.Collapsed;
         if (!Contains(MockSettings, position)) MockSettings.Visibility = Visibility.Collapsed;
     }
     private void OnSurfaceMouseDown(object sender, MouseButtonEventArgs e)
@@ -211,7 +210,7 @@ public partial class OnboardingWindow : GlassWindow
         e.Handled = true;
         if (_pendingSource is not null || _dragSource is not null) { CancelDrag(); return; }
         if (MockPicker.IsVisible) MockPicker.Visibility = Visibility.Collapsed;
-        else if (MockLauncher.IsVisible || MockTrayMenu.IsVisible || MockSettings.IsVisible) HidePopovers();
+        else if (MockLauncher.IsVisible || MockControlCenter.IsVisible || MockSettings.IsVisible) HidePopovers();
         else Close();
     }
     protected override void OnClosing(CancelEventArgs e)

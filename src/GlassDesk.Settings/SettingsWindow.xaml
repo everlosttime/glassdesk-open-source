@@ -1,4 +1,3 @@
-<!-- Public 1.6.0 adaptation: information-bar-specific implementation is excluded. -->
 <controls:GlassWindow
     x:Class="GlassDesk.Settings.SettingsWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -19,7 +18,10 @@
       <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="Controls/SlimScrollBars.xaml"/>
       </ResourceDictionary.MergedDictionaries>
-      </ResourceDictionary>
+      <Style x:Key="StatusBarBatteryDeviceItemStyle" TargetType="ComboBoxItem">
+        <Setter Property="ToolTip" Value="{Binding Details}" />
+      </Style>
+    </ResourceDictionary>
   </controls:GlassWindow.Resources>
 
   <Border
@@ -104,6 +106,21 @@
                 <ComboBoxItem Content="磨砂玻璃" />
                 <ComboBoxItem Content="普通透明玻璃（低占用）" />
               </ComboBox>
+              <TextBlock Margin="0,12,0,4" Text="信息栏玻璃效果" />
+              <ComboBox x:Name="StatusBarMaterialCombo" AutomationProperties.Name="信息栏玻璃效果"
+                        SelectionChanged="OnAppearanceControlChanged">
+                <ComboBoxItem Content="液态玻璃" />
+                <ComboBoxItem Content="磨砂玻璃" />
+                <ComboBoxItem Content="普通透明玻璃（低占用）" />
+              </ComboBox>
+              <TextBlock Margin="0,12,0,4" Text="控制中心玻璃效果" />
+              <ComboBox x:Name="ControlCenterMaterialCombo" AutomationProperties.Name="控制中心玻璃效果"
+                        SelectionChanged="OnAppearanceControlChanged">
+                <ComboBoxItem Content="液态玻璃" />
+                <ComboBoxItem Content="磨砂玻璃" />
+                <ComboBoxItem Content="普通透明玻璃（低占用）" />
+              </ComboBox>
+              <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Text="液态玻璃带折射；磨砂玻璃柔化背景；普通透明玻璃仅保留透明底色，性能开销最低。日期与通知（日历）弹窗跟随控制中心的玻璃效果和透明度。" />
               <TextBlock Margin="0,12,0,4" Text="窗口层级模式" />
               <ComboBox x:Name="DesktopLayerModeCombo" AutomationProperties.Name="窗口层级模式"
                         SelectionChanged="OnAppearanceControlChanged">
@@ -111,7 +128,7 @@
                 <ComboBoxItem Content="固定桌面层" />
               </ComboBox>
               <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
-                         Text="固定桌面层：Dock 保持位于应用窗口下方，仍遵循 Dock 的“常驻显示 / 自动隐藏”设置，不因遮挡单独收起。玻璃背景只读取桌面和壁纸，不读取应用窗口；鼠标唤出后仍位于应用窗口下方，手动休眠仍可暂停。" />
+                         Text="固定桌面层：信息栏和 Dock 保持位于应用窗口下方，仍遵循 Dock 的“常驻显示 / 自动隐藏”设置，不因遮挡单独收起。玻璃背景只读取桌面和壁纸，不读取应用窗口；鼠标唤出后仍位于应用窗口下方，手动休眠仍可暂停。" />
               <TextBlock Margin="0,12,0,4" Text="Dock 透明度" />
               <DockPanel>
                 <TextBlock x:Name="DockTransparencyValue" DockPanel.Dock="Right" Width="48" TextAlignment="Right" />
@@ -134,11 +151,24 @@
                 <TextBlock DockPanel.Dock="Left" Text="不透明" />
                 <TextBlock Text="透明" TextAlignment="Right" />
               </DockPanel>
+              <TextBlock Margin="0,12,0,4" Text="信息栏透明度" />
+              <DockPanel>
+                <TextBlock x:Name="StatusBarTransparencyValue" DockPanel.Dock="Right" Width="48" TextAlignment="Right" />
+                <Slider x:Name="StatusBarTransparencySlider" Minimum="0" Maximum="1" Value="0.9"
+                        SmallChange="0.01" LargeChange="0.1" IsMoveToPointEnabled="True"
+                        AutomationProperties.Name="信息栏透明度" ValueChanged="OnAppearanceSliderChanged" />
+              </DockPanel>
               <DockPanel Margin="0,4,0,0">
                 <TextBlock DockPanel.Dock="Left" Text="不透明" />
                 <TextBlock Text="透明" TextAlignment="Right" />
               </DockPanel>
               <TextBlock Margin="0,12,0,4" Text="控制中心透明度（含日历弹窗）" />
+              <DockPanel>
+                <TextBlock x:Name="ControlCenterTransparencyValue" DockPanel.Dock="Right" Width="48" TextAlignment="Right" />
+                <Slider x:Name="ControlCenterTransparencySlider" Minimum="0" Maximum="1" Value="0.35"
+                        SmallChange="0.01" LargeChange="0.1" IsMoveToPointEnabled="True"
+                        AutomationProperties.Name="控制中心透明度（含日历弹窗）" ValueChanged="OnAppearanceSliderChanged" />
+              </DockPanel>
               <DockPanel Margin="0,4,0,0">
                 <TextBlock DockPanel.Dock="Left" Text="不透明" />
                 <TextBlock Text="透明" TextAlignment="Right" />
@@ -187,7 +217,7 @@
                 <ComboBoxItem Content="自动隐藏" />
               </ComboBox>
               <TextBlock Margin="0,4,0,8" TextWrapping="Wrap"
-                         Text="自动隐藏：鼠标移到 Dock 原来的位置时唤出，移开约 300 毫秒后收起。使用菜单、拖动图标或打开启动台时保持显示。此设置同样适用于固定桌面层。" />
+                         Text="自动隐藏：鼠标移到 Dock 原来的位置时唤出，移开约 300 毫秒后收起。使用菜单、拖动图标或打开启动台时保持显示。此设置同样适用于固定桌面层；信息栏也遵循相同的显示方式。" />
               <TextBlock Margin="0,12,0,4" Text="内置固定图标" />
               <CheckBox x:Name="ShowLauncherEntryCheckBox" Content="显示启动台" Margin="0,4"
                         AutomationProperties.Name="Dock 显示启动台" Checked="OnDockControlChanged" Unchecked="OnDockControlChanged" />
@@ -233,6 +263,82 @@
               <TextBlock x:Name="DockSettingsStatus" Margin="0,10,0,16" TextWrapping="Wrap"
                          Foreground="{Binding SecondaryForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
               <Separator Margin="0,4,0,14" />
+              <TextBlock x:Name="InformationBarSectionHeading" FontSize="16" FontWeight="SemiBold" Text="信息栏"
+                         Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+              <Border Margin="0,10,0,14" Padding="12" CornerRadius="12" Background="#12FFFFFF">
+                <StackPanel>
+                  <TextBlock Text="桌面信息栏" FontWeight="SemiBold" />
+                  <CheckBox x:Name="ShowStatusBarCheckBox" Content="启用桌面信息栏" Margin="0,8,0,4"
+                            AutomationProperties.Name="启用桌面信息栏" Checked="OnDockControlChanged" Unchecked="OnDockControlChanged" />
+                  <TextBlock TextWrapping="Wrap" FontSize="11"
+                             Text="显示时间、系统状态和音乐。关闭时同时收起相关弹窗；切换立即生效并自动保存。" />
+                  <CheckBox x:Name="ShowStatusBarNetworkSpeedCheckBox" Content="显示实时网速" Margin="0,10,0,4"
+                            AutomationProperties.Name="显示实时网速" Checked="OnDockControlChanged" Unchecked="OnDockControlChanged" />
+                  <TextBlock TextWrapping="Wrap" FontSize="11"
+                             Text="显示每秒上下行流量。关闭后收起网速区域，保留网络状态，信息栏外框大小不变。" />
+                  <DockPanel Margin="0,12,0,4">
+                    <TextBlock x:Name="StatusBarSecondaryCount" DockPanel.Dock="Right" Text="3/3"
+                               AutomationProperties.Name="信息栏第二行已选数量" />
+                    <TextBlock Text="第二行显示项目（最多 3 项）" />
+                  </DockPanel>
+                  <WrapPanel>
+                    <CheckBox x:Name="StatusBarCpuCheckBox" Content="CPU" Tag="cpu" Margin="0,4,16,4" Checked="OnStatusBarSecondaryItemChanged" Unchecked="OnStatusBarSecondaryItemChanged" />
+                    <CheckBox x:Name="StatusBarMemoryCheckBox" Content="内存" Tag="memory" Margin="0,4,16,4" Checked="OnStatusBarSecondaryItemChanged" Unchecked="OnStatusBarSecondaryItemChanged" />
+                    <CheckBox x:Name="StatusBarMusicCheckBox" Content="音乐" Tag="music" Margin="0,4,16,4" Checked="OnStatusBarSecondaryItemChanged" Unchecked="OnStatusBarSecondaryItemChanged" />
+                    <CheckBox x:Name="StatusBarMouseBatteryCheckBox" Content="鼠标电量" Tag="mouseBattery" Margin="0,4,16,4" Checked="OnStatusBarSecondaryItemChanged" Unchecked="OnStatusBarSecondaryItemChanged" />
+                    <CheckBox x:Name="StatusBarHeadsetBatteryCheckBox" Content="耳机电量" Tag="headsetBattery" Margin="0,4,16,4" Checked="OnStatusBarSecondaryItemChanged" Unchecked="OnStatusBarSecondaryItemChanged" />
+                    <CheckBox x:Name="StatusBarKeyboardBatteryCheckBox" Content="键盘电量" Tag="keyboardBattery" Margin="0,4,16,4" Checked="OnStatusBarSecondaryItemChanged" Unchecked="OnStatusBarSecondaryItemChanged" />
+                    <CheckBox x:Name="StatusBarFanCheckBox" Content="风扇转速" Tag="fan" Margin="0,4,16,4" Checked="OnStatusBarSecondaryItemChanged" Unchecked="OnStatusBarSecondaryItemChanged" />
+                  </WrapPanel>
+                  <TextBlock FontSize="11" TextWrapping="Wrap" Text="可全部取消；达到上限后先取消一项再添加。取消音乐摘要不影响控制中心播放。" />
+                  <TextBlock Margin="0,10,0,4" Text="鼠标电量设备" />
+                  <ComboBox x:Name="StatusBarMouseDeviceCombo" DisplayMemberPath="Label" SelectedValuePath="DeviceKey"
+                            ItemContainerStyle="{StaticResource StatusBarBatteryDeviceItemStyle}" ToolTip="{Binding SelectedItem.Details, RelativeSource={RelativeSource Self}}"
+                            AutomationProperties.Name="鼠标电量设备" SelectionChanged="OnStatusBarBatteryDeviceChanged" DropDownOpened="OnStatusBarBatteryDropDownOpened" />
+                  <TextBlock Margin="0,8,0,4" Text="耳机电量设备" />
+                  <ComboBox x:Name="StatusBarHeadsetDeviceCombo" DisplayMemberPath="Label" SelectedValuePath="DeviceKey"
+                            ItemContainerStyle="{StaticResource StatusBarBatteryDeviceItemStyle}" ToolTip="{Binding SelectedItem.Details, RelativeSource={RelativeSource Self}}"
+                            AutomationProperties.Name="耳机电量设备" SelectionChanged="OnStatusBarBatteryDeviceChanged" DropDownOpened="OnStatusBarBatteryDropDownOpened" />
+                  <TextBlock Margin="0,8,0,4" Text="键盘电量设备" />
+                  <ComboBox x:Name="StatusBarKeyboardDeviceCombo" DisplayMemberPath="Label" SelectedValuePath="DeviceKey"
+                            ItemContainerStyle="{StaticResource StatusBarBatteryDeviceItemStyle}" ToolTip="{Binding SelectedItem.Details, RelativeSource={RelativeSource Self}}"
+                            AutomationProperties.Name="键盘电量设备" SelectionChanged="OnStatusBarBatteryDeviceChanged" DropDownOpened="OnStatusBarBatteryDropDownOpened" />
+                  <TextBlock Margin="0,4,0,0" FontSize="11" TextWrapping="Wrap" Text="自动选择已连接设备；耳机优先系统默认音频设备。手动选择会保留到设备重新连接。" />
+                  <TextBlock x:Name="StatusBarBatteryDiscoveryStatus" Margin="0,4,0,0" FontSize="11" TextWrapping="Wrap" />
+                  <TextBlock Margin="0,8,0,4" Text="桌面信息栏位置" />
+                  <ComboBox x:Name="StatusBarEdgeCombo" AutomationProperties.Name="桌面信息栏位置"
+                            SelectionChanged="OnDockControlChanged">
+                    <ComboBoxItem Content="屏幕上方" />
+                    <ComboBoxItem Content="屏幕下方" />
+                  </ComboBox>
+                  <TextBlock Margin="0,10,0,4" Text="桌面信息栏大小" />
+                  <Slider x:Name="StatusBarScaleSlider" Minimum="0.75" Maximum="1.5"
+                          SmallChange="0.05" LargeChange="0.1" IsMoveToPointEnabled="True"
+                          AutomationProperties.Name="桌面信息栏大小" ValueChanged="OnDockControlChanged" />
+                  <TextBlock x:Name="StatusBarScaleReadout" Margin="0,2,0,6" FontSize="11"
+                             AutomationProperties.Name="桌面信息栏大小当前值" />
+                  <TextBlock Margin="0,10,0,4" Text="水平偏移" />
+                  <Slider x:Name="StatusBarOffsetXSlider" Minimum="-10000" Maximum="18"
+                          SmallChange="1" LargeChange="20" TickFrequency="1" IsSnapToTickEnabled="True"
+                          AutomationProperties.Name="信息栏水平偏移" ValueChanged="OnDockControlChanged" />
+                  <TextBlock x:Name="StatusBarOffsetXReadout" Margin="0,2,0,6" FontSize="11"
+                             AutomationProperties.Name="信息栏水平偏移当前值" />
+                  <TextBlock TextWrapping="Wrap" Text="通过水平偏移调整信息栏位置；显示方式和收起延迟跟随 Dock。" />
+                  <TextBlock Margin="0,12,0,4" Text="信息栏文字与图标明暗" />
+                  <DockPanel>
+                    <TextBlock x:Name="StatusBarTextBrightnessValue" DockPanel.Dock="Right" Width="48" TextAlignment="Right" />
+                    <Slider x:Name="StatusBarTextBrightnessSlider" Minimum="0" Maximum="1" Value="1"
+                            SmallChange="0.01" LargeChange="0.1" IsMoveToPointEnabled="True"
+                            AutomationProperties.Name="信息栏文字与图标明暗" ValueChanged="OnAppearanceSliderChanged" />
+                  </DockPanel>
+                  <DockPanel><TextBlock DockPanel.Dock="Right" Text="白色" /><TextBlock Text="黑色" /></DockPanel>
+                  <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Text="调节信息栏中时间、系统状态和音乐信息的颜色。" />
+                </StackPanel>
+              </Border>
+              <TextBlock x:Name="InformationBarSettingsStatus" Margin="0,0,0,14" TextWrapping="Wrap"
+                         AutomationProperties.Name="信息栏设置状态"
+                         Foreground="{Binding SecondaryForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+              <Separator Margin="0,4,0,14" />
               <TextBlock x:Name="LauncherSectionHeading" FontSize="16" FontWeight="SemiBold" Text="启动台设置"
                          Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
               <TextBlock Margin="0,12,0,4" Text="行数（2–10）" />
@@ -273,7 +379,7 @@
                 <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="下一页" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="NextPageHelp" HelpTitle="下一页" Description="启动台打开时切换到下一页，也适用于搜索结果分页。到最后一页后停止；启动台关闭、打开文件夹、正在中文输入或展开动画期间，不执行翻页。"/></StackPanel><settings:ShortcutRecorder x:Name="NextPageHotkeyBox" AutomationProperties.Name="下一页快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
                 <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="上一页" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="PreviousPageHelp" HelpTitle="上一页" Description="启动台打开时切换到上一页，也适用于搜索结果分页。到第一页后停止；启动台关闭、打开文件夹、正在中文输入或展开动画期间，不执行翻页。"/></StackPanel><settings:ShortcutRecorder x:Name="PreviousPageHotkeyBox" AutomationProperties.Name="上一页快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
                 <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="切换桌面图标" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleDesktopIconsHelp" HelpTitle="切换桌面图标" Description="显示或隐藏 Windows 桌面上的图标。只改变图标可见性，不会删除文件，也不会移除 Dock 或启动台入口；再次按下即可切换回来。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleDesktopIconsHotkeyBox" AutomationProperties.Name="切换桌面图标快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
-                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="阻止Dock遮挡唤出" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleDockRevealLockHelp" HelpTitle="阻止 Dock遮挡唤出" Description="同时切换 Dock的遮挡唤出锁。锁定后，被窗口覆盖或全屏遮挡时，鼠标靠近边缘也不会将它们唤出；再次按下解除。未被遮挡时仍按原显示设置工作，仅本次运行有效。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleDockRevealLockHotkeyBox" AutomationProperties.Name="阻止Dock遮挡唤出快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
+                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="阻止Dock+信息栏遮挡唤出" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleDockRevealLockHelp" HelpTitle="阻止 Dock 与信息栏遮挡唤出" Description="同时切换 Dock 和信息栏的遮挡唤出锁。锁定后，被窗口覆盖或全屏遮挡时，鼠标靠近边缘也不会将它们唤出；再次按下解除。未被遮挡时仍按原显示设置工作，仅本次运行有效。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleDockRevealLockHotkeyBox" AutomationProperties.Name="阻止Dock+信息栏遮挡唤出快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
                 <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="开关游戏休眠模式" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleGameSleepHelp" HelpTitle="开关游戏休眠模式" Description="手动开启或关闭游戏休眠。开启后隐藏桌面组件并暂停部分背景处理，减少游戏时的干扰；程序仍在运行。再次按下同一快捷键可解除手动休眠，托盘菜单也可切换；若仍有全屏应用，自动休眠可能继续生效。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleGameSleepHotkeyBox" AutomationProperties.Name="开关游戏休眠模式快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
               </UniformGrid>
               <TextBlock x:Name="InteractionSettingsStatus" Margin="0,8,0,14" TextWrapping="Wrap"
@@ -341,7 +447,7 @@
                          Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
               <TextBlock Margin="0,8,0,8" TextWrapping="Wrap" Text="与手机连接同一局域网，并打开 LocalSend。图片、视频按原文件传输，每次来件均需确认。" />
               <CheckBox x:Name="NearbyEnabledCheck" Content="开启附近传输，随 GlassDesk 后台待命" Margin="0,4,0,8"/>
-              <TextBlock Text="通过 Dock 的附近传输入口打开传输面板。" Margin="0,0,0,8" TextWrapping="Wrap"/>
+              <TextBlock Text="在信息栏控制中心的“游戏休眠”下方打开附近传输。" Margin="0,0,0,8" TextWrapping="Wrap"/>
               <TextBlock Text="关闭控制中心或传输面板不会停止接收；关闭功能会取消活动任务。" TextWrapping="Wrap" Margin="0,0,0,8"/>
               <TextBlock Text="设备名称"/>
               <TextBox x:Name="NearbyDeviceNameBox" MaxLength="80" Margin="0,4,0,8" AutomationProperties.Name="附近传输设备名称"/>

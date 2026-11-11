@@ -1,0 +1,24 @@
+MyFinder Device Battery 1.3.9 battery readers
+https://github.com/wushuai0802/myfinder-device-battery
+Pinned commit: bbcb779be4633ecf9183f53409de118dc9cb1fd6
+MyFinder source is AGPL-3.0-only; LICENSE and THIRD_PARTY_NOTICES.md are preserved.
+Adapted HaloBattery modules retain engine/licenses/HaloBattery-MIT.txt.
+
+GlassDesk runs the read-only glassdesk_bridge.py CLI as a separate process.
+No upstream GUI, updater, autostart installer or settings code is executed.
+The complete pinned upstream source is in corresponding-source/myfinder-device-battery-bbcb779be4633ecf9183f53409de118dc9cb1fd6.zip.
+The GlassDesk bridge, native profiles, coverage audit and tests are in corresponding-source/glassdesk-battery-engine.zip.
+
+The official CPython 3.14.8 Windows x64 embeddable runtime and hidapi 0.15.0
+CPython 3.14 x64 wheel are bundled unchanged except for python314._pth.
+This private isolated runtime imports no system site packages and needs no
+system Python, pip or runtime network access. Its search path is the private
+runtime, its standard-library ZIP, the sibling engine, and component root.
+CPython's license and bundled notices are runtime/LICENSE.txt. The hidapi
+wheel's complete licenses are runtime/hidapi-0.15.0.dist-info/licenses/.
+Distribution uses hidapi's BSD alternative. Full CPython and Python hidapi
+source archives are retained in corresponding-source/; the hidapi source
+archive includes its native HIDAPI code. Dependency URLs and SHA-256 hashes
+are recorded in dependency-materials.json and upstream-dependencies.lock.json.
+Archive checksums, every extracted runtime/reader file and every bridge source
+are pinned by build/battery-engine.lock.json in the complete GlassDesk source.

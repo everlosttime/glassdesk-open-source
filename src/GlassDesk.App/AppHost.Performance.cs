@@ -1,4 +1,3 @@
-// Public 1.6.0 adaptation: information-bar-specific implementation is excluded.
 using System.Windows;
 using System.Windows.Threading;
 using GlassDesk.Platform.Shell;
@@ -33,6 +32,7 @@ internal sealed partial class AppHost
         ReconcileCount = _services?.Running.ReconcileCount ?? 0,
         FullscreenFallback = RuntimeFullscreenFallback,
         DockSleeping = _dock?.IsPerformanceSleeping == true,
+        StatusBarCaptureRequested = _statusBar?.IsPerformanceCaptureRequested == true,
         LauncherSleeping = _launcherPerformanceSleeping,
     };
 
@@ -48,6 +48,7 @@ internal sealed partial class AppHost
         _performanceDeadlineTimer = new DispatcherTimer(DispatcherPriority.Input, _application.Dispatcher);
         _performanceDeadlineTimer.Tick += (_, _) => { _performanceDeadlineTimer.Stop(); ReconcilePerformance(); };
         _dock!.PerformanceSurfaceVisibilityChanged += OnPerformanceVisibilityChanged;
+        _statusBar!.PerformanceSurfaceVisibilityChanged += OnPerformanceVisibilityChanged;
         _dock.IsVisibleChanged += OnPerformanceWindowVisibilityChanged;
         _launcher!.IsVisibleChanged += OnPerformanceWindowVisibilityChanged;
         _performanceFullscreen = new PerformanceFullscreenMonitor(OnPerformanceForegroundObserved);
@@ -71,6 +72,7 @@ internal sealed partial class AppHost
             if (!observation.BelongsToCurrentProcess)
             {
                 _dock?.RequestGlassRefresh();
+                _statusBar?.RequestGlassRefresh();
                 _launcher?.RequestGlassRefresh();
             }
         }));
@@ -128,7 +130,8 @@ internal sealed partial class AppHost
             {
                 _performanceApplyPending = false;
                 var now = DateTimeOffset.UtcNow;
-                _performance.SetVisibleSurfaces(_dock?.IsPerformanceCaptureRequested == true,
+                _performance.SetVisibleSurfaces(_dock?.IsPerformanceCaptureRequested == true
+                    || _statusBar?.IsPerformanceCaptureRequested == true,
                     _launcher?.IsVisible == true || _performanceActivationPending, now);
                 var state = _performance.State;
                 var sleeping = state == PerformanceState.Sleeping;
@@ -137,6 +140,7 @@ internal sealed partial class AppHost
 
                 ReconcileNaiwa();
                 _dock?.SetPerformanceSleeping(suppressed);
+                _statusBar?.SetPerformanceSleeping(suppressed);
                 _nearbyPanel?.SetRefreshSuppressed(suppressed);
                 _dock?.SetBackgroundCaptureSleeping(sleeping && !suppressed);
                 if (sleeping && suppressed && _launcher?.IsVisible == true && !_launcher.IsClosingContainer) HideLauncher();
@@ -204,6 +208,7 @@ internal sealed partial class AppHost
             _dock.IsVisibleChanged -= OnPerformanceWindowVisibilityChanged;
         }
         if (_launcher is not null) _launcher.IsVisibleChanged -= OnPerformanceWindowVisibilityChanged;
+        if (_statusBar is not null) _statusBar.PerformanceSurfaceVisibilityChanged -= OnPerformanceVisibilityChanged;
         if (_settings is not null) _settings.PerformanceSettingsChanged -= OnPerformanceSettingsChanged;
         _performance = null;
     }

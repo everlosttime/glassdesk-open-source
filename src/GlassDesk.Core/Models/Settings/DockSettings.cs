@@ -1,4 +1,3 @@
-// Public 1.6.0 adaptation: information-bar-specific implementation is excluded.
 namespace GlassDesk.Core.Models.Settings;
 
 /// <summary>程序坞停在哪里、以及它如何呈现。</summary>
@@ -54,7 +53,7 @@ public sealed class DockSettings
     public bool ShowStatusBarNetworkSpeed { get; set; }
 
     /// <summary>信息栏第二行的可选项目；空数组表示隐藏全部摘要。</summary>
-    public string[] StatusBarSecondaryItems { get; set; } = ["cpu", "memory", "music"];
+    public string[] StatusBarSecondaryItems { get; set; } = StatusBarSecondaryItemCatalog.DefaultItems();
 
     /// <summary>null 为自动选择；手动选择的稳定物理设备键在离线时仍保留。</summary>
     public string? StatusBarMouseDeviceKey { get; set; }

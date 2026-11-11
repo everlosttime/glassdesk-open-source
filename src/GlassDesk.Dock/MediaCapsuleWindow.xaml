@@ -1,0 +1,145 @@
+<controls:GlassWindow
+    x:Class="GlassDesk.Dock.MediaCapsuleWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:GlassDesk.UI.Controls;assembly=GlassDesk.UI"
+    Title="正在播放"
+    Width="378" Height="76"
+    ShowInTaskbar="False"
+    ShowActivated="False"
+    WindowStartupLocation="Manual"
+    Topmost="True">
+  <controls:GlassWindow.Resources>
+    <Style x:Key="MediaButton" TargetType="Button">
+      <Setter Property="Width" Value="34" />
+      <Setter Property="Height" Value="34" />
+      <Setter Property="Margin" Value="2,0" />
+      <Setter Property="Background" Value="#14FFFFFF" />
+      <Setter Property="BorderBrush" Value="#20FFFFFF" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="ButtonSurface"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="12"
+                    SnapsToDevicePixels="True">
+              <ContentPresenter HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                RecognizesAccessKey="True" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="ButtonSurface" Property="Background" Value="#2AFFFFFF" />
+                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#45FFFFFF" />
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="ButtonSurface" Property="Background" Value="#38FFFFFF" />
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="ButtonSurface" Property="Background" Value="#0CFFFFFF" />
+                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#14FFFFFF" />
+                <Setter Property="Opacity" Value="0.45" />
+                <Setter Property="Cursor" Value="Arrow" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="MediaTabButton" TargetType="Button">
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="IsTabStop" Value="False" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="TabSurface"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="17"
+                    SnapsToDevicePixels="True">
+              <ContentPresenter HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                RecognizesAccessKey="True" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="TabSurface" Property="Background" Value="#2DFFFFFF" />
+                <Setter TargetName="TabSurface" Property="BorderBrush" Value="#50FFFFFF" />
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="TabSurface" Property="Background" Value="#3AFFFFFF" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </controls:GlassWindow.Resources>
+  <Grid ClipToBounds="True">
+    <controls:LiquidGlassSurface x:Name="GlassSurface" />
+    <Grid x:Name="FullPlayerPanel" Margin="10,8,18,8">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="52" />
+        <ColumnDefinition />
+        <ColumnDefinition Width="112" />
+        <ColumnDefinition Width="34" />
+      </Grid.ColumnDefinitions>
+      <Border Width="50" Height="50" CornerRadius="16" Background="#26FFFFFF" BorderBrush="#28FFFFFF" BorderThickness="1">
+        <Grid ClipToBounds="True">
+          <Image x:Name="ArtworkImage" Stretch="UniformToFill" Visibility="Collapsed" />
+          <TextBlock x:Name="ArtworkPlaceholder" Text="&#xE8D6;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="23"
+                     HorizontalAlignment="Center" VerticalAlignment="Center"
+                     Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+        </Grid>
+      </Border>
+      <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+        <TextBlock x:Name="TitleText" Text="正在播放" FontSize="12.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                   Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+        <TextBlock x:Name="ArtistText" Text="" FontSize="10" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"
+                   Foreground="{Binding SecondaryForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+      </StackPanel>
+      <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button x:Name="PreviousButton" Style="{StaticResource MediaButton}" Click="OnPreviousClick" ToolTip="上一首">
+          <TextBlock Text="&#xE892;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15" />
+        </Button>
+        <Button x:Name="PlayPauseButton" Style="{StaticResource MediaButton}" Click="OnPlayPauseClick" ToolTip="播放/暂停">
+          <TextBlock x:Name="PlayPauseGlyph" Text="&#xE768;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15" />
+        </Button>
+        <Button x:Name="NextButton" Style="{StaticResource MediaButton}" Click="OnNextClick" ToolTip="下一首">
+          <TextBlock Text="&#xE893;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15" />
+        </Button>
+      </StackPanel>
+      <Button x:Name="ManualCollapseButton" Grid.Column="3" Width="30" Height="36"
+              Click="OnManualCollapseClick" ToolTip="收回播放器" Cursor="Hand"
+              HorizontalAlignment="Center" VerticalAlignment="Center" Padding="0"
+              Background="#1FFFFFFF" BorderBrush="#35FFFFFF" BorderThickness="1"
+              FocusVisualStyle="{x:Null}">
+        <TextBlock Text="&#xE76C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White" />
+      </Button>
+    </Grid>
+
+    <Button x:Name="SideRevealButton" Visibility="Collapsed" Style="{StaticResource MediaTabButton}"
+            PreviewMouseLeftButtonDown="OnSideRevealPreviewMouseLeftButtonDown"
+            PreviewMouseMove="OnSideRevealPreviewMouseMove"
+            PreviewMouseLeftButtonUp="OnSideRevealPreviewMouseLeftButtonUp"
+            ToolTip="展开媒体播放器" Cursor="Hand" Background="#1FFFFFFF"
+            BorderBrush="#35FFFFFF" BorderThickness="1" FocusVisualStyle="{x:Null}">
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock Text="&#xE8D6;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15"
+                   HorizontalAlignment="Center" Foreground="White" />
+        <TextBlock Text="&#xE76B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="8"
+                   Margin="0,3,0,0" HorizontalAlignment="Center" Foreground="White" />
+      </StackPanel>
+    </Button>
+  </Grid>
+</controls:GlassWindow>

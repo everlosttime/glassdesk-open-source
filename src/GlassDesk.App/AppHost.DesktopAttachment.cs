@@ -1,4 +1,3 @@
-// Public 1.6.0 adaptation: information-bar-specific implementation is excluded.
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Threading;
@@ -19,14 +18,26 @@ internal sealed partial class AppHost
         var primary = _primaryDisplaySession
             ?? throw new InvalidOperationException("Desktop bars require a primary display session.");
         _dock = new DockWindow();
+        _statusBar = new StatusBarWindow();
         _dock.BindPrimaryDisplay(primary);
+        _statusBar.BindPrimaryDisplay(primary);
+        _statusBar.AttachSettings(_dockSettings!);
+        _statusBar.IsLauncherActive = () => _launcher?.IsVisible == true;
+        _statusBar.ConfigureGameSleep(() => RuntimeManualGameSleep, SetManualGameSleep);
+        _statusBar.ConfigureSettings(ShowSettings);
+        _statusBar.ConfigureCalendar(_data.Settings);
+        _statusBar.ConfigurePlacement(() =>
+            (_data!.Settings.Current.Dock.StatusBarOffsetX, _data.Settings.Current.Dock.StatusBarEdge));
+        _statusBar.ConfigureSizeScale(() => _data!.Settings.Current.Dock.StatusBarSizeScale);
+        _statusBar.ConfigureNearby(() => ShowNearbyPanel(null, toggle: true),
+            () => _services?.DockIcons.GetIconPath("entry:nearby"));
         _dock.AttachServices(_services!, _dockSettings!, (PixelRect? source) =>
             ToggleLauncherFromDock(_launcher!, source, ShowLauncher));
         _dock.SuppressPassiveTriggersWhenFullscreen = _data.Settings.Current.Display.SuppressTriggersWhenFullscreen;
         _dock.SetLauncherContainerState(_launcher?.IsVisible == true);
         _dock.ToggleDesktopIcons = () => ExecuteInteraction(GlassDesk.Core.Input.InputAction.ToggleDesktopIcons);
         var icon = _launcher?.Icon ?? CreateWindowIcon();
-        foreach (var bar in new GlassDesk.UI.Controls.GlassWindow[] { _dock })
+        foreach (var bar in new GlassDesk.UI.Controls.GlassWindow[] { _dock, _statusBar })
         {
             bar.Icon = icon;
             bar.Closing += OnWindowClosing;
@@ -38,13 +49,16 @@ internal sealed partial class AppHost
         if (_performance is not null)
         {
             _dock.PerformanceSurfaceVisibilityChanged += OnPerformanceVisibilityChanged;
+            _statusBar.PerformanceSurfaceVisibilityChanged += OnPerformanceVisibilityChanged;
             _dock.IsVisibleChanged += OnPerformanceWindowVisibilityChanged;
         }
         if (_performance?.IsSuppressionRequested == true)
         {
             _dock.SetPerformanceSleeping(true);
+            _statusBar.SetPerformanceSleeping(true);
         }
         else _dock.ShowSurface();
+        _statusBar.Start();
     }
 
     private void OnDesktopBarClosed(object? sender, EventArgs e) => QueueDesktopBarsRecovery();
@@ -72,10 +86,12 @@ internal sealed partial class AppHost
             return;
         }
         _desktopRecoveryTimer?.Stop();
-        if (!_desktopBarsNeedRebuild && _dock is not null
-            && WindowControl.IsAlive(new WindowInteropHelper(_dock).Handle))
+        if (!_desktopBarsNeedRebuild && _dock is not null && _statusBar is not null
+            && WindowControl.IsAlive(new WindowInteropHelper(_dock).Handle)
+            && WindowControl.IsAlive(new WindowInteropHelper(_statusBar).Handle))
         {
             _dock.RefreshDesktopAttachment();
+            _statusBar.RefreshDesktopAttachment();
             return;
         }
         _recreatingDesktopBars = true;
@@ -86,7 +102,9 @@ internal sealed partial class AppHost
                 _dock.PerformanceSurfaceVisibilityChanged -= OnPerformanceVisibilityChanged;
                 _dock.IsVisibleChanged -= OnPerformanceWindowVisibilityChanged;
             }
-            foreach (var bar in new Window?[] { _dock })
+            if (_statusBar is not null)
+                _statusBar.PerformanceSurfaceVisibilityChanged -= OnPerformanceVisibilityChanged;
+            foreach (var bar in new Window?[] { _dock, _statusBar })
             {
                 if (bar is null) continue;
                 bar.Closing -= OnWindowClosing;

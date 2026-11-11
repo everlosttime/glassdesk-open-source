@@ -1,4 +1,3 @@
-// Public 1.6.0 adaptation: information-bar-specific implementation is excluded.
 using System.IO;
 using System.Reflection;
 using System.Windows;
@@ -74,7 +73,7 @@ public sealed class OnboardingWindowTests
             for (var i = 0; i < 4; i++) Click(w, "NextButton");
             Click(w, "LauncherToggleButton"); Invoke(w, "DismissPopoversAt", new Point(10, 10));
             Assert.False(Element(w, "MockLauncher").IsVisible);
-            Click(w, "MockTrayIcon"); Assert.True(Element(w, "MockTrayMenu").IsVisible);
+            Click(w, "ControlCenterArrowButton"); Assert.True(Element(w, "MockControlCenter").IsVisible);
             Export(w, "control-center.png");
             Click(w, "SettingsGearButton"); Assert.True(Element(w, "MockSettings").IsVisible);
             Assert.Contains("完成", Text(w, "FeedbackText"));
@@ -160,7 +159,7 @@ public sealed class OnboardingWindowTests
             string? request = null;
             w.SettingsPageRequested += (_, page) => { Assert.False(w.IsVisible); Assert.True(s.Current.OnboardingDismissed); request = page; };
             for (var i = 0; i < 4; i++) Click(w, "NextButton");
-            Click(w, "MockTrayIcon"); Click(w, "SettingsGearButton");
+            Click(w, "ControlCenterArrowButton"); Click(w, "SettingsGearButton");
             Assert.Null(request); Click(w, "OpenSettingsButton"); Assert.Equal("关于", request);
         }));
     }

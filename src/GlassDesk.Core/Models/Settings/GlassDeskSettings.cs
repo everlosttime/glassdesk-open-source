@@ -1,4 +1,3 @@
-// Public 1.6.0 adaptation: information-bar-specific implementation is excluded.
 namespace GlassDesk.Core.Models.Settings;
 
 /// <summary>
@@ -57,7 +56,7 @@ public sealed class GlassDeskSettings
         Appearance ??= new AppearanceSettings();
         NaiwaOptions?.Normalize();
         Dock ??= new DockSettings();
-        Dock.StatusBarSecondaryItems ??= [];
+        Dock.StatusBarSecondaryItems = StatusBarSecondaryItemCatalog.Normalize(Dock.StatusBarSecondaryItems);
         Launcher ??= new LauncherSettings();
         Shortcuts ??= new ShortcutSettings();
         Display ??= new DisplaySettings();

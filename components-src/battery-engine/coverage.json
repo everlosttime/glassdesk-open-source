@@ -1,0 +1,484 @@
+{
+  "schema": 1,
+  "upstreamCommit": "bbcb779be4633ecf9183f53409de118dc9cb1fd6",
+  "upstreamVersion": "1.3.9",
+  "targetEntryCount": 44,
+  "componentReaderCount": 43,
+  "excludedControllerReaders": [
+    "flydigi",
+    "xinput"
+  ],
+  "entries": [
+    {
+      "id": "vgn_beiying",
+      "name": "VGN beiying 2.4G 键盘接收器",
+      "kinds": [
+        "keyboard"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "vgn_dragonfly3",
+      "name": "VGN 蜻蜓 Dragonfly3 SE 接收器",
+      "kinds": [
+        "mouse"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "ninjutso_legacy",
+      "name": "Ninjutso Sora V2 旧款 AE1C 接收器",
+      "kinds": [
+        "mouse"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "razer",
+      "name": "Razer 已列明鼠标、耳机与键盘",
+      "kinds": [
+        "mouse",
+        "headset",
+        "keyboard"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "audeze",
+      "name": "Audeze Maxwell 已列明变体",
+      "kinds": [
+        "headset"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "wlmouse",
+      "name": "WLmouse 已列明型号",
+      "kinds": [
+        "mouse"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "g3m",
+      "name": "HECATE G3M PRO",
+      "kinds": [
+        "mouse"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "vgn_keyboard",
+      "name": "VGN 2.4G 键盘接收器 320F:5088",
+      "kinds": [
+        "keyboard"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "A",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "eweadn",
+      "name": "前行者 EWEADN S9",
+      "kinds": [
+        "mouse"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "eweadn_s9pro",
+      "name": "EWEADN S9 PRO 8K",
+      "kinds": [
+        "mouse"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "mchose",
+      "name": "MCHOSE 已列明协议与型号",
+      "kinds": [
+        "mouse"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "mchose_headset",
+      "name": "MCHOSE V9 PRO / V9 Turbo+",
+      "kinds": [
+        "headset"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "atk_headset",
+      "name": "ATK N9 V2 Ultimate / ULTRA 接收器",
+      "kinds": [
+        "headset"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "mchose_qhw_keyboard",
+      "name": "MCHOSE G98 V3",
+      "kinds": [
+        "keyboard"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "mchose_glw_keyboard",
+      "name": "MCHOSE G87 V2",
+      "kinds": [
+        "keyboard"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "mchose_by_keyboard",
+      "name": "共享 FA09（含 AULA）/ MCHOSE 41E4:2001 键盘接收器",
+      "kinds": [
+        "keyboard"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "moondrop",
+      "name": "MOONDROP GM01 Pro",
+      "kinds": [
+        "headset"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "hyperx_alpha2",
+      "name": "HyperX Cloud Alpha 2",
+      "kinds": [
+        "headset"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "hyperx_cloud3",
+      "name": "HyperX Cloud III 与已列明Core变体",
+      "kinds": [
+        "headset"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "hyperx",
+      "name": "HyperX Cloud II 已列明变体",
+      "kinds": [
+        "headset"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "keychron",
+      "name": "Keychron M5 / Ultra-Link 8K",
+      "kinds": [
+        "mouse"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "pulsar",
+      "name": "Pulsar / ATK / VXE / VGN / Scyrox / Hitscan 已列明型号及 ATK FF02 协议族 / NANO 接收器",
+      "kinds": [
+        "mouse"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "dareu",
+      "name": "Dareu EM901",
+      "kinds": [
+        "mouse"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "jbl",
+      "name": "JBL Quantum 910 已列明变体",
+      "kinds": [
+        "headset"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "fa6x_passive",
+      "name": "2.4G 无线鼠标（1D57:FA60 / FA65，被动接收）",
+      "kinds": [
+        "mouse"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "rapoo",
+      "name": "Rapoo VT nrf54L 已列明无线型号（被动接收，待本项目实机验证）",
+      "kinds": [
+        "mouse"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "logitech",
+      "name": "Logitech HID++ 与已列明G系列耳机",
+      "kinds": [
+        "mouse",
+        "keyboard",
+        "headset"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "steelseries",
+      "name": "SteelSeries 已列明鼠标与耳机",
+      "kinds": [
+        "mouse",
+        "headset"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "barracuda",
+      "name": "Razer Barracuda Pro",
+      "kinds": [
+        "headset"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "asus",
+      "name": "ASUS ROG / TUF 已列明鼠标",
+      "kinds": [
+        "mouse"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "gwolves",
+      "name": "G-Wolves 已列明型号",
+      "kinds": [
+        "mouse"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "lofree",
+      "name": "Lofree Hyzen 2.4G",
+      "kinds": [
+        "keyboard"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "astro",
+      "name": "Astro A50 Gen 5",
+      "kinds": [
+        "headset"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "corsair",
+      "name": "Corsair 已列明鼠标与耳机",
+      "kinds": [
+        "mouse",
+        "headset"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "lamzu",
+      "name": "LAMZU Maya X",
+      "kinds": [
+        "mouse"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "am_infinity",
+      "name": "Angry Miao AM Infinity 8K",
+      "kinds": [
+        "mouse"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "steelseries_elite",
+      "name": "SteelSeries Arctis Nova Elite",
+      "kinds": [
+        "headset"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "logitech_centurion",
+      "name": "Logitech G PRO X 2 LIGHTSPEED",
+      "kinds": [
+        "headset"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "hyperx_cloud3s",
+      "name": "HyperX Cloud III S",
+      "kinds": [
+        "headset"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "nzxt",
+      "name": "NZXT Lift Elite Wireless",
+      "kinds": [
+        "mouse"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "bluetooth",
+      "name": "Windows 系统蓝牙电量属性",
+      "kinds": [
+        "mouse",
+        "keyboard",
+        "headset",
+        "gamepad",
+        "device"
+      ],
+      "implementation": "WindowsPeripheralBatteryProvider + BLE",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "standard_hid",
+      "name": "描述符声明的标准HID电量Feature字段",
+      "kinds": [
+        "mouse",
+        "keyboard",
+        "device"
+      ],
+      "implementation": "Python isolated battery reader",
+      "upstreamVerification": "C",
+      "glassdeskVerification": "model-specific; see docs/battery-protocols.md"
+    },
+    {
+      "id": "native_atk_a9_air",
+      "name": "ATK A9 Air+ / 用户已验证接收器变体",
+      "kinds": [
+        "mouse"
+      ],
+      "implementation": "Python native battery-only profile",
+      "match": {
+        "vendorId": "373B",
+        "productId": "1278",
+        "usagePage": "FF02",
+        "usage": "0002",
+        "inputBytes": 17,
+        "outputBytes": 17
+      },
+      "upstreamVerification": "A",
+      "glassdeskVerification": "not locally tested"
+    },
+    {
+      "id": "native_hyperx_cloud_alpha_wireless",
+      "name": "HyperX Cloud Alpha Wireless",
+      "kinds": [
+        "headset"
+      ],
+      "implementation": "Python native battery-only profile",
+      "match": {
+        "vendorId": "03F0",
+        "productId": "098D",
+        "usagePage": "FF43",
+        "usage": "0202",
+        "inputBytes": 31,
+        "outputBytes": 31,
+        "interface": 3,
+        "collection": 1
+      },
+      "upstreamVerification": "A",
+      "glassdeskVerification": "not locally tested"
+    }
+  ],
+  "scope": "all pinned upstream mouse/headset/keyboard readers; not every market device or firmware"
+}

@@ -1,4 +1,3 @@
-# Public 1.6.0 adaptation: information-bar-only companion packaging is excluded.
 # Produces a self-contained Windows x64 build of GlassDesk.
 #
 # ASCII only on purpose: Windows PowerShell 5.1 reads a .ps1 without a BOM using the system
@@ -268,6 +267,13 @@ try {
         }
         Copy-Item -LiteralPath (Join-Path $repoRoot 'contrib/Naiwa/LICENSE') -Destination (Join-Path $naiwaOutput 'LICENSE.txt')
     }
+
+    & (Join-Path $PSScriptRoot 'Copy-HeadsetControl.ps1') -OutputDirectory $OutputDirectory
+    & (Join-Path $PSScriptRoot 'Copy-BatteryEngine.ps1') -OutputDirectory $OutputDirectory
+    $batteryNotices = Join-Path $OutputDirectory 'licenses/peripheral-battery'
+    New-Item -ItemType Directory -Force -Path $batteryNotices | Out-Null
+    Get-ChildItem -LiteralPath (Join-Path $repoRoot 'docs/third-party/peripheral-battery') -File | Copy-Item -Destination $batteryNotices
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/battery-protocols.md') -Destination (Join-Path $batteryNotices 'COMPATIBILITY.md')
 
     $exe = Join-Path $OutputDirectory 'GlassDesk.exe'
     if (-not (Test-Path $exe)) { throw "Expected GlassDesk.exe was not produced." }

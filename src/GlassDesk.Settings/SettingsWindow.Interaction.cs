@@ -1,4 +1,3 @@
-// Public 1.6.0 adaptation: information-bar-specific implementation is excluded.
 using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
@@ -85,14 +84,22 @@ public partial class SettingsWindow
             var appearance = _dataStore.Settings.Current.Appearance;
             LauncherMaterialCombo.SelectedIndex = MaterialIndex(appearance.GetGlassMaterial(GlassMaterialTarget.Launcher));
             DockMaterialCombo.SelectedIndex = MaterialIndex(appearance.GetGlassMaterial(GlassMaterialTarget.Dock));
+            StatusBarMaterialCombo.SelectedIndex = MaterialIndex(appearance.GetGlassMaterial(GlassMaterialTarget.StatusBar));
+            ControlCenterMaterialCombo.SelectedIndex = MaterialIndex(appearance.GetGlassMaterial(GlassMaterialTarget.ControlCenter));
             DesktopLayerModeCombo.SelectedIndex = appearance.PinBarsToDesktop ? 1 : 0;
             LaunchpadIconStyleCombo.SelectedIndex = appearance.LaunchpadIconFilled ? 0 : 1;
             DockTransparencySlider.Value = appearance.DockGlassTransparency;
             LauncherTransparencySlider.Value = appearance.LauncherGlassTransparency;
+            StatusBarTransparencySlider.Value = appearance.GetGlassTransparency(GlassMaterialTarget.StatusBar);
+            ControlCenterTransparencySlider.Value = appearance.GetGlassTransparency(GlassMaterialTarget.ControlCenter);
             DockTransparencyValue.Text = appearance.DockGlassTransparency.ToString("P0", CultureInfo.CurrentCulture);
             LauncherTransparencyValue.Text = appearance.LauncherGlassTransparency.ToString("P0", CultureInfo.CurrentCulture);
+            StatusBarTransparencyValue.Text = appearance.GetGlassTransparency(GlassMaterialTarget.StatusBar).ToString("P0", CultureInfo.CurrentCulture);
+            ControlCenterTransparencyValue.Text = appearance.GetGlassTransparency(GlassMaterialTarget.ControlCenter).ToString("P0", CultureInfo.CurrentCulture);
             DockBuiltinIconBrightnessSlider.Value = appearance.DockBuiltinIconBrightness;
             LauncherTextBrightnessSlider.Value = appearance.LauncherTextBrightness;
+            StatusBarTextBrightnessSlider.Value = appearance.StatusBarTextBrightness;
+            StatusBarTextBrightnessValue.Text = appearance.StatusBarTextBrightness.ToString("P0", CultureInfo.CurrentCulture);
             DockBuiltinIconBrightnessValue.Text = appearance.DockBuiltinIconBrightness.ToString("P0", CultureInfo.CurrentCulture);
             LauncherTextBrightnessValue.Text = appearance.LauncherTextBrightness.ToString("P0", CultureInfo.CurrentCulture);
             ReduceMotionCheck.IsChecked = appearance.ReduceMotion;
@@ -124,6 +131,10 @@ public partial class SettingsWindow
             current.Appearance.LauncherGlassMaterial = MaterialFromIndex(LauncherMaterialCombo.SelectedIndex);
         else if (ReferenceEquals(sender, DockMaterialCombo))
             current.Appearance.DockGlassMaterial = MaterialFromIndex(DockMaterialCombo.SelectedIndex);
+        else if (ReferenceEquals(sender, StatusBarMaterialCombo))
+            current.Appearance.StatusBarGlassMaterial = MaterialFromIndex(StatusBarMaterialCombo.SelectedIndex);
+        else if (ReferenceEquals(sender, ControlCenterMaterialCombo))
+            current.Appearance.ControlCenterGlassMaterial = MaterialFromIndex(ControlCenterMaterialCombo.SelectedIndex);
         current.Appearance.ReduceMotion = ReduceMotionCheck.IsChecked == true;
         current.Appearance.PinBarsToDesktop = DesktopLayerModeCombo.SelectedIndex == 1;
         current.Appearance.LaunchpadIconFilled = LaunchpadIconStyleCombo.SelectedIndex != 1;
@@ -142,19 +153,29 @@ public partial class SettingsWindow
             current.Appearance.DockGlassTransparency = DockTransparencySlider.Value;
         else if (ReferenceEquals(sender, LauncherTransparencySlider))
             current.Appearance.LauncherGlassTransparency = LauncherTransparencySlider.Value;
+        else if (ReferenceEquals(sender, StatusBarTransparencySlider))
+            current.Appearance.StatusBarGlassTransparency = StatusBarTransparencySlider.Value;
+        else if (ReferenceEquals(sender, ControlCenterTransparencySlider))
+            current.Appearance.ControlCenterGlassTransparency = ControlCenterTransparencySlider.Value;
         else if (ReferenceEquals(sender, DockBuiltinIconBrightnessSlider))
             current.Appearance.DockBuiltinIconBrightness = DockBuiltinIconBrightnessSlider.Value;
         else if (ReferenceEquals(sender, LauncherTextBrightnessSlider))
             current.Appearance.LauncherTextBrightness = LauncherTextBrightnessSlider.Value;
+        else if (ReferenceEquals(sender, StatusBarTextBrightnessSlider))
+            current.Appearance.StatusBarTextBrightness = StatusBarTextBrightnessSlider.Value;
         else return;
-        SavePageSnapshot(snapshot, "外观", AppearanceStatus);
+        SavePageSnapshot(snapshot, ReferenceEquals(sender, StatusBarTextBrightnessSlider) ? "信息栏" : "外观",
+            ReferenceEquals(sender, StatusBarTextBrightnessSlider) ? InformationBarSettingsStatus : AppearanceStatus);
         // Rollback replaces Appearance; refresh the preview's reference after a failed save.
         if (ThemeService.Current is { } theme && !ReferenceEquals(theme.Appearance, current.Appearance))
             theme.Update(current.Appearance);
         DockTransparencyValue.Text = current.Appearance.DockGlassTransparency.ToString("P0", CultureInfo.CurrentCulture);
         LauncherTransparencyValue.Text = current.Appearance.LauncherGlassTransparency.ToString("P0", CultureInfo.CurrentCulture);
+        StatusBarTransparencyValue.Text = current.Appearance.GetGlassTransparency(GlassMaterialTarget.StatusBar).ToString("P0", CultureInfo.CurrentCulture);
+        ControlCenterTransparencyValue.Text = current.Appearance.GetGlassTransparency(GlassMaterialTarget.ControlCenter).ToString("P0", CultureInfo.CurrentCulture);
         DockBuiltinIconBrightnessValue.Text = current.Appearance.DockBuiltinIconBrightness.ToString("P0", CultureInfo.CurrentCulture);
         LauncherTextBrightnessValue.Text = current.Appearance.LauncherTextBrightness.ToString("P0", CultureInfo.CurrentCulture);
+        StatusBarTextBrightnessValue.Text = current.Appearance.StatusBarTextBrightness.ToString("P0", CultureInfo.CurrentCulture);
     }
 
     private void LoadInteractionControls()
@@ -415,7 +436,7 @@ public partial class SettingsWindow
     {
         var current = _dataStore!.Settings.Current;
         if (page == "外观") ThemeService.Current?.Update(current.Appearance);
-        if (page is "Dock")
+        if (page is "Dock" or "信息栏")
         {
             DockSettingsHost.Current?.Update(current.Dock);
             ThemeService.Current?.Update(current.Appearance);

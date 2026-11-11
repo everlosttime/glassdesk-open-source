@@ -1,0 +1,173 @@
+<controls:GlassWindow
+    x:Class="GlassDesk.Dock.StatusBarWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:GlassDesk.UI.Controls;assembly=GlassDesk.UI"
+    MaterialTarget="StatusBar"
+    Title="GlassDesk 信息栏"
+    AutomationProperties.Name="GlassDesk 桌面信息栏"
+    Width="380" Height="54"
+    ShowInTaskbar="False"
+    ShowActivated="False"
+    WindowStartupLocation="Manual"
+    Topmost="True">
+
+  <controls:GlassWindow.Resources>
+    <Style x:Key="SecondaryValue" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+    </Style>
+    <Style x:Key="SecondaryGlyph" TargetType="TextBlock" BasedOn="{StaticResource SecondaryValue}">
+      <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Width" Value="17" />
+      <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+    <Style x:Key="StatusButton" TargetType="Button">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="7,3" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Chrome" Background="{TemplateBinding Background}" CornerRadius="12"
+                    Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Chrome" Property="Background" Value="#18FFFFFF" />
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Chrome" Property="Background" Value="#28FFFFFF" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </controls:GlassWindow.Resources>
+
+  <Grid ClipToBounds="True">
+    <controls:LiquidGlassSurface x:Name="GlassSurface" />
+    <Viewbox Stretch="Uniform" Margin="8,5">
+    <Viewbox.RenderTransform><TranslateTransform x:Name="StatusSlideTransform" /></Viewbox.RenderTransform>
+    <StackPanel x:Name="StatusContent" Orientation="Horizontal" Width="364" Height="44" VerticalAlignment="Center">
+      <Button Style="{StaticResource StatusButton}" Click="OnDateTimeClick" ToolTip="日期和时间设置">
+        <StackPanel Width="92">
+          <TextBlock x:Name="TimeText" FontSize="18" FontWeight="SemiBold"
+                     Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+          <TextBlock x:Name="DateText" FontSize="9.5" Margin="0,-1,0,0"
+                     Foreground="{Binding SecondaryForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+        </StackPanel>
+      </Button>
+
+      <Rectangle Width="1" Height="26" Margin="1,0" Opacity="0.14" Fill="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+
+      <Grid x:Name="StatusMetrics" Width="255" Height="42">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="23" />
+          <RowDefinition Height="19" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0">
+        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left">
+        <StackPanel Orientation="Horizontal">
+          <Button x:Name="BatteryButton" Style="{StaticResource StatusButton}" Click="OnBatteryClick" ToolTip="电源和电池设置"
+                  Visibility="Collapsed">
+            <StackPanel Orientation="Horizontal">
+              <Grid Width="22" Height="12" Margin="0,0,5,0" VerticalAlignment="Center">
+                <Border BorderBrush="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" BorderThickness="1.2" CornerRadius="2" Margin="0,0,2,0" Opacity="0.85" />
+                <Border Width="2" Height="5" CornerRadius="0,1,1,0" Background="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" Opacity="0.69"
+                        HorizontalAlignment="Right" VerticalAlignment="Center" />
+                <Border x:Name="BatteryFill" Width="0" Height="7" Margin="2,0,4,0"
+                        HorizontalAlignment="Left" VerticalAlignment="Center" CornerRadius="1"
+                        Background="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+              </Grid>
+              <TextBlock x:Name="BatteryText" Text="--" FontSize="11.5" VerticalAlignment="Center"
+                         Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+            </StackPanel>
+          </Button>
+
+          <Border Padding="7,1">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock x:Name="NetworkWifiGlyph" Text="&#xE701;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15" Margin="0,0,5,0"
+                         Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+              <Viewbox x:Name="NetworkWiredGlyph" Width="15" Height="15" Margin="0,0,5,0" Visibility="Collapsed">
+                <Path Width="20" Height="20" StrokeThickness="1.4" StrokeLineJoin="Round"
+                      Stroke="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}"
+                      Data="M 3,3 L 17,3 17,13 13,13 13,16 7,16 7,13 3,13 Z M 6,3 L 6,8 M 10,3 L 10,8 M 14,3 L 14,8 M 10,16 L 10,20" />
+              </Viewbox>
+              <TextBlock x:Name="NetworkText" Text="--" FontSize="11.5" VerticalAlignment="Center"
+                         Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+              <StackPanel x:Name="NetworkSpeedPanel" Width="54" Height="21" Margin="4,0,0,0"
+                          VerticalAlignment="Center" ToolTip="实时网速：正在采样">
+                <TextBlock x:Name="DownloadSpeedText" Text="↓ --" FontSize="8.5" Height="10.5"
+                           Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+                <TextBlock x:Name="UploadSpeedText" Text="↑ --" FontSize="8.5" Height="10.5"
+                           Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <Border Padding="7,3" IsHitTestVisible="False">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock x:Name="VolumeGlyph" Text="&#xE767;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                         FontSize="15" Margin="0,0,5,0"
+                         Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+              <TextBlock x:Name="VolumeText" Text="--" FontSize="11.5" VerticalAlignment="Center"
+                         Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+            </StackPanel>
+          </Border>
+
+        </StackPanel>
+        </Viewbox>
+        <Button x:Name="ControlCenterArrowButton" Grid.Column="1" Style="{StaticResource StatusButton}" Click="OnControlCenterArrowClick"
+                Width="26" ToolTip="展开或收起控制中心">
+          <TextBlock x:Name="ControlCenterArrowGlyph" Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
+                     Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}"/>
+        </Button>
+        </Grid>
+        <Grid x:Name="SecondaryItemsRow" Grid.Row="1" Margin="8,-1,0,0" VerticalAlignment="Center" Height="18">
+          <StackPanel x:Name="CpuPanel" Orientation="Horizontal" VerticalAlignment="Center" ToolTip="CPU">
+            <TextBlock Text="CPU" Margin="0,0,4,0" Style="{StaticResource SecondaryValue}" FontWeight="Normal" />
+            <TextBlock x:Name="CpuText" Text="--" Style="{StaticResource SecondaryValue}" />
+          </StackPanel>
+          <StackPanel x:Name="MemoryPanel" Orientation="Horizontal" VerticalAlignment="Center" ToolTip="内存">
+            <TextBlock Text="内存" Margin="0,0,4,0" Style="{StaticResource SecondaryValue}" FontWeight="Normal" />
+            <TextBlock x:Name="MemoryText" Text="--" Style="{StaticResource SecondaryValue}" />
+          </StackPanel>
+          <StackPanel x:Name="FanPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed" ToolTip="暂未读取">
+            <Viewbox Width="13" Height="13" Margin="0,0,4,0" VerticalAlignment="Center">
+              <Path Fill="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}"
+                    Data="M 8,7 C 3,5 4,0 8,0 C 12,0 12,4 9,7 C 14,3 18,6 16,10 C 14,13 11,11 9,9 C 13,14 10,18 6,16 C 3,14 5,11 7,9 C 2,13 -2,10 0,6 C 2,3 5,5 7,7 Z M 9,8 A 1,1 0 1 1 7,8 A 1,1 0 1 1 9,8" />
+            </Viewbox>
+            <TextBlock x:Name="FanText" Text="--" Style="{StaticResource SecondaryValue}" />
+          </StackPanel>
+          <StackPanel x:Name="MouseBatteryPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed" ToolTip="暂未读取">
+            <TextBlock Text="&#xE962;" Style="{StaticResource SecondaryGlyph}" />
+            <TextBlock x:Name="MouseBatteryText" Text="--" Style="{StaticResource SecondaryValue}" />
+          </StackPanel>
+          <StackPanel x:Name="HeadsetBatteryPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed" ToolTip="暂未读取">
+            <TextBlock Text="&#xE7F6;" Style="{StaticResource SecondaryGlyph}" />
+            <TextBlock x:Name="HeadsetBatteryText" Text="--" Style="{StaticResource SecondaryValue}" />
+          </StackPanel>
+          <StackPanel x:Name="KeyboardBatteryPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed" ToolTip="暂未读取">
+            <TextBlock Text="&#xE765;" Style="{StaticResource SecondaryGlyph}" />
+            <TextBlock x:Name="KeyboardBatteryText" Text="--" Style="{StaticResource SecondaryValue}" />
+          </StackPanel>
+          <Grid x:Name="MusicSummary" VerticalAlignment="Center" ToolTip="暂无媒体">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="17"/><ColumnDefinition/></Grid.ColumnDefinitions>
+            <TextBlock Text="&#xE8D6;" Style="{StaticResource SecondaryGlyph}" />
+            <TextBlock x:Name="MusicTitleText" Grid.Column="1" Text="暂无媒体" Style="{StaticResource SecondaryValue}" FontWeight="Normal" TextTrimming="CharacterEllipsis" />
+          </Grid>
+        </Grid>      </Grid>
+    </StackPanel>
+    </Viewbox>
+  </Grid>
+</controls:GlassWindow>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <assemblyIdentity version="1.0.0.0" name="GlassDesk.DesktopAcceptance" />
+
+  <!--
+    PerMonitorV2 不是可有可无的声明，它是这个驱动能否点对地方的前提。
+
+    没有它时，进程按 96 DPI 被虚拟化：GetSystemMetrics 报告的是缩放后的虚拟桌面
+    （实测这台机器上是 1707x960），而 UI Automation 返回的控件矩形是物理像素
+    （同一台机器上是 2560x1440 的坐标系）。两套坐标混用会同时坏两件事：
+    「这个点是否在屏幕内」的检查会把合法控件判成不可点，而 SendInput 的绝对坐标
+    归一化会按错误的边长换算，于是点击落在别处——那种失败看起来像产品没响应，
+    实际是驱动点错了地方。
+
+    实测依据见 docs/evidence/阶段4-桌面驱动校准记录.md。
+  -->
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+      <longPathAware xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</longPathAware>
+    </windowsSettings>
+  </application>
+
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Windows 10/11：没有这一段，系统会按更老的版本做兼容处理。 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
+    </application>
+  </compatibility>
+</assembly>

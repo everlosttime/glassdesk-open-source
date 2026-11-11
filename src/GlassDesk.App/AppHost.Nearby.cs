@@ -1,4 +1,3 @@
-// Public 1.6.0 adaptation: information-bar-specific implementation is excluded.
 using System.IO;
 using System.Net.NetworkInformation;
 using System.Windows.Threading;
@@ -26,6 +25,8 @@ internal sealed partial class AppHost
     {
         if (_services is null || _dock is null) return;
         _services.Nearby.Changed += OnNearbyChanged;
+        _statusBar?.ConfigureNearby(() => ShowNearbyPanel(null, toggle: true),
+            () => _services?.DockIcons.GetIconPath("entry:nearby"));
         NetworkChange.NetworkAddressChanged += OnNearbyNetworkChanged;
         NetworkChange.NetworkAvailabilityChanged += OnNearbyNetworkChanged;
         if (_data!.Settings.Current.Nearby.Enabled)

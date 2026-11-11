@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "upstreamCommit": "bbcb779be4633ecf9183f53409de118dc9cb1fd6",
+  "pythonSource": {
+    "sha256": "c2215904f02b175596dc49351585104f4bc20341e1c47378b26a2c274360ce73",
+    "url": "https://www.python.org/ftp/python/3.14.8/Python-3.14.8.tar.xz",
+    "version": "3.14.8",
+    "hashEvidence": "Official Python source Sigstore bundle messageSignature.messageDigest (SHA2_256); source and evidence retained. TLS certificate validation enabled."
+  },
+  "hidapiSource": {
+    "sha256": "ecbc265cbe8b7b88755f421e0ba25f084091ec550c2b90ff9e8ddd4fcd540311",
+    "url": "https://files.pythonhosted.org/packages/74/f6/caad9ed701fbb9223eb9e0b41a5514390769b4cb3084a2704ab69e9df0fe/hidapi-0.15.0.tar.gz",
+    "version": "0.15.0",
+    "hashEvidence": "Official PyPI release JSON digests.sha256; TLS certificate validation enabled."
+  }
+}

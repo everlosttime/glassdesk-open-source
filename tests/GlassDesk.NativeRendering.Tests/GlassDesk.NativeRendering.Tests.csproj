@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../tools/capture-release-probe/MonitorCaptureReference.cs" Link="Diagnostics/MonitorCaptureReference.cs" />
+    <Compile Include="../../tools/GlassDesk.NativeRenderingProbe/OwnedWindowMonitorCrop.cs" Link="Diagnostics/OwnedWindowMonitorCrop.cs" />
+    <Compile Include="../../tools/GlassDesk.NativeRenderingProbe/DirectInputProbe.cs" Link="Diagnostics/DirectInputProbe.cs" />
+    <ProjectReference Include="../../src/GlassDesk.Rendering/GlassDesk.Rendering.csproj" />
+    <ProjectReference Include="../../src/GlassDesk.UI/GlassDesk.UI.csproj" />
+    <ProjectReference Include="../../src/GlassDesk.Dock/GlassDesk.Dock.csproj" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <Using Include="Xunit" />
+    <None Include="../../artifacts/native-rendering/GlassDesk.Rendering.Native.dll" Condition="Exists('../../artifacts/native-rendering/GlassDesk.Rendering.Native.dll')" Link="GlassDesk.Rendering.Native.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

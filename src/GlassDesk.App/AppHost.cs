@@ -1,4 +1,3 @@
-// Public 1.6.0 adaptation: information-bar-specific implementation is excluded.
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -64,6 +63,7 @@ internal sealed partial class AppHost : IDisposable
     private IDisposable? _backdropDiagnostics;
 
     private DockWindow? _dock;
+    private StatusBarWindow? _statusBar;
     private LauncherWindow? _launcher;
     private SettingsWindow? _settings;
     private DockSettingsHost? _dockSettings;
@@ -624,7 +624,7 @@ internal sealed partial class AppHost : IDisposable
             _trayRecoveryTimer.Interval = TimeSpan.FromSeconds(_tray.IsVisible ? 30 : 2);
 
         var icon = CreateWindowIcon();
-        foreach (var window in new Window?[] { _dock, _launcher, _settings })
+        foreach (var window in new Window?[] { _dock, _statusBar, _launcher, _settings })
         {
             if (window is not null) window.Icon = icon;
         }
@@ -646,7 +646,7 @@ internal sealed partial class AppHost : IDisposable
         {
             if (window is LauncherWindow launcher)
                 launcher.CloseWithTransition();
-            else if (window is DockWindow)
+            else if (window is DockWindow or StatusBarWindow)
                 ((GlassDesk.UI.Controls.GlassWindow)window).HideSurface();
             else
                 window.Hide();

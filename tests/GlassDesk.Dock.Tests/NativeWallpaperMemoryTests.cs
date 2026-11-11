@@ -1,4 +1,3 @@
-// Public 1.6.0 adaptation: information-bar-specific implementation is excluded.
 using System.Runtime.InteropServices;
 
 namespace GlassDesk.Dock.Tests;
@@ -77,3 +76,4 @@ public sealed class NativeWallpaperMemoryTests(Xunit.Abstractions.ITestOutputHel
     [DllImport("user32.dll")] private static extern nint SendMessageW(nint window, uint message, nint wParam, nint lParam);
     [DllImport("gdi32.dll")] private static extern int GetObjectW(nint bitmap, int size, out Bitmap result);
 }
+

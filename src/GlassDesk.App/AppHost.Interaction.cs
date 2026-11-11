@@ -1,4 +1,3 @@
-// Public 1.6.0 adaptation: information-bar-specific implementation is excluded.
 using System.IO;
 using Microsoft.Win32;
 using System.Windows;
@@ -110,6 +109,7 @@ internal sealed partial class AppHost
                 break;
             case InputAction.ToggleDockRevealLock:
                 _dock?.ToggleRevealLock();
+                _statusBar?.ToggleRevealLock();
                 break;
             case InputAction.ToggleGameSleep:
                 SetManualGameSleep(!RuntimeManualGameSleep);
@@ -181,6 +181,7 @@ internal sealed partial class AppHost
                 _restoreLauncherAfterDisplayChange |= _launcher?.IsVisible == true;
                 _restoreSettingsAfterDisplayChange |= _settings?.IsVisible == true;
                 _dock?.StopForPrimaryDisplayChange();
+                _statusBar?.StopForPrimaryDisplayChange();
                 _launcher?.StopForPrimaryDisplayChange();
                 foreach (Window window in _application.Windows)
                     if (window is GlassWindow glassWindow) glassWindow.Hide();
@@ -191,6 +192,7 @@ internal sealed partial class AppHost
             _interaction?.RefreshDisplays();
             _performanceFullscreen?.Refresh();
             _dock?.RefreshDisplayPlacement();
+            _statusBar?.RefreshDisplayPlacement();
             _launcher?.RefreshDisplayPlacement();
             if (_settings?.IsVisible == true) _settings.PositionOnPrimary();
             foreach (Window window in _application.Windows)

@@ -1,0 +1,4392 @@
+diff --git a/src/GlassDesk.App/AppHost.Interaction.cs b/src/GlassDesk.App/AppHost.Interaction.cs
+index 847e3e8dc66345453b99c120095c4bc4e9b9eb87..3b60424362ccaa3d3002b9527173d39e3db4da56 100644
+--- a/src/GlassDesk.App/AppHost.Interaction.cs
++++ b/src/GlassDesk.App/AppHost.Interaction.cs
+@@ -16,7 +16,8 @@ internal sealed partial class AppHost
+ {
+     private InteractionController? _interaction;
+     private int _displayRefreshPending;
+-    private bool _restoreDockAfterDisplayChange, _restoreLauncherAfterDisplayChange, _restoreSettingsAfterDisplayChange;
++    private bool _restoreDockAfterDisplayChange, _restoreStatusAfterDisplayChange,
++        _restoreLauncherAfterDisplayChange, _restoreSettingsAfterDisplayChange;
+ 
+     internal static void ToggleLauncherFromDock(
+         LauncherWindow? launcher,
+@@ -169,6 +170,7 @@ internal sealed partial class AppHost
+             if (_primaryDisplaySession is { } primary && !primary.TryRefreshPrimary(currentPrimary))
+             {
+                 _restoreDockAfterDisplayChange |= _dock?.IsVisible == true;
++                _restoreStatusAfterDisplayChange |= _statusBar?.IsVisible == true;
+                 _restoreLauncherAfterDisplayChange |= _launcher?.IsVisible == true;
+                 _restoreSettingsAfterDisplayChange |= _settings?.IsVisible == true;
+                 _dock?.StopForPrimaryDisplayChange();
+@@ -191,9 +193,11 @@ internal sealed partial class AppHost
+             if (rebound)
+             {
+                 _dock?.ResumeAfterPrimaryDisplayChange(_restoreDockAfterDisplayChange);
++                if (_restoreStatusAfterDisplayChange) _statusBar?.Show();
+                 if (_restoreLauncherAfterDisplayChange) ShowLauncher();
+                 if (_restoreSettingsAfterDisplayChange) ShowSettings();
+-                _restoreDockAfterDisplayChange = _restoreLauncherAfterDisplayChange = _restoreSettingsAfterDisplayChange = false;
++                _restoreDockAfterDisplayChange = _restoreStatusAfterDisplayChange = _restoreLauncherAfterDisplayChange
++                    = _restoreSettingsAfterDisplayChange = false;
+             }
+         }));
+     }
+diff --git a/src/GlassDesk.App/AppHost.Performance.cs b/src/GlassDesk.App/AppHost.Performance.cs
+index de0f1adf9eeda72d24a096e382b29da22b69b7f6..e53005311d5e1c130ebab1c2edec05c83ff2b6c8 100644
+--- a/src/GlassDesk.App/AppHost.Performance.cs
++++ b/src/GlassDesk.App/AppHost.Performance.cs
+@@ -65,6 +65,16 @@ internal sealed partial class AppHost
+             if (observation.IsFullscreen is { } fullscreen)
+                 _performance.ObserveForeground(fullscreen, observation.BelongsToCurrentProcess, DateTimeOffset.UtcNow);
+             ReconcilePerformance();
++            // The desktop scene can change before the next scheduled surface frame when
++            // a foreign foreground window closes or minimizes. GlassDesk popovers already
++            // refresh their own surface; treating their activation or resize as an external
++            // scene change would needlessly invalidate every visible glass component.
++            if (!observation.BelongsToCurrentProcess)
++            {
++                _dock?.RequestGlassRefresh();
++                _statusBar?.RequestGlassRefresh();
++                _launcher?.RequestGlassRefresh();
++            }
+         }));
+     }
+ 
+@@ -136,12 +146,14 @@ internal sealed partial class AppHost
+                 _performancePointerInputSuppressed = suppressed && !launcherVisible;
+                 var launcherShouldSleep = !launcherVisible && !temporary
+                     && (suppressed || _launcherHiddenSince is { } hidden && now >= hidden + LauncherWarmRetention);
++                var launcherStillWarming = !launcherVisible && _launcherHiddenSince is { } hiddenSince
++                    && now < hiddenSince + LauncherWarmRetention;
+                 if (_launcherPerformanceSleeping != launcherShouldSleep)
+                 {
+                     _launcherPerformanceSleeping = launcherShouldSleep;
+                     _launcher?.SetPerformanceSleeping(launcherShouldSleep);
+                 }
+-                _launcher?.SetBackgroundWorkSuspended(!launcherVisible && !temporary || sleeping && suppressed);
++                _launcher?.SetBackgroundWorkSuspended((!launcherVisible && !temporary && !launcherStillWarming) || sleeping && suppressed);
+                 _services?.Running.SetSuspended(sleeping || state == PerformanceState.WarmHidden || suppressed && !launcherVisible);
+                 if (!sleeping && _libraryDirtyWhileSleeping)
+                 {
+diff --git a/src/GlassDesk.App/AppHost.cs b/src/GlassDesk.App/AppHost.cs
+index cb33be81879ea0a7912b5f3b0c01673d2ecf7a2d..b93972148e92bd1a173e48a5df98a56812c8624d 100644
+--- a/src/GlassDesk.App/AppHost.cs
++++ b/src/GlassDesk.App/AppHost.cs
+@@ -63,7 +63,6 @@ internal sealed partial class AppHost : IDisposable
+     private nint _trayIconHandle;
+     private MissingTargetReport? _missingReport;
+     private PrimaryDisplaySession? _primaryDisplaySession;
+-    private IDisposable? _backdropDiagnostics;
+ 
+     private DockWindow? _dock;
+     private StatusBarWindow? _statusBar;
+@@ -148,7 +147,6 @@ internal sealed partial class AppHost : IDisposable
+ 
+         _data = new GlassDeskDataStore(AppPaths.ForCurrentUser());
+         _loadReport = _data.LoadAll();
+-        _backdropDiagnostics = GlassDesk.UI.BackdropRecovery.BeginAutomaticDiagnostics(_data.Paths.LogDirectory);
+ 
+         // 应用服务（导入、启动、图标、失效复查）在这里建一次，
+         // 之后由各个窗口共用一个实例。界面上没有任何一处直接碰文件、进程或窗口句柄，
+@@ -182,6 +180,13 @@ internal sealed partial class AppHost : IDisposable
+         InitializePerformanceCoordinator();
+         InitializeInteractionController();
+ 
++        // 首次点击启动台之前先在空闲帧采样并过滤一次背景；不会抢占 Dock 的首帧。
++        _application.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle, new Action(() =>
++        {
++            if (!_disposed && !_shuttingDown && _launcher?.IsVisible != true)
++                _launcher?.PrewarmNextRevealMaterial();
++        }));
++
+         theme.Changed += OnThemeChanged;
+ 
+         WriteStartupLog();
+@@ -253,7 +258,6 @@ internal sealed partial class AppHost : IDisposable
+ 
+         DisposeInteractionController();
+         DisposePerformanceCoordinator();
+-        _backdropDiagnostics?.Dispose(); _backdropDiagnostics = null;
+ 
+         _tray?.Dispose();
+         _tray = null;
+@@ -356,9 +360,8 @@ internal sealed partial class AppHost : IDisposable
+             ?? throw new InvalidOperationException("Primary Display must be captured before creating GlassDesk windows.");
+         _dock.BindPrimaryDisplay(primaryDisplay);
+         _statusBar.BindPrimaryDisplay(primaryDisplay);
+-        _statusBar.AttachSettings(_dockSettings!);
+-        _statusBar.IsLauncherActive = () => _launcher?.IsVisible == true;
+         _launcher.BindPrimaryDisplay(primaryDisplay);
++        _statusBar.IsLauncherActive = () => _launcher?.IsVisible == true;
+         _launcher.ContainerAnchorProvider = () => _dock?.GetLauncherButtonPixelBounds();
+         _launcher.IsVisibleChanged += (_, e) => _dock?.SetLauncherContainerState(e.NewValue is true);
+         _settings = new SettingsWindow();
+@@ -399,7 +402,7 @@ internal sealed partial class AppHost : IDisposable
+         }
+ 
+         _dock.Show();
+-        _statusBar.Start();
++        _statusBar.Show();
+ 
+         if (StartupIntent.ShouldOpenLauncher(_options))
+         {
+diff --git a/src/GlassDesk.App/Startup/AppServiceRunner.cs b/src/GlassDesk.App/Startup/AppServiceRunner.cs
+index b833e9b66c4a85eec866fa033371cd2c44da671d..a328090f988cf5b16a4782b198b9ac7ba29733da 100644
+--- a/src/GlassDesk.App/Startup/AppServiceRunner.cs
++++ b/src/GlassDesk.App/Startup/AppServiceRunner.cs
+@@ -391,7 +391,7 @@ internal static class AppServiceRunner
+                 report.AppendLine(CultureInfo.InvariantCulture, $"说明：{outcome.Message}");
+             }
+ 
+-            return outcome.Outcome is ActivationOutcome.Activated or ActivationOutcome.Launched or ActivationOutcome.MultipleWindowsFound
++            return outcome.Outcome is ActivationOutcome.Activated or ActivationOutcome.Minimized or ActivationOutcome.Launched or ActivationOutcome.MultipleWindowsFound
+                 ? 0
+                 : 1;
+         }
+@@ -744,6 +744,7 @@ internal static class AppServiceRunner
+     private static string DescribeActivation(ActivationOutcome outcome) => outcome switch
+     {
+         ActivationOutcome.Activated => "已把现有窗口提到前台",
++        ActivationOutcome.Minimized => "已最小化当前窗口",
+         ActivationOutcome.Launched => "没有已运行的窗口，已启动",
+         ActivationOutcome.MultipleWindowsFound => "找到多个窗口，需要用户选择",
+         ActivationOutcome.Failed => "失败",
+diff --git a/src/GlassDesk.App/Startup/FullscreenProbe.cs b/src/GlassDesk.App/Startup/FullscreenProbe.cs
+index 3678c63e9b8a0575d343355ea8cd72d753ee2b92..67e4ed01bb6121c30084a0d1ed20a24ffae0106e 100644
+--- a/src/GlassDesk.App/Startup/FullscreenProbe.cs
++++ b/src/GlassDesk.App/Startup/FullscreenProbe.cs
+@@ -285,7 +285,7 @@ internal static class FullscreenProbe
+                 else if (recorded.Length == 0)
+                 {
+                     failures++;
+-                    report.AppendLine("      ✗ 钩子装了但没收到任何变化，事件链路有问题（判定最多滞后 120 毫秒的事件合并窗口）。");
++                    report.AppendLine("      ✗ 钩子装了但没收到任何变化，事件链路有问题（判定最多滞后 40 毫秒的事件合并窗口）。");
+                 }
+                 else if (recorded[0])
+                 {
+@@ -426,4 +426,4 @@ internal static class FullscreenProbe
+             }
+         }
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/src/GlassDesk.AppServices/RunningAppTracker.cs b/src/GlassDesk.AppServices/RunningAppTracker.cs
+index fe646e104d4fdf3f982a4c61dcce1ca05ab5b456..c4a96f87f7a18245e605c3f3efde23eb1d9a40d6 100644
+--- a/src/GlassDesk.AppServices/RunningAppTracker.cs
++++ b/src/GlassDesk.AppServices/RunningAppTracker.cs
+@@ -1,6 +1,7 @@
+ using System.Collections.Concurrent;
+ using GlassDesk.Core.Models;
+ using GlassDesk.Core.Storage;
++using GlassDesk.Platform;
+ using GlassDesk.Platform.Shell;
+ 
+ namespace GlassDesk.AppServices;
+@@ -40,6 +41,7 @@ public sealed class RunningAppTracker : IDisposable
+ 
+     private WindowEventWatcher? _watcher;
+     private IReadOnlyList<WindowIdentityInfo> _windows = [];
++    private nint _foregroundWindow;
+     private DateTime _lastReconcileUtc = DateTime.MinValue;
+     private volatile bool _disposed;
+     private bool _suspended, _dirty;
+@@ -133,6 +135,7 @@ public sealed class RunningAppTracker : IDisposable
+         }
+ 
+         var windows = WindowLocator.EnumerateTopLevelWindows();
++        var foregroundWindow = WindowControl.GetForegroundWindow();
+         bool changed;
+ 
+         lock (_sync)
+@@ -141,8 +144,9 @@ public sealed class RunningAppTracker : IDisposable
+             { _dirty = true; return _windows.Count; }
+             _dirty = false;
+             _reconcileCount++;
+-            changed = !SameWindowSet(_windows, windows);
++            changed = !SameWindowSet(_windows, windows) || _foregroundWindow != foregroundWindow;
+             _windows = windows;
++            _foregroundWindow = foregroundWindow;
+         }
+ 
+         if (changed)
+@@ -157,6 +161,13 @@ public sealed class RunningAppTracker : IDisposable
+     public bool IsRunning(AppEntry entry)
+         => FindWindows(entry).Count > 0;
+ 
++    /// <summary>这条记录是否拥有当前前台窗口。</summary>
++    public bool IsActive(AppEntry entry)
++    {
++        var foreground = WindowControl.GetForegroundWindow();
++        return foreground != 0 && FindWindows(entry).Any(window => window.Handle == foreground);
++    }
++
+     /// <summary>这条记录此刻匹配的已运行窗口（对最近一次调和的快照匹配）。规则见 <see cref="WindowMatcher"/>。</summary>
+     public IReadOnlyList<WindowIdentityInfo> FindWindows(AppEntry entry)
+     {
+diff --git a/src/GlassDesk.Dock/ControlCenterWindow.xaml b/src/GlassDesk.Dock/ControlCenterWindow.xaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..29ba1ee11d519563cda8318036d23d54ff03cc6f
+--- /dev/null
++++ b/src/GlassDesk.Dock/ControlCenterWindow.xaml
+@@ -0,0 +1,245 @@
++<controls:GlassWindow
++    x:Class="GlassDesk.Dock.ControlCenterWindow"
++    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
++    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
++    xmlns:controls="clr-namespace:GlassDesk.UI.Controls;assembly=GlassDesk.UI"
++    Title="GlassDesk 控制中心"
++    Width="300" Height="194"
++    ShowInTaskbar="False"
++    WindowStartupLocation="Manual"
++    Topmost="True">
++
++  <controls:GlassWindow.Resources>
++    <Style x:Key="PillButton" TargetType="Button">
++      <Setter Property="MinHeight" Value="58" />
++      <Setter Property="Background" Value="#20FFFFFF" />
++      <Setter Property="BorderBrush" Value="#28FFFFFF" />
++      <Setter Property="BorderThickness" Value="1" />
++      <Setter Property="Foreground" Value="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
++      <Setter Property="Cursor" Value="Hand" />
++      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
++      <Setter Property="Template">
++        <Setter.Value>
++          <ControlTemplate TargetType="Button">
++            <Border x:Name="Pill" CornerRadius="29" Background="{TemplateBinding Background}"
++                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
++                    Padding="12,7">
++              <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
++            </Border>
++            <ControlTemplate.Triggers>
++              <Trigger Property="IsMouseOver" Value="True">
++                <Setter TargetName="Pill" Property="Background" Value="#32FFFFFF" />
++              </Trigger>
++              <Trigger Property="IsPressed" Value="True">
++                <Setter TargetName="Pill" Property="Opacity" Value="0.78" />
++              </Trigger>
++            </ControlTemplate.Triggers>
++          </ControlTemplate>
++        </Setter.Value>
++      </Setter>
++    </Style>
++    <Style x:Key="SelectorButton" TargetType="Button">
++      <Setter Property="Height" Value="28" />
++      <Setter Property="Padding" Value="10,0" />
++      <Setter Property="Margin" Value="4,0,0,0" />
++      <Setter Property="Background" Value="#20FFFFFF" />
++      <Setter Property="BorderBrush" Value="#2FFFFFFF" />
++      <Setter Property="Foreground" Value="White" />
++      <Setter Property="Cursor" Value="Hand" />
++      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
++    </Style>
++    <Style x:Key="GlassSelectorScrollBar" TargetType="ScrollBar">
++      <Setter Property="Width" Value="8" />
++      <Setter Property="Margin" Value="3,1,0,1" />
++      <Setter Property="Background" Value="Transparent" />
++      <Setter Property="Template">
++        <Setter.Value>
++          <ControlTemplate TargetType="ScrollBar">
++            <Grid Background="Transparent">
++              <Border x:Name="TrackSurface" Width="4" CornerRadius="2"
++                      Background="#12FFFFFF" HorizontalAlignment="Center" />
++              <Track x:Name="PART_Track" IsDirectionReversed="True">
++                <Track.DecreaseRepeatButton>
++                  <RepeatButton Command="ScrollBar.PageUpCommand"
++                                CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
++                                Background="Transparent" BorderThickness="0" />
++                </Track.DecreaseRepeatButton>
++                <Track.Thumb>
++                  <Thumb x:Name="Thumb" Width="5" MinHeight="24">
++                    <Thumb.Template>
++                      <ControlTemplate TargetType="Thumb">
++                        <Border x:Name="ThumbSurface" CornerRadius="3" Background="#72FFFFFF" />
++                        <ControlTemplate.Triggers>
++                          <Trigger Property="IsMouseOver" Value="True">
++                            <Setter TargetName="ThumbSurface" Property="Background" Value="#B8FFFFFF" />
++                          </Trigger>
++                          <Trigger Property="IsDragging" Value="True">
++                            <Setter TargetName="ThumbSurface" Property="Background" Value="#E0FFFFFF" />
++                          </Trigger>
++                        </ControlTemplate.Triggers>
++                      </ControlTemplate>
++                    </Thumb.Template>
++                  </Thumb>
++                </Track.Thumb>
++                <Track.IncreaseRepeatButton>
++                  <RepeatButton Command="ScrollBar.PageDownCommand"
++                                CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
++                                Background="Transparent" BorderThickness="0" />
++                </Track.IncreaseRepeatButton>
++              </Track>
++            </Grid>
++            <ControlTemplate.Triggers>
++              <Trigger Property="IsMouseOver" Value="True">
++                <Setter TargetName="TrackSurface" Property="Background" Value="#20FFFFFF" />
++              </Trigger>
++            </ControlTemplate.Triggers>
++          </ControlTemplate>
++        </Setter.Value>
++      </Setter>
++    </Style>
++  </controls:GlassWindow.Resources>
++
++  <Grid ClipToBounds="True">
++    <controls:LiquidGlassSurface x:Name="GlassSurface"
++                                 UseFrostedMaterial="True"
++                                 BackgroundClarityOverride="0.35" />
++    <Grid Margin="14">
++      <Grid.RowDefinitions>
++        <RowDefinition Height="30" />
++        <RowDefinition Height="68" />
++        <RowDefinition Height="68" />
++        <RowDefinition x:Name="SelectorRow" Height="0" />
++      </Grid.RowDefinitions>
++
++      <Grid>
++        <TextBlock Text="控制中心" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"
++                   Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
++        <Button x:Name="ResizeButton" Content="&#xE8A7;" Width="28" Height="28" HorizontalAlignment="Right"
++                ToolTip="切换控制中心大小" Click="OnResizeClick" Cursor="Hand"
++                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
++                Background="#1FFFFFFF" BorderBrush="#2FFFFFFF" Foreground="White" />
++      </Grid>
++
++      <Grid Grid.Row="1" Margin="0,5,0,5">
++        <Grid.ColumnDefinitions>
++          <ColumnDefinition />
++          <ColumnDefinition />
++        </Grid.ColumnDefinitions>
++        <Button x:Name="WifiButton" Grid.Column="0" Margin="0,0,5,0" Style="{StaticResource PillButton}" Click="OnWifiClick">
++          <StackPanel Orientation="Horizontal">
++            <Border x:Name="WifiIconBubble" Width="38" Height="38" CornerRadius="19" Background="#2FFFFFFF">
++              <TextBlock Text="&#xE701;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="18"
++                         HorizontalAlignment="Center" VerticalAlignment="Center" />
++            </Border>
++            <StackPanel Margin="9,0,0,0" VerticalAlignment="Center">
++              <TextBlock Text="Wi-Fi" FontWeight="SemiBold" FontSize="12" />
++              <TextBlock x:Name="WifiStateText" Text="检查中" FontSize="9.5" Opacity="0.72" />
++            </StackPanel>
++          </StackPanel>
++        </Button>
++        <Button x:Name="BluetoothButton" Grid.Column="1" Margin="5,0,0,0" Style="{StaticResource PillButton}" Click="OnBluetoothClick">
++          <StackPanel Orientation="Horizontal">
++            <Border x:Name="BluetoothIconBubble" Width="38" Height="38" CornerRadius="19" Background="#2FFFFFFF">
++              <TextBlock Text="&#xE702;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="18"
++                         HorizontalAlignment="Center" VerticalAlignment="Center" />
++            </Border>
++            <StackPanel Margin="9,0,0,0" VerticalAlignment="Center">
++              <TextBlock Text="蓝牙" FontWeight="SemiBold" FontSize="12" />
++              <TextBlock x:Name="BluetoothStateText" Text="检查中" FontSize="9.5" Opacity="0.72" />
++            </StackPanel>
++          </StackPanel>
++        </Button>
++      </Grid>
++
++      <Border Grid.Row="2" Margin="0,5,0,0" MinHeight="58" CornerRadius="29"
++              Background="#20FFFFFF" BorderBrush="#28FFFFFF" BorderThickness="1">
++        <Grid Margin="13,0">
++          <Grid.ColumnDefinitions>
++            <ColumnDefinition Width="46" />
++            <ColumnDefinition />
++            <ColumnDefinition Width="38" />
++          </Grid.ColumnDefinitions>
++          <Button Grid.Column="0" Click="OnMuteClick" ToolTip="静音/取消静音" Cursor="Hand"
++                  Width="42" Height="42" HorizontalAlignment="Left"
++                  Background="Transparent" BorderThickness="0" FocusVisualStyle="{x:Null}">
++            <TextBlock x:Name="VolumeGlyph" Text="&#xE767;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
++                       FontSize="18" Margin="0,0,4,0"
++                       Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
++          </Button>
++          <Slider x:Name="VolumeSlider" Grid.Column="1" Minimum="0" Maximum="100" Margin="5,0,8,0"
++                  VerticalAlignment="Center" ValueChanged="OnVolumeChanged" />
++          <TextBlock x:Name="VolumeValueText" Grid.Column="2" Text="--" FontSize="11" FontWeight="SemiBold"
++                     HorizontalAlignment="Right" VerticalAlignment="Center"
++                     Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
++        </Grid>
++      </Border>
++
++      <Border x:Name="SelectorPanel" Grid.Row="3" Visibility="Collapsed" Margin="0,10,0,0"
++              CornerRadius="22" Background="#18FFFFFF" BorderBrush="#24FFFFFF" BorderThickness="1"
++              Padding="10">
++        <Grid>
++          <Grid.RowDefinitions>
++            <RowDefinition Height="32" />
++            <RowDefinition Height="*" />
++            <RowDefinition Height="26" />
++          </Grid.RowDefinitions>
++          <Grid>
++            <TextBlock x:Name="SelectorTitle" Text="可用网络" FontSize="13" FontWeight="SemiBold"
++                       VerticalAlignment="Center"
++                       Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
++            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
++              <Button x:Name="RadioPowerButton" Style="{StaticResource SelectorButton}" Content="开/关"
++                      Click="OnRadioPowerClick" />
++              <Button Style="{StaticResource SelectorButton}" Content="&#xE72C;"
++                      FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" ToolTip="刷新列表"
++                      Click="OnRefreshSelectorClick" />
++            </StackPanel>
++          </Grid>
++
++          <ListBox x:Name="SelectorList" Grid.Row="1" Margin="0,5,0,4"
++                   Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
++                   SelectionChanged="OnSelectorSelectionChanged">
++            <ListBox.Resources>
++              <Style TargetType="ScrollBar" BasedOn="{StaticResource GlassSelectorScrollBar}" />
++            </ListBox.Resources>
++            <ListBox.ItemContainerStyle>
++              <Style TargetType="ListBoxItem">
++                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
++                <Setter Property="Padding" Value="0" />
++                <Setter Property="Margin" Value="0,1" />
++                <Setter Property="Background" Value="Transparent" />
++                <Setter Property="BorderThickness" Value="0" />
++              </Style>
++            </ListBox.ItemContainerStyle>
++            <ListBox.ItemTemplate>
++              <DataTemplate>
++                <Border CornerRadius="14" Background="#14FFFFFF" Padding="9,6">
++                  <Grid>
++                    <Grid.ColumnDefinitions>
++                      <ColumnDefinition Width="28" />
++                      <ColumnDefinition />
++                      <ColumnDefinition Width="Auto" />
++                    </Grid.ColumnDefinitions>
++                    <TextBlock Text="{Binding Glyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
++                               FontSize="15" VerticalAlignment="Center" Foreground="White" />
++                    <StackPanel Grid.Column="1">
++                      <TextBlock Text="{Binding Title}" FontSize="11.5" FontWeight="SemiBold"
++                                 TextTrimming="CharacterEllipsis" Foreground="White" />
++                      <TextBlock Text="{Binding Subtitle}" FontSize="9.5" Opacity="0.68"
++                                 TextTrimming="CharacterEllipsis" Foreground="White" />
++                    </StackPanel>
++                    <TextBlock Grid.Column="2" Text="{Binding Action}" FontSize="9.5" Opacity="0.8"
++                               VerticalAlignment="Center" Foreground="White" />
++                  </Grid>
++                </Border>
++              </DataTemplate>
++            </ListBox.ItemTemplate>
++          </ListBox>
++
++          <Button x:Name="SelectorSettingsButton" Grid.Row="2" Content="打开 Windows 设置" Click="OnSelectorSettingsClick"
++                  Background="Transparent" BorderThickness="0" Foreground="White" FontSize="10" Cursor="Hand" />
++        </Grid>
++      </Border>
++    </Grid>
++  </Grid>
++</controls:GlassWindow>
+diff --git a/src/GlassDesk.Dock/ControlCenterWindow.xaml.cs b/src/GlassDesk.Dock/ControlCenterWindow.xaml.cs
+new file mode 100644
+index 0000000000000000000000000000000000000000..aa8ecbb90227068e89a844e2dd59a210e682fdd5
+--- /dev/null
++++ b/src/GlassDesk.Dock/ControlCenterWindow.xaml.cs
+@@ -0,0 +1,299 @@
++using System.Windows;
++using System.Windows.Controls;
++using System.Windows.Media;
++using GlassDesk.Core.Models.Settings;
++using GlassDesk.Platform;
++using GlassDesk.Platform.Displays;
++using GlassDesk.Platform.Shell;
++using GlassDesk.UI.Controls;
++
++namespace GlassDesk.Dock;
++
++public partial class ControlCenterWindow : GlassWindow
++{
++    private const double CompactWidth = 300;
++    private const double CompactHeight = 194;
++    private const double ExpandedWidth = 390;
++    private const double ExpandedHeight = 430;
++    private bool _expanded;
++    private bool _refreshing;
++    private PixelRect _anchor;
++    private PickerKind _pickerKind = PickerKind.Wifi;
++    private int _pickerRefreshGeneration;
++
++    public ControlCenterWindow()
++    {
++        InitializeComponent();
++        PanelCornerRadius = new CornerRadius(30);
++        GlassSurface.IsBackdropActive = () => IsVisible;
++        Deactivated += (_, _) => Hide();
++        PreviewKeyDown += (_, e) =>
++        {
++            if (e.Key == System.Windows.Input.Key.Escape) Hide();
++        };
++    }
++
++    protected override double ResolveCornerRadius(AppearanceSettings appearance) => 30;
++
++    internal void RequestGlassRefresh()
++    {
++        if (IsVisible) GlassSurface.RequestBackdropRefresh();
++    }
++
++    public async void ShowNear(PixelRect anchor)
++    {
++        _anchor = anchor;
++        PositionNearAnchor();
++        if (!IsVisible) Show();
++        PositionNearAnchor();
++        Activate();
++        QueueGlassRefresh();
++        await RefreshAsync();
++    }
++
++    private void PositionNearAnchor()
++    {
++        if (PrimaryDisplaySession is not { IsAvailable: true } session) return;
++        var display = session.Display;
++        var width = Math.Max(1, display.ToPixels(Width));
++        var height = Math.Max(1, display.ToPixels(Height));
++        var gap = Math.Max(8, display.ToPixels(10));
++        _ = PlaceWindowWithinPrimaryWorkArea(new PixelRect(
++            _anchor.Right - width,
++            _anchor.Bottom + gap,
++            width,
++            height));
++    }
++
++    private async Task RefreshAsync()
++    {
++        _refreshing = true;
++        try
++        {
++            var status = SystemStatusReader.Read();
++            VolumeSlider.Value = status.VolumePercent ?? 0;
++            VolumeValueText.Text = status.VolumePercent is { } volume ? $"{volume}%" : "--";
++            VolumeGlyph.Text = status.IsMuted ? "\uE74F" : "\uE767";
++
++            var wifiTask = SystemRadioController.ReadWifiAsync();
++            var bluetoothTask = SystemRadioController.ReadBluetoothAsync();
++            await Task.WhenAll(wifiTask, bluetoothTask);
++            ApplyRadioState(await wifiTask, WifiStateText, WifiIconBubble);
++            ApplyRadioState(await bluetoothTask, BluetoothStateText, BluetoothIconBubble);
++        }
++        finally
++        {
++            _refreshing = false;
++        }
++    }
++
++    private static void ApplyRadioState(SystemRadioState state, System.Windows.Controls.TextBlock label,
++        System.Windows.Controls.Border bubble)
++    {
++        label.Text = !state.Available ? "打开设置" : state.IsOn ? "已开启" : "已关闭";
++        bubble.Background = new SolidColorBrush(state.Available && state.IsOn
++            ? Color.FromRgb(65, 145, 255)
++            : Color.FromArgb(48, 255, 255, 255));
++    }
++
++    private async void OnWifiClick(object sender, RoutedEventArgs e)
++    {
++        await ShowPickerAsync(PickerKind.Wifi);
++    }
++
++    private async void OnBluetoothClick(object sender, RoutedEventArgs e)
++    {
++        await ShowPickerAsync(PickerKind.Bluetooth);
++    }
++
++    private void OnVolumeChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
++    {
++        if (_refreshing) return;
++        var value = (int)Math.Round(e.NewValue);
++        _ = SystemStatusReader.SetVolumePercent(value);
++        if (value > 0) _ = SystemStatusReader.SetMuted(false);
++        VolumeValueText.Text = $"{value}%";
++        VolumeGlyph.Text = value == 0 ? "\uE74F" : "\uE767";
++    }
++
++    private void OnMuteClick(object sender, RoutedEventArgs e)
++    {
++        var status = SystemStatusReader.Read();
++        _ = SystemStatusReader.SetMuted(!status.IsMuted);
++        _ = RefreshAsync();
++    }
++
++    private void OnResizeClick(object sender, RoutedEventArgs e)
++    {
++        if (_expanded)
++        {
++            SetExpanded(false);
++            return;
++        }
++
++        SetExpanded(true);
++        _ = RefreshPickerAsync();
++    }
++
++    private async Task ShowPickerAsync(PickerKind kind)
++    {
++        _pickerKind = kind;
++        SetExpanded(true);
++        await RefreshPickerAsync();
++    }
++
++    private void SetExpanded(bool expanded)
++    {
++        _expanded = expanded;
++        ResizeButton.Content = expanded ? "\uE72B" : "\uE8A7";
++        SelectorPanel.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
++        SelectorRow.Height = expanded ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
++        AnimateSize(expanded ? ExpandedWidth : CompactWidth, expanded ? ExpandedHeight : CompactHeight);
++    }
++
++    private async Task RefreshPickerAsync()
++    {
++        var generation = ++_pickerRefreshGeneration;
++        SelectorTitle.Text = _pickerKind == PickerKind.Wifi ? "选择 Wi-Fi 网络" : "选择蓝牙设备";
++        SelectorSettingsButton.Content = _pickerKind == PickerKind.Wifi
++            ? "打开 Wi-Fi 设置"
++            : "打开蓝牙设置";
++        SelectorList.ItemsSource = new[]
++        {
++            new PickerItem("正在搜索…", "", "\uE895", "", null),
++        };
++
++        IReadOnlyList<PickerItem> items;
++        if (_pickerKind == PickerKind.Wifi)
++        {
++            var networks = await WifiNetworkController.ScanAndGetAvailableNetworksAsync();
++            items = networks.Select(network => new PickerItem(
++                    network.Name,
++                    network.IsConnected
++                        ? $"已连接 · 信号 {network.SignalQuality}%"
++                        : network.HasSavedProfile
++                            ? $"已保存 · 信号 {network.SignalQuality}%"
++                            : $"需要密码 · 信号 {network.SignalQuality}%",
++                    "\uE701",
++                    network.IsConnected ? "断开" : network.HasSavedProfile ? "连接" : "设置",
++                    network))
++                .ToArray();
++        }
++        else
++        {
++            var devices = await BluetoothDeviceReader.GetPairedDevicesAsync();
++            items = devices.Select(device => new PickerItem(
++                    device.Name,
++                    device.IsConnected ? "已连接" : "已配对",
++                    "\uE702",
++                    device.IsConnected ? "管理" : "连接",
++                    device))
++                .ToArray();
++        }
++
++        if (generation != _pickerRefreshGeneration || !_expanded) return;
++        SelectorList.ItemsSource = items.Count > 0
++            ? items
++            : new[]
++            {
++                new PickerItem(
++                    _pickerKind == PickerKind.Wifi ? "没有找到可用网络" : "没有找到已配对设备",
++                    _pickerKind == PickerKind.Wifi ? "可检查定位权限或打开 Wi-Fi 设置" : "请在 Windows 设置中添加设备",
++                    "\uE711",
++                    "设置",
++                    null),
++            };
++    }
++
++    private async void OnSelectorSelectionChanged(object sender, SelectionChangedEventArgs e)
++    {
++        if (SelectorList.SelectedItem is not PickerItem item) return;
++        SelectorList.SelectedItem = null;
++
++        if (item.Value is WifiNetworkOption network)
++        {
++            var action = network.IsConnected ? "正在断开…" : "正在连接…";
++            var succeeded = network.IsConnected
++                ? WifiNetworkController.Disconnect(network)
++                : network.HasSavedProfile && WifiNetworkController.Connect(network);
++            if (!succeeded)
++            {
++                OpenSettings("ms-settings:network-wifi");
++                return;
++            }
++
++            SelectorList.ItemsSource = new[]
++            {
++                new PickerItem(network.Name, action, "\uE701", "", null),
++            };
++            await Task.Delay(1800);
++            await RefreshAsync();
++            await RefreshPickerAsync();
++            return;
++        }
++
++        if (item.Value is BluetoothDeviceOption device)
++        {
++            // Windows exposes paired-device state here, but it has no universal public
++            // connect/disconnect operation for classic audio, HID and BLE devices.
++            // Hand the selection to the system page, which chooses the correct profile.
++            OpenSettings("ms-settings:bluetooth");
++            return;
++        }
++
++        OnSelectorSettingsClick(sender, new RoutedEventArgs());
++    }
++
++    private async void OnRadioPowerClick(object sender, RoutedEventArgs e)
++    {
++        if (_pickerKind == PickerKind.Wifi)
++        {
++            var state = await SystemRadioController.ReadWifiAsync();
++            if (!state.Available || !state.CanControl || !await SystemRadioController.SetWifiAsync(!state.IsOn))
++                OpenSettings("ms-settings:network-wifi");
++        }
++        else
++        {
++            var state = await SystemRadioController.ReadBluetoothAsync();
++            if (!state.Available || !state.CanControl || !await SystemRadioController.SetBluetoothAsync(!state.IsOn))
++                OpenSettings("ms-settings:bluetooth");
++        }
++
++        await RefreshAsync();
++        await RefreshPickerAsync();
++    }
++
++    private async void OnRefreshSelectorClick(object sender, RoutedEventArgs e)
++        => await RefreshPickerAsync();
++
++    private void OnSelectorSettingsClick(object sender, RoutedEventArgs e)
++        => OpenSettings(_pickerKind == PickerKind.Wifi ? "ms-settings:network-wifi" : "ms-settings:bluetooth");
++
++    private void AnimateSize(double width, double height)
++    {
++        // Rebuilding the sampled desktop region for every frame of a resize animation can
++        // temporarily force the glass renderer onto its opaque fallback. Resize once, then
++        // explicitly request a fresh backdrop for the final rectangle.
++        BeginAnimation(WidthProperty, null);
++        BeginAnimation(HeightProperty, null);
++        Width = width;
++        Height = height;
++        PositionNearAnchor();
++        QueueGlassRefresh();
++    }
++
++    private void QueueGlassRefresh()
++    {
++        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, new Action(() =>
++        {
++            if (!IsVisible) return;
++            GlassSurface.RequestBackdropRefresh(revealing: true);
++        }));
++    }
++
++    private static void OpenSettings(string uri) => _ = ShellExecutor.Open(uri);
++
++    private enum PickerKind { Wifi, Bluetooth }
++
++    private sealed record PickerItem(string Title, string Subtitle, string Glyph, string Action, object? Value);
++}
+diff --git a/src/GlassDesk.Dock/DateNotificationWindow.xaml b/src/GlassDesk.Dock/DateNotificationWindow.xaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..0ce49b2a3f2c7ab20b43ff762fbfd7fe148b3e6b
+--- /dev/null
++++ b/src/GlassDesk.Dock/DateNotificationWindow.xaml
+@@ -0,0 +1,64 @@
++<controls:GlassWindow
++    x:Class="GlassDesk.Dock.DateNotificationWindow"
++    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
++    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
++    xmlns:controls="clr-namespace:GlassDesk.UI.Controls;assembly=GlassDesk.UI"
++    Title="日期与通知"
++    Width="336" Height="500"
++    ShowInTaskbar="False"
++    WindowStartupLocation="Manual"
++    Topmost="True">
++  <Grid ClipToBounds="True">
++    <controls:LiquidGlassSurface x:Name="GlassSurface"
++                                 UseFrostedMaterial="True"
++                                 BackgroundClarityOverride="0.35" />
++    <Grid Margin="18">
++      <Grid.RowDefinitions>
++        <RowDefinition Height="Auto" />
++        <RowDefinition Height="Auto" />
++        <RowDefinition Height="1" />
++        <RowDefinition Height="*" />
++      </Grid.RowDefinitions>
++
++      <StackPanel>
++        <TextBlock x:Name="LargeTimeText" FontSize="34" FontWeight="SemiBold"
++                   Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
++        <TextBlock x:Name="LargeDateText" FontSize="13" Margin="2,-2,0,8"
++                   Foreground="{Binding SecondaryForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
++      </StackPanel>
++
++      <Border Grid.Row="1" CornerRadius="22" Background="#16FFFFFF" BorderBrush="#22FFFFFF" BorderThickness="1"
++              Padding="10" Margin="0,4,0,14">
++        <Calendar x:Name="MonthCalendar" BorderThickness="0" Background="Transparent"
++                  HorizontalAlignment="Stretch" IsTodayHighlighted="True" />
++      </Border>
++
++      <Rectangle Grid.Row="2" Height="1" Fill="#26FFFFFF" />
++
++      <Grid Grid.Row="3" Margin="0,14,0,0" MinHeight="142">
++        <Grid.RowDefinitions>
++          <RowDefinition Height="Auto" />
++          <RowDefinition Height="*" />
++          <RowDefinition Height="Auto" />
++        </Grid.RowDefinitions>
++        <TextBlock Text="通知" FontSize="15" FontWeight="SemiBold"
++                   Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
++        <Border x:Name="NotificationInfoPanel" Grid.Row="1" Margin="0,8,0,10" MinHeight="76"
++                CornerRadius="18" Background="#16FFFFFF"
++                BorderBrush="#20FFFFFF" BorderThickness="1" Padding="12,10">
++          <StackPanel VerticalAlignment="Center">
++            <TextBlock Text="&#xE7F4;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="22"
++                       HorizontalAlignment="Center" Margin="0,0,0,8"
++                       Foreground="{Binding SecondaryForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
++            <TextBlock x:Name="NotificationInfoText" Text="Windows 通知由系统通知中心管理"
++                       FontSize="11.5" TextAlignment="Center" TextWrapping="Wrap"
++                       MaxWidth="250" LineHeight="16"
++                       Foreground="{Binding SecondaryForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
++          </StackPanel>
++        </Border>
++        <Button Grid.Row="2" Content="打开通知设置" Height="34" Click="OnNotificationSettingsClick" Cursor="Hand"
++                Background="#20FFFFFF" BorderBrush="#2FFFFFFF" Foreground="White" />
++      </Grid>
++    </Grid>
++  </Grid>
++</controls:GlassWindow>
+diff --git a/src/GlassDesk.Dock/DateNotificationWindow.xaml.cs b/src/GlassDesk.Dock/DateNotificationWindow.xaml.cs
+new file mode 100644
+index 0000000000000000000000000000000000000000..c0d4fc1fec0132a78f11253b38c2ea2ca1ca4982
+--- /dev/null
++++ b/src/GlassDesk.Dock/DateNotificationWindow.xaml.cs
+@@ -0,0 +1,94 @@
++using System.Globalization;
++using System.Windows;
++using System.Windows.Threading;
++using GlassDesk.Core.Models.Settings;
++using GlassDesk.Platform.Displays;
++using GlassDesk.Platform.Shell;
++using GlassDesk.UI.Controls;
++
++namespace GlassDesk.Dock;
++
++public partial class DateNotificationWindow : GlassWindow
++{
++    private readonly DispatcherTimer _timer;
++
++    public DateNotificationWindow()
++    {
++        InitializeComponent();
++        PanelCornerRadius = new CornerRadius(32);
++        GlassSurface.IsBackdropActive = () => IsVisible;
++        _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
++        _timer.Tick += (_, _) => RefreshClock();
++        IsVisibleChanged += (_, _) =>
++        {
++            if (IsVisible)
++            {
++                RefreshClock();
++                MonthCalendar.DisplayDate = DateTime.Today;
++                _timer.Start();
++            }
++            else
++            {
++                _timer.Stop();
++            }
++        };
++        Deactivated += (_, _) => Hide();
++        PreviewKeyDown += (_, e) =>
++        {
++            if (e.Key == System.Windows.Input.Key.Escape) Hide();
++        };
++    }
++
++    protected override double ResolveCornerRadius(AppearanceSettings appearance) => 32;
++
++    internal void RequestGlassRefresh()
++    {
++        if (IsVisible) GlassSurface.RequestBackdropRefresh();
++    }
++
++    public void ShowNear(PixelRect anchor)
++    {
++        if (!IsVisible)
++        {
++            // Create the hidden HWND first so the reveal material uses the exact
++            // destination origin/DPI instead of a temporary (0,0) material stamp.
++            _ = new System.Windows.Interop.WindowInteropHelper(this).EnsureHandle();
++            var target = PositionNearAnchor(anchor);
++            if (PrimaryDisplaySession is { IsAvailable: true } session && target.Width > 0 && target.Height > 0)
++                GlassSurface.PrepareRevealMaterial(target, target, session.Display.Dpi);
++            Show();
++        }
++        PositionNearAnchor(anchor);
++        Activate();
++    }
++
++    internal PixelRect CalculatePlacement(PixelRect anchor)
++    {
++        if (PrimaryDisplaySession is not { IsAvailable: true } session) return default;
++        var display = session.Display;
++        var width = display.ToPixels(Width);
++        var height = display.ToPixels(Height);
++        var gap = Math.Max(8, display.ToPixels(10));
++        return session.ClampWindowToWorkArea(
++            new PixelRect(anchor.Right - width, anchor.Bottom + gap, width, height));
++    }
++
++    private PixelRect PositionNearAnchor(PixelRect anchor)
++        => PlaceWindowWithinPrimaryWorkArea(CalculatePlacement(anchor));
++
++    private void RefreshClock()
++    {
++        var now = DateTime.Now;
++        LargeTimeText.Text = now.ToString("HH:mm", CultureInfo.CurrentCulture);
++        LargeDateText.Text = now.ToString("yyyy年M月d日 dddd", CultureInfo.CurrentCulture);
++    }
++
++    private void OnNotificationSettingsClick(object sender, RoutedEventArgs e)
++        => _ = ShellExecutor.Open("ms-settings:notifications");
++
++    protected override void OnClosed(EventArgs e)
++    {
++        _timer.Stop();
++        base.OnClosed(e);
++    }
++}
+diff --git a/src/GlassDesk.Dock/DockTileModel.cs b/src/GlassDesk.Dock/DockTileModel.cs
+index 9364cedecbc4b354022bf6f12d4c136b569bfc17..ee4f245c79584905668b3ac31ef56254f8e443a3 100644
+--- a/src/GlassDesk.Dock/DockTileModel.cs
++++ b/src/GlassDesk.Dock/DockTileModel.cs
+@@ -14,6 +14,7 @@ namespace GlassDesk.Dock;
+ public sealed class DockTileModel : INotifyPropertyChanged
+ {
+     private Visibility _runningVisibility = Visibility.Collapsed;
++    private bool _isActive;
+ 
+     public event PropertyChangedEventHandler? PropertyChanged;
+ 
+@@ -36,6 +37,14 @@ public sealed class DockTileModel : INotifyPropertyChanged
+     /// <summary>运行状态点的颜色。来自当前调色板的前景色。</summary>
+     public System.Windows.Media.Brush? DotBrush { get; init; }
+ 
++    /// <summary>当前前台应用使用的强调色。</summary>
++    public System.Windows.Media.Brush? ActiveBrush { get; init; }
++
++    public System.Windows.Media.Brush? IndicatorBrush => IsActive ? ActiveBrush ?? DotBrush : DotBrush;
++
++    /// <summary>当前前台应用使用较宽的胶囊；其他运行应用仍显示圆点。</summary>
++    public double IndicatorWidth => IsActive ? 15 : 5;
++
+     /// <summary>图标边长，DIP，来自程序坞设置。</summary>
+     public double IconSize { get; init; } = 48;
+ 
+@@ -57,4 +66,18 @@ public sealed class DockTileModel : INotifyPropertyChanged
+             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RunningVisibility)));
+         }
+     }
++
++    /// <summary>这枚磁贴是否对应当前前台窗口。</summary>
++    public bool IsActive
++    {
++        get => _isActive;
++        set
++        {
++            if (_isActive == value) return;
++            _isActive = value;
++            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsActive)));
++            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IndicatorBrush)));
++            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IndicatorWidth)));
++        }
++    }
+ }
+diff --git a/src/GlassDesk.Dock/DockTileStrip.cs b/src/GlassDesk.Dock/DockTileStrip.cs
+index 05bd2447258c51cfe6daaadb8099a6c2dab74ae0..fa2c4590bc30aa92c8440f8e84144be842776678 100644
+--- a/src/GlassDesk.Dock/DockTileStrip.cs
++++ b/src/GlassDesk.Dock/DockTileStrip.cs
+@@ -61,11 +61,16 @@ public sealed class DockTileStrip : Border
+ 
+     private readonly List<DockTileModel> _models = [];
+     private readonly List<Border> _tiles = [];
++    private readonly List<RadialGradientBrush> _pressGlows = [];
+ 
+     private readonly DockRenderLoop _animationLoop;
+     private bool _pointerActive;
+     private double _pointerPosition = double.NaN;
+     private int _hoveredTileIndex = -1;
++    private int _pressedTileIndex = -1;
++    private double[] _pressScale = [];
++    private double[] _pressVelocity = [];
++    private double[] _pressGlow = [];
+ 
+     private double _iconSize = 48;
+     private double _spacing = 8;
+@@ -115,7 +120,7 @@ public sealed class DockTileStrip : Border
+     private TileGeometry[] _paintedGeometry = [];
+     private TileGeometry[] _targetGeometry = [];
+     private int[] _paintOrder = [];
+-    private readonly IComparer<int> _paintOrderComparer;
++    private readonly Comparer<int> _paintOrderComparer;
+ 
+     /// <summary>注入排序状态机并启用内部拖拽。</summary>
+     public void SetReorderModel(DockReorderModel? reorder)
+@@ -220,6 +225,7 @@ public sealed class DockTileStrip : Border
+ 
+         _canvas.Children.Clear();
+         _tiles.Clear();
++        _pressGlows.Clear();
+ 
+         for (var index = 0; index < _models.Count; index++)
+         {
+@@ -236,6 +242,10 @@ public sealed class DockTileStrip : Border
+         _pointerActive = false;
+         _pointerPosition = double.NaN;
+         _hoveredTileIndex = -1;
++        _pressedTileIndex = -1;
++        _pressScale = Enumerable.Repeat(1.0, _tiles.Count).ToArray();
++        _pressVelocity = new double[_tiles.Count];
++        _pressGlow = new double[_tiles.Count];
+         UpdateTileLayout();
+         PaintFrame(null);
+     }
+@@ -317,27 +327,44 @@ public sealed class DockTileStrip : Border
+         System.Windows.Automation.AutomationProperties.SetName(body, model.DisplayName);
+         System.Windows.Automation.AutomationProperties.SetAutomationId(body, "dock-tile:" + model.EntryId);
+ 
+-        var dot = new System.Windows.Shapes.Ellipse
++        var dot = new Border
+         {
+-            Width = 5,
+             Height = 5,
++            CornerRadius = new CornerRadius(2.5),
+             HorizontalAlignment = HorizontalAlignment.Center,
+             Margin = new Thickness(0, 2, 0, 0),
+         };
+-        Bind(dot, System.Windows.Shapes.Shape.FillProperty, model, nameof(DockTileModel.DotBrush));
++        Bind(dot, WidthProperty, model, nameof(DockTileModel.IndicatorWidth));
++        Bind(dot, BackgroundProperty, model, nameof(DockTileModel.IndicatorBrush));
+         Bind(dot, VisibilityProperty, model, nameof(DockTileModel.RunningVisibility));
+ 
+         var content = new StackPanel();
+         _ = content.Children.Add(body);
+         _ = content.Children.Add(dot);
+ 
++        var pressGlow = new RadialGradientBrush
++        {
++            Center = new Point(.5, .48),
++            GradientOrigin = new Point(.5, .48),
++            RadiusX = .72,
++            RadiusY = .72,
++            Opacity = 0,
++            GradientStops = new GradientStopCollection
++            {
++                new(Color.FromArgb(75, 255, 255, 255), 0),
++                new(Color.FromArgb(24, 255, 255, 255), .55),
++                new(Colors.Transparent, 1),
++            },
++        };
++        _pressGlows.Add(pressGlow);
++
+         var tile = new Border
+         {
+             Child = content,
+             RenderTransform = new ScaleTransform(1, 1),
+             RenderTransformOrigin = new Point(0.5, 0.5),
+             Cursor = Cursors.Hand,
+-            Background = Brushes.Transparent,
++            Background = pressGlow,
+             ToolTip = model.ToolTipText,
+             DataContext = model,
+         };
+@@ -364,6 +391,8 @@ public sealed class DockTileStrip : Border
+ 
+         _pressedEntryId = model.EntryId;
+         _pressPosition = e.GetPosition(this);
++        _pressedTileIndex = _models.FindIndex(item => item.EntryId == model.EntryId);
++        EnsureAnimating();
+     }
+ 
+     /// <summary>按住并移动超过阈值 → 进入拖放模态循环（阻塞到松手/取消）。</summary>
+@@ -385,6 +414,8 @@ public sealed class DockTileStrip : Border
+         }
+ 
+         _dragActive = true;
++        _pressedTileIndex = -1;
++        EnsureAnimating();
+         _droppedInStrip = false;
+         _dragCancelReason = DragCancelReason.None;
+ 
+@@ -626,6 +657,8 @@ public sealed class DockTileStrip : Border
+ 
+     private void OnTileMouseUp(object sender, MouseButtonEventArgs e)
+     {
++        _pressedTileIndex = -1;
++        EnsureAnimating();
+         // 命中不以 sender 为准，也不在这里重算几何：用**最后一次绘制帧**做判定
+         // （视觉即所得）。重算会在动画中途与屏幕上的画面分叉。
+         // 换算走「视口坐标 → 内容坐标」这一条路（只加一次偏移）。
+@@ -757,6 +790,7 @@ public sealed class DockTileStrip : Border
+         _hoveredTileIndex = targetPointer is { } position ? FindHoveredTile(position) : -1;
+         if (ThemeService.Current?.AnimationsEnabled == false)
+         {
++            SnapPressFeedback();
+             PaintFrame(targetPointer);
+             return true;
+         }
+@@ -792,13 +826,11 @@ public sealed class DockTileStrip : Border
+         DockMagnification.ComputeInto(targets, _iconSize, _spacing, _peak, pointerPosition);
+         ApplyHoveredPeak(targets, pointerPosition);
+         var geometry = _paintedGeometry;
+-        var allSettled = true;
++        var allSettled = AdvancePressFeedback(deltaSeconds);
+ 
+         for (var index = 0; index < targets.Length; index++)
+         {
+-            var currentScale = _tiles[index].RenderTransform is ScaleTransform transform
+-                ? transform.ScaleX
+-                : 1.0;
++            var currentScale = geometry[index].Scale;
+             var targetScale = targets[index].Scale;
+             var nextScale = DockHoverScale.Advance(currentScale, targetScale, deltaSeconds);
+ 
+@@ -814,6 +846,63 @@ public sealed class DockTileStrip : Border
+         return allSettled;
+     }
+ 
++    /// <summary>给按下的图标一个短促的凝胶式压缩；松开时欠阻尼回弹。</summary>
++    private bool AdvancePressFeedback(double deltaSeconds)
++    {
++        if (_pressScale.Length != _tiles.Count) return true;
++        var seconds = Math.Clamp(deltaSeconds, 0, .05);
++        var allSettled = true;
++
++        for (var index = 0; index < _pressScale.Length; index++)
++        {
++            var target = index == _pressedTileIndex ? .94 : 1.0;
++            var displacement = _pressScale[index] - target;
++            var velocity = _pressVelocity[index];
++            const double frequency = 22;
++            const double damping = .68;
++            var dampedFrequency = frequency * Math.Sqrt(1 - damping * damping);
++            var decay = Math.Exp(-damping * frequency * seconds);
++            var sine = Math.Sin(dampedFrequency * seconds);
++            var cosine = Math.Cos(dampedFrequency * seconds);
++            var coefficient = (velocity + damping * frequency * displacement) / dampedFrequency;
++            var wave = displacement * cosine + coefficient * sine;
++            var next = target + decay * wave;
++            var nextVelocity = decay * (dampedFrequency * (-displacement * sine + coefficient * cosine)
++                - damping * frequency * wave);
++
++            if (Math.Abs(next - target) < .0005 && Math.Abs(nextVelocity) < .01)
++            {
++                next = target;
++                nextVelocity = 0;
++            }
++            else
++            {
++                allSettled = false;
++            }
++
++            _pressScale[index] = Math.Clamp(next, .9, 1.04);
++            _pressVelocity[index] = nextVelocity;
++            var glowTarget = index == _pressedTileIndex ? 1.0 : 0.0;
++            _pressGlow[index] += (glowTarget - _pressGlow[index]) * (1 - Math.Exp(-18 * seconds));
++            if (Math.Abs(_pressGlow[index] - glowTarget) < .005) _pressGlow[index] = glowTarget;
++            else allSettled = false;
++            if (index < _pressGlows.Count) _pressGlows[index].Opacity = .46 * _pressGlow[index];
++        }
++
++        return allSettled;
++    }
++
++    private void SnapPressFeedback()
++    {
++        for (var index = 0; index < _pressScale.Length; index++)
++        {
++            _pressScale[index] = index == _pressedTileIndex ? .94 : 1;
++            _pressVelocity[index] = 0;
++            _pressGlow[index] = 0;
++            if (index < _pressGlows.Count) _pressGlows[index].Opacity = 0;
++        }
++    }
++
+     private void ApplyHoveredPeak(TileGeometry[] geometry, double? pointerPosition)
+     {
+         if (pointerPosition is null || _hoveredTileIndex < 0 || _hoveredTileIndex >= geometry.Length)
+@@ -870,13 +959,19 @@ public sealed class DockTileStrip : Border
+     {
+         // z 序取绘制与命中共同的那一份：缩放大的在上，重叠处可见者即被点中者。
+         var order = _paintOrder;
+-        Array.Sort(order, _paintOrderComparer);
++        // 绝大多数动画帧的相对缩放次序没有变化（例如鼠标停在同一枚图标上时）。
++        // 这时保留上一帧已排好的顺序，避免每个合成帧都做 O(n log n) 排序；缩放
++        // 曲线让两枚图标跨越时，下方检查会立即发现逆序并恢复完整排序。
++        if (!IsPaintOrderCurrent(order))
++        {
++            Array.Sort(order, _paintOrderComparer);
++        }
+ 
+         for (var rank = 0; rank < order.Length; rank++)
+         {
+             var index = order[rank];
+             var tile = _tiles[index];
+-            var scale = geometry[index].Scale;
++            var scale = geometry[index].Scale * (index < _pressScale.Length ? _pressScale[index] : 1);
+ 
+             // order 的第 0 项是「最上层」，而 ZIndex 越大越靠上——所以是**取反**赋值。
+             // 早先写成 Panel.SetZIndex(tile, rank) 时，递增的 rank 把最小的磁贴放到了最上层，
+@@ -893,6 +988,27 @@ public sealed class DockTileStrip : Border
+ 
+     }
+ 
++    /// <summary>
++    /// 当前绘制顺序是否仍符合最新几何的「大缩放在上」规则。
++    /// </summary>
++    /// <remarks>
++    /// 只检查相邻项即可验证整个已排序数组。该检查是 O(n)，而完整排序是
++    /// O(n log n)；它让静止悬停及缓动收尾阶段不必反复排序，同时保留原有
++    /// <see cref="DockMagnification.CompareDrawOrder"/> 作为唯一排序规则。
++    /// </remarks>
++    private bool IsPaintOrderCurrent(int[] order)
++    {
++        for (var index = 1; index < order.Length; index++)
++        {
++            if (_paintOrderComparer.Compare(order[index - 1], order[index]) > 0)
++            {
++                return false;
++            }
++        }
++
++        return true;
++    }
++
+     /// <summary>
+     /// 把分隔线放在「应用磁贴」与「内置入口」两组的中间。
+     /// </summary>
+diff --git a/src/GlassDesk.Dock/DockWindow.xaml.cs b/src/GlassDesk.Dock/DockWindow.xaml.cs
+index 878c56fccfd9965c8e83e391406fc5f98dc2ec67..aded715113330fc70129ed3bd814fb55391bfd59 100644
+--- a/src/GlassDesk.Dock/DockWindow.xaml.cs
++++ b/src/GlassDesk.Dock/DockWindow.xaml.cs
+@@ -470,6 +470,12 @@ public partial class DockWindow : GlassWindow
+         ApplyStripMetrics();
+     }
+ 
++    /// <summary>Refreshes this visible surface after a foreign foreground change.</summary>
++    public void RequestGlassRefresh()
++    {
++        if (IsVisible && IsOpticalSurfaceVisible) GlassSurface.RequestBackdropRefresh();
++    }
++
+     private DockTileModel CreateTile(AppEntry entry, DockSettings settings, RunningAppTracker tracker, Brush? dotBrush)
+     {
+         var tooltip = entry.DisplayName;
+diff --git a/src/GlassDesk.Dock/MediaCapsuleWindow.xaml b/src/GlassDesk.Dock/MediaCapsuleWindow.xaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..187f9f140d1441845f82ce0adbf96352429b9042
+--- /dev/null
++++ b/src/GlassDesk.Dock/MediaCapsuleWindow.xaml
+@@ -0,0 +1,145 @@
++<controls:GlassWindow
++    x:Class="GlassDesk.Dock.MediaCapsuleWindow"
++    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
++    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
++    xmlns:controls="clr-namespace:GlassDesk.UI.Controls;assembly=GlassDesk.UI"
++    Title="正在播放"
++    Width="378" Height="76"
++    ShowInTaskbar="False"
++    ShowActivated="False"
++    WindowStartupLocation="Manual"
++    Topmost="True">
++  <controls:GlassWindow.Resources>
++    <Style x:Key="MediaButton" TargetType="Button">
++      <Setter Property="Width" Value="34" />
++      <Setter Property="Height" Value="34" />
++      <Setter Property="Margin" Value="2,0" />
++      <Setter Property="Background" Value="#14FFFFFF" />
++      <Setter Property="BorderBrush" Value="#20FFFFFF" />
++      <Setter Property="BorderThickness" Value="1" />
++      <Setter Property="Foreground" Value="White" />
++      <Setter Property="Cursor" Value="Hand" />
++      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
++      <Setter Property="Template">
++        <Setter.Value>
++          <ControlTemplate TargetType="Button">
++            <Border x:Name="ButtonSurface"
++                    Background="{TemplateBinding Background}"
++                    BorderBrush="{TemplateBinding BorderBrush}"
++                    BorderThickness="{TemplateBinding BorderThickness}"
++                    CornerRadius="12"
++                    SnapsToDevicePixels="True">
++              <ContentPresenter HorizontalAlignment="Center"
++                                VerticalAlignment="Center"
++                                RecognizesAccessKey="True" />
++            </Border>
++            <ControlTemplate.Triggers>
++              <Trigger Property="IsMouseOver" Value="True">
++                <Setter TargetName="ButtonSurface" Property="Background" Value="#2AFFFFFF" />
++                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#45FFFFFF" />
++              </Trigger>
++              <Trigger Property="IsPressed" Value="True">
++                <Setter TargetName="ButtonSurface" Property="Background" Value="#38FFFFFF" />
++              </Trigger>
++              <Trigger Property="IsEnabled" Value="False">
++                <Setter TargetName="ButtonSurface" Property="Background" Value="#0CFFFFFF" />
++                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#14FFFFFF" />
++                <Setter Property="Opacity" Value="0.45" />
++                <Setter Property="Cursor" Value="Arrow" />
++              </Trigger>
++            </ControlTemplate.Triggers>
++          </ControlTemplate>
++        </Setter.Value>
++      </Setter>
++    </Style>
++    <Style x:Key="MediaTabButton" TargetType="Button">
++      <Setter Property="Focusable" Value="False" />
++      <Setter Property="IsTabStop" Value="False" />
++      <Setter Property="Cursor" Value="Hand" />
++      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
++      <Setter Property="Template">
++        <Setter.Value>
++          <ControlTemplate TargetType="Button">
++            <Border x:Name="TabSurface"
++                    Background="{TemplateBinding Background}"
++                    BorderBrush="{TemplateBinding BorderBrush}"
++                    BorderThickness="{TemplateBinding BorderThickness}"
++                    CornerRadius="17"
++                    SnapsToDevicePixels="True">
++              <ContentPresenter HorizontalAlignment="Center"
++                                VerticalAlignment="Center"
++                                RecognizesAccessKey="True" />
++            </Border>
++            <ControlTemplate.Triggers>
++              <Trigger Property="IsMouseOver" Value="True">
++                <Setter TargetName="TabSurface" Property="Background" Value="#2DFFFFFF" />
++                <Setter TargetName="TabSurface" Property="BorderBrush" Value="#50FFFFFF" />
++              </Trigger>
++              <Trigger Property="IsPressed" Value="True">
++                <Setter TargetName="TabSurface" Property="Background" Value="#3AFFFFFF" />
++              </Trigger>
++            </ControlTemplate.Triggers>
++          </ControlTemplate>
++        </Setter.Value>
++      </Setter>
++    </Style>
++  </controls:GlassWindow.Resources>
++  <Grid ClipToBounds="True">
++    <controls:LiquidGlassSurface x:Name="GlassSurface" />
++    <Grid x:Name="FullPlayerPanel" Margin="10,8,18,8">
++      <Grid.ColumnDefinitions>
++        <ColumnDefinition Width="52" />
++        <ColumnDefinition />
++        <ColumnDefinition Width="112" />
++        <ColumnDefinition Width="34" />
++      </Grid.ColumnDefinitions>
++      <Border Width="50" Height="50" CornerRadius="16" Background="#26FFFFFF" BorderBrush="#28FFFFFF" BorderThickness="1">
++        <Grid ClipToBounds="True">
++          <Image x:Name="ArtworkImage" Stretch="UniformToFill" Visibility="Collapsed" />
++          <TextBlock x:Name="ArtworkPlaceholder" Text="&#xE8D6;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="23"
++                     HorizontalAlignment="Center" VerticalAlignment="Center"
++                     Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
++        </Grid>
++      </Border>
++      <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
++        <TextBlock x:Name="TitleText" Text="正在播放" FontSize="12.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
++                   Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
++        <TextBlock x:Name="ArtistText" Text="" FontSize="10" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"
++                   Foreground="{Binding SecondaryForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
++      </StackPanel>
++      <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
++        <Button x:Name="PreviousButton" Style="{StaticResource MediaButton}" Click="OnPreviousClick" ToolTip="上一首">
++          <TextBlock Text="&#xE892;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15" />
++        </Button>
++        <Button x:Name="PlayPauseButton" Style="{StaticResource MediaButton}" Click="OnPlayPauseClick" ToolTip="播放/暂停">
++          <TextBlock x:Name="PlayPauseGlyph" Text="&#xE768;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15" />
++        </Button>
++        <Button x:Name="NextButton" Style="{StaticResource MediaButton}" Click="OnNextClick" ToolTip="下一首">
++          <TextBlock Text="&#xE893;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15" />
++        </Button>
++      </StackPanel>
++      <Button x:Name="ManualCollapseButton" Grid.Column="3" Width="30" Height="36"
++              Click="OnManualCollapseClick" ToolTip="收回播放器" Cursor="Hand"
++              HorizontalAlignment="Center" VerticalAlignment="Center" Padding="0"
++              Background="#1FFFFFFF" BorderBrush="#35FFFFFF" BorderThickness="1"
++              FocusVisualStyle="{x:Null}">
++        <TextBlock Text="&#xE76C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
++                   HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White" />
++      </Button>
++    </Grid>
++
++    <Button x:Name="SideRevealButton" Visibility="Collapsed" Style="{StaticResource MediaTabButton}"
++            PreviewMouseLeftButtonDown="OnSideRevealPreviewMouseLeftButtonDown"
++            PreviewMouseMove="OnSideRevealPreviewMouseMove"
++            PreviewMouseLeftButtonUp="OnSideRevealPreviewMouseLeftButtonUp"
++            ToolTip="展开媒体播放器" Cursor="Hand" Background="#1FFFFFFF"
++            BorderBrush="#35FFFFFF" BorderThickness="1" FocusVisualStyle="{x:Null}">
++      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
++        <TextBlock Text="&#xE8D6;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15"
++                   HorizontalAlignment="Center" Foreground="White" />
++        <TextBlock Text="&#xE76B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="8"
++                   Margin="0,3,0,0" HorizontalAlignment="Center" Foreground="White" />
++      </StackPanel>
++    </Button>
++  </Grid>
++</controls:GlassWindow>
+diff --git a/src/GlassDesk.Dock/MediaCapsuleWindow.xaml.cs b/src/GlassDesk.Dock/MediaCapsuleWindow.xaml.cs
+new file mode 100644
+index 0000000000000000000000000000000000000000..26af78dde6a3f09557ddbd3357bec37f44ebeff8
+--- /dev/null
++++ b/src/GlassDesk.Dock/MediaCapsuleWindow.xaml.cs
+@@ -0,0 +1,411 @@
++using System.IO;
++using System.Windows;
++using System.Windows.Interop;
++using System.Windows.Input;
++using System.Windows.Media.Animation;
++using System.Windows.Media.Imaging;
++using System.Windows.Threading;
++using GlassDesk.Core.Models.Settings;
++using GlassDesk.Platform;
++using GlassDesk.Platform.Displays;
++using GlassDesk.UI.Controls;
++
++namespace GlassDesk.Dock;
++
++[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
++    Justification = "The media controller is disposed by the WPF window lifecycle in OnClosed.")]
++public partial class MediaCapsuleWindow : GlassWindow
++{
++    private const double FullWidth = 378;
++    private const double FullHeight = 76;
++    private const double TabWidth = 34;
++    private const double TabHeight = 54;
++    private readonly MediaSessionController _controller = new();
++    private readonly DispatcherTimer _timer;
++    private PixelRect _anchor;
++    private bool _refreshing;
++    private bool _hasMedia;
++    private bool _collapsedToTab;
++    private bool _modeTransitioning;
++    private bool _tabDragging;
++    private bool _tabDragged;
++    private double _tabDragStartScreenY;
++    private double _tabPointerOffsetY;
++    private int? _tabTopOverride;
++
++    public MediaCapsuleWindow()
++    {
++        InitializeComponent();
++        PanelCornerRadius = new CornerRadius(38);
++        GlassSurface.IsBackdropActive = () => IsVisible;
++        _timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(2) };
++        _timer.Tick += async (_, _) => await RefreshAsync();
++        SetCollapsedToTab(true);
++    }
++
++    protected override double ResolveCornerRadius(AppearanceSettings appearance) => 38;
++
++    internal void RequestGlassRefresh()
++    {
++        if (IsVisible) GlassSurface.RequestBackdropRefresh();
++    }
++
++    public void Start(PixelRect anchor)
++    {
++        _anchor = anchor;
++        _timer.Start();
++        _ = RefreshAsync();
++    }
++
++    public void UpdateAnchor(PixelRect anchor)
++    {
++        if (_anchor.X == anchor.X && _anchor.Y == anchor.Y
++            && _anchor.Width == anchor.Width && _anchor.Height == anchor.Height) return;
++        if (IsVisible && !_modeTransitioning) GlassSurface.BeginRelocationHandoff();
++        _anchor = anchor;
++        if (IsVisible && !_modeTransitioning)
++        {
++            PositionForCurrentMode();
++            Dispatcher.BeginInvoke(DispatcherPriority.Render,
++                new Action(() => GlassSurface.RequestBackdropRefresh()));
++        }
++    }
++
++    private async Task RefreshAsync()
++    {
++        if (_refreshing) return;
++        _refreshing = true;
++        try
++        {
++            var media = await _controller.ReadAsync();
++            if (!media.Available)
++            {
++                // Do not clear a useful capsule because a player temporarily removes
++                // its Windows media session while paused. The controller retains that
++                // snapshot and routes Play through the global media key until it returns.
++                if (!_hasMedia)
++                    ShowEmptyState();
++            }
++            else
++            {
++                _hasMedia = true;
++                TitleText.Text = media.Title;
++                ArtistText.Text = media.Artist;
++                PlayPauseGlyph.Text = media.IsPlaying ? "\uE769" : "\uE768";
++                PreviousButton.IsEnabled = media.CanGoPrevious;
++                PlayPauseButton.IsEnabled = media.CanTogglePlayPause;
++                NextButton.IsEnabled = media.CanGoNext;
++                ApplyArtwork(media.Artwork);
++            }
++
++            if (!IsVisible) Show();
++            if (!_modeTransitioning) PositionForCurrentMode();
++        }
++        finally
++        {
++            _refreshing = false;
++        }
++    }
++
++    private void ShowEmptyState()
++    {
++        TitleText.Text = "暂无媒体";
++        ArtistText.Text = "播放音乐或视频后会自动显示";
++        PlayPauseGlyph.Text = "\uE768";
++        PreviousButton.IsEnabled = false;
++        PlayPauseButton.IsEnabled = false;
++        NextButton.IsEnabled = false;
++        ApplyArtwork(null);
++    }
++
++    private void ApplyArtwork(byte[]? bytes)
++    {
++        if (bytes is null || bytes.Length == 0)
++        {
++            ArtworkImage.Source = null;
++            ArtworkImage.Visibility = Visibility.Collapsed;
++            ArtworkPlaceholder.Visibility = Visibility.Visible;
++            return;
++        }
++
++        try
++        {
++            using var stream = new MemoryStream(bytes, writable: false);
++            var bitmap = new BitmapImage();
++            bitmap.BeginInit();
++            bitmap.CacheOption = BitmapCacheOption.OnLoad;
++            bitmap.StreamSource = stream;
++            bitmap.EndInit();
++            bitmap.Freeze();
++            ArtworkImage.Source = bitmap;
++            ArtworkImage.Visibility = Visibility.Visible;
++            ArtworkPlaceholder.Visibility = Visibility.Collapsed;
++        }
++        catch (NotSupportedException)
++        {
++            ArtworkImage.Source = null;
++            ArtworkImage.Visibility = Visibility.Collapsed;
++            ArtworkPlaceholder.Visibility = Visibility.Visible;
++        }
++    }
++
++    private PixelRect CalculateFullRect()
++    {
++        if (PrimaryDisplaySession is not { IsAvailable: true } session) return default;
++        var display = session.Display;
++        var width = display.ToPixels(FullWidth);
++        var height = display.ToPixels(FullHeight);
++        var gap = Math.Max(8, display.ToPixels(10));
++        var minY = display.WorkArea.Y + gap;
++        var maxY = Math.Max(minY, display.WorkArea.Bottom - height - gap);
++        // Once the compact tab has been positioned by the user, keep the full
++        // player aligned with that vertical position instead of jumping back to
++        // the status-bar anchor.
++        var desiredY = _tabTopOverride ?? (_anchor.Bottom + gap);
++        return session.ClampWindowToWorkArea(new PixelRect(
++            _anchor.Right - width, Math.Clamp(desiredY, minY, maxY), width, height));
++    }
++
++    private PixelRect CalculateTabRect()
++    {
++        if (PrimaryDisplaySession is not { IsAvailable: true } session) return default;
++        var display = session.Display;
++        var width = display.ToPixels(TabWidth);
++        var height = display.ToPixels(TabHeight);
++        var gap = Math.Max(8, display.ToPixels(10));
++        var minY = display.WorkArea.Y + gap;
++        var maxY = Math.Max(minY, display.WorkArea.Bottom - height - gap);
++        var desiredY = _tabTopOverride ?? Math.Max(minY, _anchor.Bottom + gap);
++        return session.ClampWindowToWorkArea(new PixelRect(
++            display.WorkArea.Right - width,
++            Math.Clamp(desiredY, minY, maxY),
++            width,
++            height));
++    }
++
++    private void PositionForCurrentMode()
++    {
++        if (PrimaryDisplaySession is not { IsAvailable: true } session) return;
++        if (!_collapsedToTab)
++        {
++            _ = PlaceWindowWithinPrimaryWorkArea(CalculateFullRect());
++            return;
++        }
++
++        _ = PlaceWindowWithinPrimaryWorkArea(CalculateTabRect());
++    }
++
++    private void SetCollapsedToTab(bool collapsed)
++    {
++        if (_collapsedToTab == collapsed || _modeTransitioning) return;
++        _collapsedToTab = collapsed;
++        if (!IsLoaded || !IsVisible || Handle == 0)
++        {
++            ApplyModeImmediately(collapsed);
++            return;
++        }
++
++        AnimateModeChange(collapsed);
++    }
++
++    private void ApplyModeImmediately(bool collapsed)
++    {
++        BeginAnimation(WidthProperty, null);
++        BeginAnimation(HeightProperty, null);
++        BeginAnimation(LeftProperty, null);
++        BeginAnimation(TopProperty, null);
++        Width = collapsed ? TabWidth : FullWidth;
++        Height = collapsed ? TabHeight : FullHeight;
++        ApplyGlassMaterial(collapsed);
++        PanelCornerRadius = new CornerRadius(collapsed ? 17 : 38);
++        FullPlayerPanel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
++        SideRevealButton.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
++        PositionForCurrentMode();
++        RefreshBackdropAfterModeChange();
++    }
++
++    private void AnimateModeChange(bool collapsed)
++    {
++        if (PrimaryDisplaySession is not { IsAvailable: true } session
++            || DisplayService.GetWindowPixelBounds(Handle) is not { Width: > 0, Height: > 0 } start)
++        {
++            ApplyModeImmediately(collapsed);
++            return;
++        }
++
++        _modeTransitioning = true;
++        var display = session.Display;
++        var target = collapsed ? CalculateTabRect() : CalculateFullRect();
++        var duration = TimeSpan.FromMilliseconds(180);
++
++        BeginAnimation(WidthProperty, null);
++        BeginAnimation(HeightProperty, null);
++        BeginAnimation(LeftProperty, null);
++        BeginAnimation(TopProperty, null);
++        Width = display.ToDips(start.Width);
++        Height = display.ToDips(start.Height);
++        Left = display.ToDips(start.X);
++        Top = display.ToDips(start.Y);
++
++        if (!collapsed)
++        {
++            PanelCornerRadius = new CornerRadius(38);
++            FullPlayerPanel.Visibility = Visibility.Visible;
++            SideRevealButton.Visibility = Visibility.Collapsed;
++        }
++
++        var widthAnimation = CreateModeAnimation(Width, display.ToDips(target.Width), duration);
++        widthAnimation.Completed += (_, _) =>
++        {
++            BeginAnimation(WidthProperty, null);
++            BeginAnimation(HeightProperty, null);
++            BeginAnimation(LeftProperty, null);
++            BeginAnimation(TopProperty, null);
++            Width = display.ToDips(target.Width);
++            Height = display.ToDips(target.Height);
++            Left = display.ToDips(target.X);
++            Top = display.ToDips(target.Y);
++            ApplyGlassMaterial(collapsed);
++            PanelCornerRadius = new CornerRadius(collapsed ? 17 : 38);
++            FullPlayerPanel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
++            SideRevealButton.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
++            _modeTransitioning = false;
++            PositionForCurrentMode();
++            RefreshBackdropAfterModeChange();
++        };
++
++        BeginAnimation(WidthProperty, widthAnimation, HandoffBehavior.SnapshotAndReplace);
++        BeginAnimation(HeightProperty,
++            CreateModeAnimation(Height, display.ToDips(target.Height), duration),
++            HandoffBehavior.SnapshotAndReplace);
++        BeginAnimation(LeftProperty,
++            CreateModeAnimation(Left, display.ToDips(target.X), duration),
++            HandoffBehavior.SnapshotAndReplace);
++        BeginAnimation(TopProperty,
++            CreateModeAnimation(Top, display.ToDips(target.Y), duration),
++            HandoffBehavior.SnapshotAndReplace);
++    }
++
++    private static DoubleAnimation CreateModeAnimation(double from, double to, TimeSpan duration)
++        => new(from, to, duration)
++        {
++            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut },
++            FillBehavior = FillBehavior.HoldEnd,
++        };
++
++    private void ApplyGlassMaterial(bool collapsed)
++    {
++        GlassSurface.UseFrostedMaterial = !collapsed;
++        GlassSurface.BackgroundClarityOverride = collapsed ? double.NaN : .35;
++    }
++
++    private void RefreshBackdropAfterModeChange()
++    {
++        Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(() =>
++        {
++            if (!IsVisible) return;
++            GlassSurface.RequestBackdropRefresh(revealing: true);
++        }));
++    }
++
++    private void OnManualCollapseClick(object sender, RoutedEventArgs e)
++    {
++        SetCollapsedToTab(true);
++        if (!IsVisible) Show();
++        PositionForCurrentMode();
++    }
++
++    private void OnSideRevealPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
++    {
++        if (_modeTransitioning || DisplayService.GetWindowPixelBounds(Handle) is not { } bounds)
++            return;
++
++        var screenPosition = PointToScreen(e.GetPosition(this));
++        _tabDragging = true;
++        _tabDragged = false;
++        _tabDragStartScreenY = screenPosition.Y;
++        _tabPointerOffsetY = screenPosition.Y - bounds.Y;
++        SideRevealButton.CaptureMouse();
++    }
++
++    private void OnSideRevealPreviewMouseMove(object sender, MouseEventArgs e)
++    {
++        if (!_tabDragging || e.LeftButton != MouseButtonState.Pressed) return;
++        var screenPosition = PointToScreen(e.GetPosition(this));
++        if (!_tabDragged && Math.Abs(screenPosition.Y - _tabDragStartScreenY) < 4) return;
++
++        _tabDragged = true;
++        MoveCollapsedTabTo(screenPosition.Y - _tabPointerOffsetY);
++    }
++
++    private void OnSideRevealPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
++    {
++        if (!_tabDragging) return;
++        _tabDragging = false;
++        if (SideRevealButton.IsMouseCaptured) SideRevealButton.ReleaseMouseCapture();
++        if (_tabDragged)
++        {
++            _tabDragged = false;
++            Dispatcher.BeginInvoke(DispatcherPriority.Render,
++                new Action(() => GlassSurface.RequestBackdropRefresh()));
++        }
++        else
++        {
++            SetCollapsedToTab(false);
++            if (!IsVisible) Show();
++            PositionForCurrentMode();
++        }
++
++        // The Button class would otherwise raise Click after this drag/click gesture.
++        // Expanding is handled above so both paths are mutually exclusive.
++        e.Handled = true;
++    }
++
++    private void MoveCollapsedTabTo(double desiredScreenY)
++    {
++        if (PrimaryDisplaySession is not { IsAvailable: true } session) return;
++        var display = session.Display;
++        var width = display.ToPixels(TabWidth);
++        var height = display.ToPixels(TabHeight);
++        var gap = Math.Max(8, display.ToPixels(10));
++        var minY = display.WorkArea.Y + gap;
++        var maxY = Math.Max(minY, display.WorkArea.Bottom - height - gap);
++        _tabTopOverride = (int)Math.Round(Math.Clamp(desiredScreenY, minY, maxY));
++        _ = PlaceWindowWithinPrimaryWorkArea(new PixelRect(
++            display.WorkArea.Right - width,
++            _tabTopOverride.Value,
++            width,
++            height));
++    }
++
++    private async void OnPreviousClick(object sender, RoutedEventArgs e)
++    {
++        await _controller.PreviousAsync();
++        await RefreshAsync();
++    }
++
++    private async void OnPlayPauseClick(object sender, RoutedEventArgs e)
++    {
++        await _controller.TogglePlayPauseAsync();
++        await RefreshAsync();
++    }
++
++    private async void OnNextClick(object sender, RoutedEventArgs e)
++    {
++        await _controller.NextAsync();
++        await RefreshAsync();
++    }
++
++    protected override void OnSourceInitialized(EventArgs e)
++    {
++        base.OnSourceInitialized(e);
++        _ = WindowStyles.MakeNoActivate(new WindowInteropHelper(this).Handle);
++    }
++
++    protected override void OnClosed(EventArgs e)
++    {
++        _timer.Stop();
++        _controller.Dispose();
++        base.OnClosed(e);
++    }
++}
+diff --git a/src/GlassDesk.Dock/StatusBarWindow.xaml b/src/GlassDesk.Dock/StatusBarWindow.xaml
+index 96fc9823cbc664548b89ea93657828878c065ac3..acd623af4b5bb64f07ae0aa7cbfa7cf2ea39605a 100644
+--- a/src/GlassDesk.Dock/StatusBarWindow.xaml
++++ b/src/GlassDesk.Dock/StatusBarWindow.xaml
+@@ -41,9 +41,11 @@
+ 
+   <Grid ClipToBounds="True">
+     <controls:LiquidGlassSurface x:Name="GlassSurface" />
+-    <Viewbox Stretch="Uniform" StretchDirection="DownOnly" Margin="8,5">
+-    <Viewbox.RenderTransform><TranslateTransform x:Name="StatusSlideTransform" /></Viewbox.RenderTransform>
+-    <StackPanel x:Name="StatusContent" Orientation="Horizontal" Width="369" Height="44" VerticalAlignment="Center">
++    <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
++      <Viewbox.RenderTransform>
++        <TranslateTransform x:Name="StatusSlideTransform" />
++      </Viewbox.RenderTransform>
++    <StackPanel Orientation="Horizontal" Margin="8,5" VerticalAlignment="Center">
+       <Button Style="{StaticResource StatusButton}" Click="OnDateTimeClick" ToolTip="日期和时间设置">
+         <StackPanel Width="92">
+           <TextBlock x:Name="TimeText" FontSize="18" FontWeight="SemiBold"
+@@ -55,15 +57,14 @@
+ 
+       <Rectangle Width="1" Height="26" Margin="1,0" Fill="#24FFFFFF" />
+ 
+-      <Grid x:Name="StatusMetrics" Width="252" Height="42">
++      <Grid Width="252" Height="42">
+         <Grid.RowDefinitions>
+           <RowDefinition Height="23" />
+           <RowDefinition Height="19" />
+         </Grid.RowDefinitions>
+ 
+         <StackPanel Grid.Row="0" Orientation="Horizontal">
+-          <Button x:Name="BatteryButton" Style="{StaticResource StatusButton}" Click="OnBatteryClick" ToolTip="电源和电池设置"
+-                  Visibility="Collapsed">
++          <Button Style="{StaticResource StatusButton}" Click="OnBatteryClick" ToolTip="电源和电池设置">
+             <StackPanel Orientation="Horizontal">
+               <Grid Width="22" Height="12" Margin="0,0,5,0" VerticalAlignment="Center">
+                 <Border BorderBrush="#D9FFFFFF" BorderThickness="1.2" CornerRadius="2" Margin="0,0,2,0" />
+@@ -80,13 +81,8 @@
+ 
+           <Button Style="{StaticResource StatusButton}" Click="OnNetworkClick" ToolTip="网络设置">
+             <StackPanel Orientation="Horizontal">
+-              <TextBlock x:Name="NetworkWifiGlyph" Text="&#xE701;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15" Margin="0,0,5,0"
++              <TextBlock Text="&#xE701;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15" Margin="0,0,5,0"
+                          Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+-              <Viewbox x:Name="NetworkWiredGlyph" Width="15" Height="15" Margin="0,0,5,0" Visibility="Collapsed">
+-                <Path Width="20" Height="20" StrokeThickness="1.4" StrokeLineJoin="Round"
+-                      Stroke="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}"
+-                      Data="M 3,3 L 17,3 17,13 13,13 13,16 7,16 7,13 3,13 Z M 6,3 L 6,8 M 10,3 L 10,8 M 14,3 L 14,8 M 10,16 L 10,20" />
+-              </Viewbox>
+               <TextBlock x:Name="NetworkText" Text="--" FontSize="11.5" VerticalAlignment="Center"
+                          Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+             </StackPanel>
+diff --git a/src/GlassDesk.Dock/StatusBarWindow.xaml.cs b/src/GlassDesk.Dock/StatusBarWindow.xaml.cs
+index 8b6c18bc23b46d4005b46aa0bb92891162ccfc1a..ff86db01fea349f98f14e494123d0fa8a4786144 100644
+--- a/src/GlassDesk.Dock/StatusBarWindow.xaml.cs
++++ b/src/GlassDesk.Dock/StatusBarWindow.xaml.cs
+@@ -1,232 +1,415 @@
+ using System.Globalization;
+ using System.Windows;
+-using System.Windows.Interop;
+ using System.Windows.Media;
+ using System.Windows.Media.Animation;
++using System.Windows.Interop;
+ using System.Windows.Threading;
+ using GlassDesk.Core.Models.Settings;
+ using GlassDesk.Platform;
+ using GlassDesk.Platform.Displays;
+ using GlassDesk.Platform.Shell;
+ using GlassDesk.UI.Controls;
+-using GlassDesk.UI.Settings;
+-using GlassDesk.UI.Theming;
+ 
+ namespace GlassDesk.Dock;
+ 
+-/// <summary>Non-activating primary-display information bar, adapted from the community 1.3.1 patch.</summary>
++/// <summary>固定在主屏右上角的非激活玻璃信息栏。</summary>
+ public partial class StatusBarWindow : GlassWindow
+ {
++    private static readonly TimeSpan SystemRefreshInterval = TimeSpan.FromSeconds(5);
++    private static readonly TimeSpan FanRefreshInterval = TimeSpan.FromSeconds(8);
++    private static readonly TimeSpan PointerLeaveDelay = TimeSpan.FromMilliseconds(900);
+     private readonly DispatcherTimer _clockTimer;
+     private readonly DispatcherTimer _visibilityTimer;
+-    private readonly StatusBarVisibilityController _visibility = new();
+-    private DockSettingsHost? _settings;
+-    private PixelRect _restingRect;
+-    private bool _started, _closed, _performanceSleeping, _displayPaused, _revealLocked;
+-    private bool _targetVisible, _captureRequested, _sampling, _fanSampling;
+-    private bool _preparingReveal;
+-    private bool? _animationTarget;
+-    private long _generation;
+-    private long _preparationStarted;
++    private readonly ControlCenterWindow _controlCenter;
++    private readonly DateNotificationWindow _dateNotifications;
++    private readonly MediaCapsuleWindow _mediaCapsule;
+     private DateTimeOffset _lastSystemRefresh = DateTimeOffset.MinValue;
+     private DateTimeOffset _lastFanRefresh = DateTimeOffset.MinValue;
++    private DateTimeOffset? _pointerLeftAt;
++    private PixelRect _restingRect;
++    private bool _performanceSleeping;
++    private bool _autoHidden;
++    private bool _hotZoneReveal;
++    private bool _revealLocked;
++    private bool _lastPerformanceCaptureRequested;
++    private int _visibilityTransition;
++    private bool _fanReadInFlight;
+ 
+     private static readonly DependencyProperty RevealProgressProperty = DependencyProperty.Register(
+         "RevealProgress", typeof(double), typeof(StatusBarWindow),
+-        new PropertyMetadata(0d, (owner, _) => ((StatusBarWindow)owner).ApplySlide()));
++        new PropertyMetadata(1d, (owner, _) => ((StatusBarWindow)owner).ApplySlide()));
+ 
++    /// <summary>启动台显示时保持信息栏可见，避免前台仍属于其他应用而被误隐藏。</summary>
+     public Func<bool>? IsLauncherActive { get; set; }
+-    public bool IsPerformanceCaptureRequested => _targetVisible && CanRun;
++    public bool IsPerformanceCaptureRequested => IsVisible && !_performanceSleeping;
+     public event EventHandler? PerformanceSurfaceVisibilityChanged;
+-    private DockSettings Settings => _settings?.Settings ?? new DockSettings();
+-    private bool CanRun => _started && !_closed && !_performanceSleeping && !_displayPaused
+-        && Settings.ShowStatusBar && PrimaryDisplaySession is { IsAvailable: true };
+ 
+     public StatusBarWindow()
+     {
+         InitializeComponent();
+         PanelCornerRadius = new CornerRadius(25);
+-        GlassSurface.IsBackdropActive = () => CanRun && !_preparingReveal && IsVisible
+-            && (_targetVisible || (double)GetValue(RevealProgressProperty) > 0);
+-        _clockTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(1) };
+-        _clockTimer.Tick += (_, _) => RefreshClockAndStatus();
+-        // Match Dock's reveal admission priority; ordinary background work must not starve pointer polling.
+-        _visibilityTimer = new DispatcherTimer(DispatcherPriority.Send) { Interval = TimeSpan.FromMilliseconds(100) };
+-        _visibilityTimer.Tick += (_, _) => EvaluateVisibility();
+-        Loaded += (_, _) => ApplySlide();
+-        SizeChanged += (_, _) => ApplySlide();
++        GlassSurface.IsBackdropActive = () => IsVisible && !_performanceSleeping;
++        _controlCenter = new ControlCenterWindow();
++        _dateNotifications = new DateNotificationWindow();
++        _mediaCapsule = new MediaCapsuleWindow();
++        _controlCenter.IsVisibleChanged += OnPopoverVisibilityChanged;
++        _controlCenter.SizeChanged += (_, _) =>
++        {
++            if (_controlCenter.IsVisible) UpdateMediaAnchor();
++        };
++        _dateNotifications.IsVisibleChanged += OnPopoverVisibilityChanged;
++        _clockTimer = new DispatcherTimer(DispatcherPriority.Background)
++        {
++            Interval = TimeSpan.FromSeconds(1),
++        };
++        _clockTimer.Tick += OnClockTick;
++        _visibilityTimer = new DispatcherTimer(DispatcherPriority.Background)
++        {
++            Interval = TimeSpan.FromMilliseconds(100),
++        };
++        _visibilityTimer.Tick += (_, _) => EvaluateAutoHide();
++        IsVisibleChanged += (_, _) => NotifyPerformanceSurfaceChanged();
++        Loaded += (_, _) =>
++        {
++            BindCompanionWindows();
++            PositionTopRight();
++            ApplySlide();
++            RefreshClockAndStatus(forceStatus: true);
++            _clockTimer.Start();
++            _visibilityTimer.Start();
++            _mediaCapsule.Start(_restingRect);
++            EvaluateAutoHide();
++        };
+     }
+ 
+     protected override double ResolveCornerRadius(AppearanceSettings appearance) => 25;
+ 
+-    public void AttachSettings(DockSettingsHost settings)
++    public void RefreshDisplayPlacement()
+     {
+-        if (_settings is not null) _settings.Changed -= OnSettingsChanged;
+-        _settings = settings;
+-        _settings.Changed += OnSettingsChanged;
+-        OnSettingsChanged(this, EventArgs.Empty);
++        PositionTopRight();
++        EvaluateAutoHide();
+     }
+ 
+-    public void Start()
++    /// <summary>前台窗口变化后立即让当前可见的信息组件重新取样。</summary>
++    public void RequestGlassRefresh()
+     {
+-        if (_closed) return;
+-        _started = true;
+-        RefreshDisplayPlacement();
++        if (IsVisible && !_performanceSleeping) GlassSurface.RequestBackdropRefresh();
++        _controlCenter.RequestGlassRefresh();
++        _dateNotifications.RequestGlassRefresh();
++        _mediaCapsule.RequestGlassRefresh();
+     }
+ 
+-    private void OnSettingsChanged(object? sender, EventArgs e) => EvaluateVisibility();
++    public void SetPerformanceSleeping(bool sleeping)
++    {
++        if (_performanceSleeping == sleeping) return;
++        _performanceSleeping = sleeping;
++        if (sleeping)
++        {
++            _clockTimer.Stop();
++            _visibilityTimer.Stop();
++            HideImmediately();
++            NotifyPerformanceSurfaceChanged();
++            return;
++        }
++
++        PositionTopRight();
++        RefreshClockAndStatus(forceStatus: true);
++        _clockTimer.Start();
++        _visibilityTimer.Start();
++        EvaluateAutoHide();
++        NotifyPerformanceSurfaceChanged();
++    }
+ 
+     public void ToggleRevealLock()
+     {
+         _revealLocked = !_revealLocked;
+-        EvaluateVisibility();
++        if (_revealLocked) ShowWithFade();
++        else EvaluateAutoHide();
+     }
+ 
+-    public void SetPerformanceSleeping(bool sleeping)
++    public void StopForPrimaryDisplayChange()
+     {
+-        if (_performanceSleeping == sleeping) return;
+-        _performanceSleeping = sleeping;
+-        EvaluateVisibility();
++        _controlCenter.Hide();
++        _dateNotifications.Hide();
++        _mediaCapsule.Hide();
++        HideImmediately();
+     }
+ 
+-    public void StopForPrimaryDisplayChange()
++    private void NotifyPerformanceSurfaceChanged()
+     {
+-        _displayPaused = true;
+-        StopImmediately();
++        var requested = IsPerformanceCaptureRequested;
++        if (_lastPerformanceCaptureRequested == requested) return;
++        _lastPerformanceCaptureRequested = requested;
++        PerformanceSurfaceVisibilityChanged?.Invoke(this, EventArgs.Empty);
+     }
+ 
+-    public void RefreshDisplayPlacement()
++    private void OnClockTick(object? sender, EventArgs e) => RefreshClockAndStatus(forceStatus: false);
++
++    private void RefreshClockAndStatus(bool forceStatus)
+     {
+-        _displayPaused = false;
+-        PositionTopRight();
+-        EvaluateVisibility();
++        var now = DateTimeOffset.Now;
++        TimeText.Text = now.ToString("HH:mm", CultureInfo.CurrentCulture);
++        DateText.Text = now.ToString("M月d日 dddd", CultureInfo.CurrentCulture);
++        var performance = SystemStatusReader.ReadPerformance();
++        CpuText.Text = performance.CpuPercent is { } cpu ? $"{cpu}%" : "--";
++        MemoryText.Text = performance.MemoryPercent is { } memory ? $"{memory}%" : "--";
++        BeginFanRefreshIfDue(now, forceStatus);
++        if (!forceStatus && now - _lastSystemRefresh < SystemRefreshInterval) return;
++        _lastSystemRefresh = now;
++
++        var status = SystemStatusReader.Read();
++        BatteryText.Text = status.BatteryPercent is { } battery
++            ? $"{battery}%{(status.IsCharging ? " ⚡" : string.Empty)}"
++            : status.IsCharging ? "电源" : "--";
++        BatteryFill.Width = status.BatteryPercent is { } level ? Math.Clamp(14 * level / 100d, 1, 14) : 0;
++        BatteryFill.Background = new SolidColorBrush(status.BatteryPercent switch
++        {
++            <= 20 when !status.IsCharging => Color.FromRgb(255, 101, 101),
++            _ when status.IsCharging => Color.FromRgb(91, 238, 151),
++            _ => Color.FromRgb(117, 232, 154),
++        });
++        NetworkText.Text = status.NetworkLabel;
++        VolumeText.Text = status.VolumePercent is { } volume ? $"{volume}%" : "--";
++        VolumeGlyph.Text = status.IsMuted ? "\uE74F" : "\uE767";
++    }
++
++    private void BeginFanRefreshIfDue(DateTimeOffset now, bool force)
++    {
++        if (_fanReadInFlight || (!force && now - _lastFanRefresh < FanRefreshInterval)) return;
++        _lastFanRefresh = now;
++        _fanReadInFlight = true;
++        _ = RefreshFanAsync();
++    }
++
++    private async Task RefreshFanAsync()
++    {
++        int? rpm = null;
++        try
++        {
++            rpm = await Task.Run(FanSpeedReader.ReadRpm);
++        }
++        finally
++        {
++            _fanReadInFlight = false;
++        }
++
++        if (!IsLoaded) return;
++        FanText.Text = rpm is { } value ? $"{value:N0}" : "--";
++        FanPanel.Visibility = rpm is not null ? Visibility.Visible : Visibility.Collapsed;
+     }
+ 
+     private void PositionTopRight()
+     {
+         if (PrimaryDisplaySession is not { IsAvailable: true } session) return;
+         var display = session.Display;
+-        var width = display.ToPixels(FanPanel.Visibility == Visibility.Visible ? 505 : 385);
+-        var height = display.ToPixels(54);
+-        var gap = display.ToPixels(18);
++        var width = Math.Max(1, display.ToPixels(Width));
++        var height = Math.Max(1, display.ToPixels(Height));
++        var gap = Math.Max(8, display.ToPixels(18));
+         var work = display.WorkArea;
+-        _restingRect = PlaceWindowWithinPrimaryWorkArea(new PixelRect(work.Right - width - gap,
+-            work.Y + gap, width, height));
++        _restingRect = PlaceWindowWithinPrimaryWorkArea(new PixelRect(
++            work.Right - width - gap,
++            work.Y + gap,
++            width,
++            height));
+         ApplySlide();
++        UpdateMediaAnchor();
+     }
+ 
+-    private void EvaluateVisibility()
++    private void BindCompanionWindows()
+     {
+-        if (!CanRun) { StopImmediately(); return; }
+-        if (_restingRect.Width <= 0) PositionTopRight();
+-        if (_restingRect.Width <= 0) { StopImmediately(); return; }
+-        _visibilityTimer.Start();
+-        var cursor = DisplayService.GetCursorPixelPoint();
+-        var over = cursor is { } point && new PixelRect(_restingRect.X - 2, _restingRect.Y - 2,
+-            _restingRect.Width + 4, _restingRect.Height + 4).Contains(point.X, point.Y);
+-        var state = _visibility.Update(Settings, DateTime.UtcNow, over,
+-            ForegroundCoverage.IsCovered(_restingRect), FullscreenDetector.IsFullscreenActive(),
+-            IsLauncherActive?.Invoke() == true, _revealLocked, true, false);
+-        SetTargetVisible(state != AutoHideState.Hidden);
++        if (PrimaryDisplaySession is not { } session) return;
++        foreach (var window in new GlassWindow[] { _controlCenter, _dateNotifications, _mediaCapsule })
++        {
++            if (window.PrimaryDisplaySession is null) window.BindPrimaryDisplay(session);
++            window.Icon = Icon;
++        }
+     }
+ 
+-    private void SetTargetVisible(bool visible)
++    private bool IsPopoverVisible => _controlCenter.IsVisible || _dateNotifications.IsVisible;
++
++    private void OnPopoverVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e)
+     {
+-        var continueVisibleSlide = visible && !_targetVisible && IsVisible
+-            && (double)GetValue(RevealProgressProperty) > 0;
+-        if (_targetVisible != visible)
++        UpdateMediaAnchor();
++        EvaluateAutoHide();
++    }
++
++    private void UpdateMediaAnchor()
++    {
++        if (PrimaryDisplaySession is not { IsAvailable: true } session)
+         {
+-            var current = (double)GetValue(RevealProgressProperty);
+-            SetValue(RevealProgressProperty, current);
+-            BeginAnimation(RevealProgressProperty, null);
+-            _targetVisible = visible;
+-            _preparationStarted = 0;
+-            _animationTarget = null;
+-            if (!visible) StopSampling();
++            _mediaCapsule.UpdateAnchor(_restingRect);
++            return;
+         }
+-        if (visible)
++
++        var display = session.Display;
++        var gap = Math.Max(8, display.ToPixels(10));
++        if (_controlCenter.IsVisible)
+         {
+-            GlassSurface.SetPerformanceSleeping(false);
+-            if (continueVisibleSlide)
+-            {
+-                // This panel has not finished concealing: keep its current pixels and
+-                // animation position. Reacquiring a desktop snapshot here stalls the reversal.
+-                _preparationStarted = System.Diagnostics.Stopwatch.GetTimestamp();
+-                AnimateVisibility(true);
+-            }
+-            if (_preparationStarted == 0 && _animationTarget is null)
+-            {
+-                _preparationStarted = System.Diagnostics.Stopwatch.GetTimestamp();
+-                // This API deliberately refuses visible, active owners. Prepare while hidden
+-                // (or explicitly inactive during a reversal), before exposing the first pixel.
+-                _preparingReveal = true;
+-                try
+-                {
+-                    _ = new WindowInteropHelper(this).EnsureHandle();
+-                    PositionTopRight();
+-                    GlassSurface.SetContainerTransitionBounds(new Rect(0, -Height, Width, Height * 2));
+-                    if (PrimaryDisplaySession is { } session)
+-                        GlassSurface.PrepareRevealMaterial(_restingRect, _restingRect, session.Display.Dpi);
+-                }
+-                finally { _preparingReveal = false; }
+-            }
+-            if (!IsVisible)
+-            {
+-                SetValue(RevealProgressProperty, 0d);
+-                Show();
+-                UpdateLayout();
+-                PositionTopRight();
+-            }
+-            if (_animationTarget is null)
++            var width = Math.Max(1, display.ToPixels(_controlCenter.ActualWidth > 0
++                ? _controlCenter.ActualWidth : _controlCenter.Width));
++            var height = Math.Max(1, display.ToPixels(_controlCenter.ActualHeight > 0
++                ? _controlCenter.ActualHeight : _controlCenter.Height));
++            var panel = session.ClampWindowToWorkArea(new PixelRect(
++                _restingRect.Right - width, _restingRect.Bottom + gap, width, height));
++            _mediaCapsule.UpdateAnchor(panel);
++            return;
++        }
++
++        if (_dateNotifications.IsVisible)
++        {
++            var width = Math.Max(1, display.ToPixels(_dateNotifications.ActualWidth > 0
++                ? _dateNotifications.ActualWidth : _dateNotifications.Width));
++            var height = Math.Max(1, display.ToPixels(_dateNotifications.ActualHeight > 0
++                ? _dateNotifications.ActualHeight : _dateNotifications.Height));
++            var panel = session.ClampWindowToWorkArea(new PixelRect(
++                _restingRect.Right - width, _restingRect.Bottom + gap, width, height));
++            _mediaCapsule.UpdateAnchor(panel);
++            return;
++        }
++
++        _mediaCapsule.UpdateAnchor(_restingRect);
++    }
++
++    private void EvaluateAutoHide()
++    {
++        if (_performanceSleeping || _restingRect.Width <= 0 || _restingRect.Height <= 0) return;
++
++        if (_revealLocked)
++        {
++            ShowWithFade();
++            return;
++        }
++
++        if (IsPopoverVisible)
++        {
++            ShowWithFade();
++            return;
++        }
++
++        var launcherActive = IsLauncherActive?.Invoke() == true;
++        var covered = !launcherActive && ForegroundCoverage.IsCovered(_restingRect);
++        if (!covered)
++        {
++            _hotZoneReveal = false;
++            _pointerLeftAt = null;
++            ShowWithFade();
++            return;
++        }
++
++        var cursor = DisplayService.GetCursorPixelPoint();
++        var inHotZone = cursor is { } hotPoint && IsInTopRightHotZone(hotPoint.X, hotPoint.Y);
++        var overBar = cursor is { } barPoint && Inflate(_restingRect, 4).Contains(barPoint.X, barPoint.Y);
++        if (!_hotZoneReveal)
++        {
++            if (inHotZone)
+             {
+-                GlassSurface.RequestBackdropRefresh(revealing: true);
+-                // Keep first pixels concealed until material is ready, with a bounded readable fallback.
+-                if (GlassSurface.IsCurrentRevealMaterialReady
+-                    || System.Diagnostics.Stopwatch.GetElapsedTime(_preparationStarted).TotalSeconds >= 3)
+-                    AnimateVisibility(true);
++                _hotZoneReveal = true;
++                _pointerLeftAt = null;
++                ShowWithFade();
+             }
+-            if (!_clockTimer.IsEnabled)
++            else
+             {
+-                _lastSystemRefresh = _lastFanRefresh = DateTimeOffset.MinValue;
+-                _clockTimer.Start();
+-                RefreshClockAndStatus();
++                HideWithFade();
+             }
++            return;
++        }
++
++        if (inHotZone || overBar)
++        {
++            _pointerLeftAt = null;
++            ShowWithFade();
++            return;
++        }
++
++        var now = DateTimeOffset.UtcNow;
++        _pointerLeftAt ??= now;
++        if (now - _pointerLeftAt >= PointerLeaveDelay)
++        {
++            _hotZoneReveal = false;
++            _pointerLeftAt = null;
++            HideWithFade();
+         }
+-        else if (IsVisible && _animationTarget != false) AnimateVisibility(false);
+-        NotifyCaptureRequested();
+     }
+ 
+-    private void AnimateVisibility(bool visible)
++    private bool IsInTopRightHotZone(int x, int y)
+     {
+-        var current = (double)GetValue(RevealProgressProperty);
+-        SetValue(RevealProgressProperty, current);
++        if (PrimaryDisplaySession is not { IsAvailable: true } session) return false;
++        var bounds = session.Display.Bounds;
++        var size = Math.Max(10, session.Display.ToPixels(12));
++        return x >= bounds.Right - size && x < bounds.Right
++            && y >= bounds.Y && y < bounds.Y + size;
++    }
++
++    private void ShowWithFade()
++    {
++        if (!_autoHidden && IsVisible) return;
++
++        var currentProgress = IsVisible ? (double)GetValue(RevealProgressProperty) : 0d;
++        var transition = ++_visibilityTransition;
++        SetValue(RevealProgressProperty, currentProgress);
+         BeginAnimation(RevealProgressProperty, null);
+-        _animationTarget = visible;
+-        if (ThemeService.Current?.AnimationsEnabled == false) { FinishVisibility(visible); return; }
+-        var animation = new DoubleAnimation(current, visible ? 1 : 0,
+-            TimeSpan.FromMilliseconds(visible ? 150 : 130))
+-        { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } };
++        _autoHidden = false;
++        if (!IsVisible)
++        {
++            _ = new WindowInteropHelper(this).EnsureHandle();
++            PositionTopRight();
++            GlassSurface.SetContainerTransitionBounds(new Rect(0, -Height, Width, Height * 2));
++            if (PrimaryDisplaySession is { } session)
++                GlassSurface.PrepareRevealMaterial(_restingRect, _restingRect, session.Display.Dpi);
++            SetValue(RevealProgressProperty, 0d);
++            Show();
++            UpdateLayout();
++            PositionTopRight();
++            GlassSurface.RequestBackdropRefresh(revealing: true);
++        }
++
++        var animation = new DoubleAnimation(currentProgress, 1, TimeSpan.FromMilliseconds(150))
++        {
++            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
++        };
+         animation.Completed += (_, _) =>
+         {
+-            if (!_closed && _animationTarget == visible && _targetVisible == visible) FinishVisibility(visible);
++            if (transition != _visibilityTransition || _autoHidden) return;
++            SetValue(RevealProgressProperty, 1d);
++            BeginAnimation(RevealProgressProperty, null);
+         };
+         BeginAnimation(RevealProgressProperty, animation, HandoffBehavior.SnapshotAndReplace);
+     }
+ 
+-    private void FinishVisibility(bool visible)
++    private void HideWithFade()
+     {
+-        // Commit the endpoint underneath the clock before removing it. Clearing first
+-        // briefly restores the previous base value, which moves the clip/text/shadow
+-        // back to the other endpoint and can present a full-panel flash through Show().
+-        SetValue(RevealProgressProperty, visible ? 1d : 0d);
++        if (_autoHidden || !IsVisible) return;
++
++        _autoHidden = true;
++        var transition = ++_visibilityTransition;
++        var currentProgress = (double)GetValue(RevealProgressProperty);
++        SetValue(RevealProgressProperty, currentProgress);
+         BeginAnimation(RevealProgressProperty, null);
+-        if (!visible)
++        var animation = new DoubleAnimation(currentProgress, 0, TimeSpan.FromMilliseconds(130))
+         {
+-            // Pointer conceal is a warm suspension: stop reads without killing the native
+-            // owner. Game/session sleep and the explicit switch use StopImmediately instead.
++            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
++        };
++        animation.Completed += (_, _) =>
++        {
++            if (transition != _visibilityTransition || !_autoHidden) return;
++            SetValue(RevealProgressProperty, 0d);
++            BeginAnimation(RevealProgressProperty, null);
+             GlassSurface.RetireConcealedMaterial();
+             Hide();
+-        }
++        };
++        BeginAnimation(RevealProgressProperty, animation, HandoffBehavior.SnapshotAndReplace);
++    }
++
++    private void HideImmediately()
++    {
++        _autoHidden = true;
++        _hotZoneReveal = false;
++        _pointerLeftAt = null;
++        _visibilityTransition++;
++        BeginAnimation(RevealProgressProperty, null);
++        SetValue(RevealProgressProperty, 0d);
++        GlassSurface.RetireConcealedMaterial();
++        if (IsVisible) Hide();
+     }
+ 
+     private void ApplySlide()
+@@ -242,136 +425,55 @@ public partial class StatusBarWindow : GlassWindow
+         SetTransitionShadowShape(progress >= 1 ? null : bounds, 25, progress);
+     }
+ 
+-    private void StopSampling()
+-    {
+-        _clockTimer.Stop();
+-        ++_generation;
+-    }
+-
+-    private void StopImmediately()
+-    {
+-        _visibilityTimer.Stop();
+-        StopSampling();
+-        _targetVisible = false;
+-        _animationTarget = null;
+-        _preparationStarted = 0;
+-        _visibility.Update(Settings, DateTime.UtcNow, false, false, false, false, false, false, true);
+-        GlassSurface.SetPerformanceSleeping(true);
+-        FinishVisibility(false);
+-        NotifyCaptureRequested();
+-    }
++    private static PixelRect Inflate(PixelRect rect, int by)
++        => new(rect.X - by, rect.Y - by, rect.Width + by * 2, rect.Height + by * 2);
+ 
+-    private void NotifyCaptureRequested()
++    protected override void OnSourceInitialized(EventArgs e)
+     {
+-        var requested = IsPerformanceCaptureRequested;
+-        if (_captureRequested == requested) return;
+-        _captureRequested = requested;
+-        PerformanceSurfaceVisibilityChanged?.Invoke(this, EventArgs.Empty);
++        base.OnSourceInitialized(e);
++        _ = WindowStyles.MakeNoActivate(new WindowInteropHelper(this).Handle);
++        PositionTopRight();
+     }
+ 
+-    private void RefreshClockAndStatus()
++    protected override void OnClosed(EventArgs e)
+     {
+-        if (!CanRun || !_targetVisible) return;
+-        var localNow = DateTimeOffset.Now;
+-        TimeText.Text = localNow.ToString("HH:mm", CultureInfo.CurrentCulture);
+-        DateText.Text = localNow.ToString("M月d日 dddd", CultureInfo.GetCultureInfo("zh-CN"));
+-        var now = DateTimeOffset.UtcNow;
+-        if (!_sampling)
+-        {
+-            var readSystem = now - _lastSystemRefresh >= TimeSpan.FromSeconds(5);
+-            if (readSystem) _lastSystemRefresh = now;
+-            _ = RefreshSystemAsync(_generation, readSystem);
+-        }
+-        if (!_fanSampling && now - _lastFanRefresh >= TimeSpan.FromSeconds(8))
+-        {
+-            _lastFanRefresh = now;
+-            _ = RefreshFanAsync(_generation);
+-        }
++        _clockTimer.Stop();
++        _visibilityTimer.Stop();
++        _controlCenter.Close();
++        _dateNotifications.Close();
++        _mediaCapsule.Close();
++        base.OnClosed(e);
+     }
+ 
+-    private bool CanApply(long generation) => generation == _generation && CanRun && _targetVisible;
+-
+-    private async Task RefreshSystemAsync(long generation, bool readSystem)
++    private static void OpenSettings(string uri) => _ = ShellExecutor.Open(uri);
++    private void OnDateTimeClick(object sender, RoutedEventArgs e)
+     {
+-        _sampling = true;
+-        try
++        if (_dateNotifications.IsVisible)
+         {
+-            var result = await Task.Run(() => (Performance: SystemStatusReader.ReadPerformance(),
+-                Status: readSystem ? SystemStatusReader.Read() : (SystemStatusSnapshot?)null));
+-            if (!CanApply(generation)) return;
+-            CpuText.Text = result.Performance.CpuPercent is { } cpu ? $"{cpu}%" : "--";
+-            MemoryText.Text = result.Performance.MemoryPercent is { } memory ? $"{memory}%" : "--";
+-            if (result.Status is { } status) ApplySystemStatus(status);
++            _dateNotifications.Hide();
++            return;
+         }
+-        catch (Exception)
+-        {
+-            // Native devices may disappear mid-read. Preserve the clock and report unavailable data.
+-            if (CanApply(generation))
+-            {
+-                CpuText.Text = MemoryText.Text = "--";
+-                if (readSystem) ApplySystemStatus(new(null, false, "未知", null, false));
+-            }
+-        }
+-        finally { _sampling = false; }
+-    }
+ 
+-    private void ApplySystemStatus(SystemStatusSnapshot status)
+-    {
+-        BatteryButton.Visibility = status.HasBattery ? Visibility.Visible : Visibility.Collapsed;
+-        BatteryText.Text = status.BatteryPercent is { } battery ? $"{battery}%{(status.IsCharging ? " ⚡" : "")}"
+-            : status.IsCharging ? "电源" : "--";
+-        BatteryFill.Width = status.BatteryPercent is { } level ? Math.Clamp(14 * level / 100d, 1, 14) : 0;
+-        BatteryFill.Background = new SolidColorBrush(status.BatteryPercent is <= 20 && !status.IsCharging
+-            ? Color.FromRgb(255, 101, 101) : Color.FromRgb(117, 232, 154));
+-        NetworkText.Text = status.NetworkLabel;
+-        var wired = status.NetworkLabel == "联网";
+-        NetworkWiredGlyph.Visibility = wired ? Visibility.Visible : Visibility.Collapsed;
+-        NetworkWifiGlyph.Visibility = wired ? Visibility.Collapsed : Visibility.Visible;
+-        VolumeText.Text = status.VolumePercent is { } volume ? $"{volume}%" : "--";
+-        VolumeGlyph.Text = status.IsMuted ? "\uE74F" : "\uE767";
++        _controlCenter.Hide();
++        // Vacate the date panel's target region before its hidden reveal capture.
++        // The media capsule's relocation handoff keeps its own glass visible while
++        // the date panel prepares a real desktop-backed first frame.
++        _mediaCapsule.UpdateAnchor(_dateNotifications.CalculatePlacement(_restingRect));
++        _dateNotifications.ShowNear(_restingRect);
+     }
++    private void OnBatteryClick(object sender, RoutedEventArgs e) => OpenSettings("ms-settings:batterysaver");
++    private void OnNetworkClick(object sender, RoutedEventArgs e) => ToggleControlCenter();
++    private void OnVolumeClick(object sender, RoutedEventArgs e) => ToggleControlCenter();
+ 
+-    private async Task RefreshFanAsync(long generation)
++    private void ToggleControlCenter()
+     {
+-        _fanSampling = true;
+-        try
++        if (_controlCenter.IsVisible)
+         {
+-            var rpm = await Task.Run(FanSpeedReader.ReadRpm);
+-            if (CanApply(generation)) ApplyFanStatus(rpm);
++            _controlCenter.Hide();
++            return;
+         }
+-        catch (Exception) { if (CanApply(generation)) ApplyFanStatus(null); }
+-        finally { _fanSampling = false; }
+-    }
+ 
+-    private void ApplyFanStatus(int? rpm)
+-    {
+-        var visible = rpm is { } value && FanSpeedReader.IsPlausibleRpm(value);
+-        FanText.Text = visible ? $"{rpm:N0}" : "--";
+-        FanPanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+-        StatusMetrics.Width = visible ? 372 : 252;
+-        StatusContent.Width = visible ? 489 : 369;
+-        PositionTopRight();
++        _dateNotifications.Hide();
++        _controlCenter.ShowNear(_restingRect);
+     }
+-
+-    protected override void OnSourceInitialized(EventArgs e)
+-    {
+-        base.OnSourceInitialized(e);
+-        _ = WindowStyles.MakeNoActivate(new WindowInteropHelper(this).Handle);
+-        PositionTopRight();
+-    }
+-
+-    protected override void OnClosed(EventArgs e)
+-    {
+-        _closed = true;
+-        _visibilityTimer.Stop();
+-        StopSampling();
+-        if (_settings is not null) _settings.Changed -= OnSettingsChanged;
+-        GlassSurface.Dispose();
+-        base.OnClosed(e);
+-    }
+-
+-    private void OnDateTimeClick(object sender, RoutedEventArgs e) => ShellExecutor.Open("ms-settings:dateandtime");
+-    private void OnBatteryClick(object sender, RoutedEventArgs e) => ShellExecutor.Open("ms-settings:batterysaver");
+-    private void OnNetworkClick(object sender, RoutedEventArgs e) => ShellExecutor.Open("ms-settings:network-status");
+-    private void OnVolumeClick(object sender, RoutedEventArgs e) => ShellExecutor.Open("ms-settings:sound");
+ }
+diff --git a/src/GlassDesk.Launcher/LauncherWindow.BackgroundWork.cs b/src/GlassDesk.Launcher/LauncherWindow.BackgroundWork.cs
+index 38ffdb71b1eb50b7ccf6b2ee5634bb8dc46feb7c..f55c2703d01fca163e2cf4ed87e547cba139d5e3 100644
+--- a/src/GlassDesk.Launcher/LauncherWindow.BackgroundWork.cs
++++ b/src/GlassDesk.Launcher/LauncherWindow.BackgroundWork.cs
+@@ -6,6 +6,12 @@ public partial class LauncherWindow
+     private long _iconRequestGeneration;
+     private bool _iconsNeedReapply;
+ 
++    /// <summary>前台窗口变化时只更新可见启动台的桌面取样。</summary>
++    public void RequestGlassRefresh()
++    {
++        if (IsVisible) GlassSurface.RequestBackdropRefresh();
++    }
++
+     public void SetPerformanceSleeping(bool sleeping)
+     {
+         GlassSurface.SetPerformanceSleeping(sleeping);
+@@ -37,5 +43,6 @@ public partial class LauncherWindow
+             _retainedTilePages.Clear();
+             if (IsVisible && _services is not null) RenderTiles();
+         }
++        if (!suspended) PreloadCurrentPageIcons();
+     }
+ }
+diff --git a/src/GlassDesk.Launcher/LauncherWindow.ContainerTransform.cs b/src/GlassDesk.Launcher/LauncherWindow.ContainerTransform.cs
+index 9159a3e1db692e7d5d18a7346cdeeb33f9b7c189..4ff014e878c8305d835dc08cdfda13cc19bbdcb8 100644
+--- a/src/GlassDesk.Launcher/LauncherWindow.ContainerTransform.cs
++++ b/src/GlassDesk.Launcher/LauncherWindow.ContainerTransform.cs
+@@ -20,6 +20,28 @@ public partial class LauncherWindow
+     public Func<PixelRect?>? ContainerAnchorProvider { get; set; }
+     public bool IsClosingContainer => _transformActive && _transformEndTimeline == 0;
+ 
++    /// <summary>Prepares the next Dock-to-launchpad reveal while the launcher is hidden.</summary>
++    public void PrewarmNextRevealMaterial()
++    {
++        if (IsVisible || _transformActive || _panelPixelBounds is not { Width: > 0, Height: > 0 }) return;
++        var display = TransformDisplay;
++        var source = ContainerAnchorProvider?.Invoke();
++        if (display is null || source is not { Width: > 0, Height: > 0 }
++            || !display.Bounds.Contains(source.Value.X + source.Value.Width / 2, source.Value.Y + source.Value.Height / 2)) return;
++
++        _ = new WindowInteropHelper(this).EnsureHandle();
++        PositionOnDisplay(display);
++        _transformSourceBounds = source.Value;
++        _transformDestinationBounds = _panelPixelBounds;
++        _transformSourceRadiusPixels = Math.Min(_transformSourceBounds.Width, _transformSourceBounds.Height) / 3.0;
++        _transformDestinationRadiusPixels = PanelCornerRadius.TopLeft * display.Dpi / 96.0;
++        _transformDipPerPixel = 96.0 / Math.Max(1, display.Dpi);
++        _panelDipPerPixel = _transformDipPerPixel;
++        ExpandTransformHost();
++        PrepareTransitionBackdrop();
++        PrepareRevealMaterial();
++    }
++
+     private PixelRect _transformSourceBounds;
+     private PixelRect _transformDestinationBounds;
+     private double _transformDipPerPixel = 1;
+diff --git a/src/GlassDesk.Launcher/LauncherWindow.Rendering.cs b/src/GlassDesk.Launcher/LauncherWindow.Rendering.cs
+index ac2c640b48e331eebded8a6c350bb013add8cfd6..8f2b016101867162833df0d8aa415699b691a8b7 100644
+--- a/src/GlassDesk.Launcher/LauncherWindow.Rendering.cs
++++ b/src/GlassDesk.Launcher/LauncherWindow.Rendering.cs
+@@ -156,17 +156,39 @@ public partial class LauncherWindow
+         return button;
+     }
+ 
+-    private void RequestIcon(AppEntry entry, Border host, double size)
++    /// <summary>
++    /// 在启动台仍隐藏时先解析即将出现的第一页图标。图标解码仍在专用 STA 线程上完成，
++    /// 这里只向队列投递工作，不触碰可视树。
++    /// </summary>
++    private void PreloadCurrentPageIcons()
++    {
++        if (_backgroundWorkSuspended || _services is null || _workspace is null) return;
++        var pixels = IconPixelSize(AppIconSize);
++        foreach (var slot in CurrentSlots().Skip(_view.Page * _view.Capacity).Take(_view.Capacity))
++        {
++            if (slot.Kind == LauncherSlotKind.Group) continue;
++            if (_services.Library.Find(slot.ItemId) is { } entry)
++                _ = QueueIconLoad(entry, pixels);
++        }
++    }
++
++    private Task<BitmapImage?> QueueIconLoad(AppEntry entry, int pixels)
+     {
+         var icons = _services?.Icons;
+-        if (icons is null) return;
++        if (icons is null) return Task.FromResult<BitmapImage?>(null);
+         var source = entry.IconSource ?? string.Empty;
+         var custom = entry.CustomIconPath;
++        var version = _services!.Library.Version;
++        var key = $"{version}\0{custom}\0{source}\0{pixels}";
++        return _iconLoader.LoadAsync(key, () => LoadIcon(icons, source, custom, pixels));
++    }
++
++    private void RequestIcon(AppEntry entry, Border host, double size)
++    {
+         var version = _services!.Library.Version;
+         var pixels = IconPixelSize(size);
+         var generation = _iconRequestGeneration;
+-        var key = $"{version}\0{custom}\0{source}\0{pixels}";
+-        var task = _iconLoader.LoadAsync(key, () => LoadIcon(icons, source, custom, pixels));
++        var task = QueueIconLoad(entry, pixels);
+         if (task.IsCompletedSuccessfully) Apply(task.Result);
+         else _ = CompleteAsync();
+ 
+diff --git a/src/GlassDesk.Launcher/LauncherWindow.xaml.cs b/src/GlassDesk.Launcher/LauncherWindow.xaml.cs
+index 1ef8779291919e6272dd94f6646fa966315919e6..b05a28cac85a1dc594a995e37cb7114b5fb27c1a 100644
+--- a/src/GlassDesk.Launcher/LauncherWindow.xaml.cs
++++ b/src/GlassDesk.Launcher/LauncherWindow.xaml.cs
+@@ -79,6 +79,7 @@ public partial class LauncherWindow : GlassWindow
+         _view.SetGrid(Math.Clamp(settings.Rows, 2, 10), Math.Clamp(settings.Columns, 2, 12));
+         PositionOnWorkingArea();
+         RefreshLibrary();
++        PreloadCurrentPageIcons();
+     }
+ 
+     public void PrepareToShow()
+@@ -98,6 +99,16 @@ public partial class LauncherWindow : GlassWindow
+     {
+         if (!IsLoaded || _services is null || _workspace is null) return;
+         if (!reuseUnchanged) _iconLoader.Clear();
++
++        // 由隐藏状态再次打开时，绝大多数情况库、布局、页码和面板尺寸都还没有变化。
++        // 这些值已包含在最后一次渲染键里，因此可以直接复用保留的可视树；没必要在
++        // 动画首帧前再创建一份布局草稿并遍历整个应用库做 Reconcile。只要任一版本或
++        // 可视状态变化，下面原有流程仍会完整协调并重建需要更新的内容。
++        if (reuseUnchanged && _lastTilesRenderKey == CurrentTilesRenderKey())
++        {
++            RenderTiles(reuseUnchanged: true);
++            return;
++        }
+         try
+         {
+             _workspace.Reconcile(_view.Capacity);
+diff --git a/src/GlassDesk.Platform/ActiveAudioApplicationReader.cs b/src/GlassDesk.Platform/ActiveAudioApplicationReader.cs
+new file mode 100644
+index 0000000000000000000000000000000000000000..1975d41f8373369de6e2827741e9b8be7fb4e102
+--- /dev/null
++++ b/src/GlassDesk.Platform/ActiveAudioApplicationReader.cs
+@@ -0,0 +1,198 @@
++using System.Diagnostics;
++using System.Runtime.InteropServices;
++
++namespace GlassDesk.Platform;
++
++public readonly record struct ActiveAudioApplicationSnapshot(
++    bool Available,
++    string Title,
++    string ApplicationName,
++    int ProcessId);
++
++/// <summary>当播放软件不提供系统媒体会话时，从 Core Audio 找到正在发声的进程。</summary>
++public static class ActiveAudioApplicationReader
++{
++    public static ActiveAudioApplicationSnapshot Read()
++    {
++        object? deviceEnumeratorObject = null;
++        IMMDevice? device = null;
++        object? managerObject = null;
++        IAudioSessionEnumerator? sessionEnumerator = null;
++        try
++        {
++            deviceEnumeratorObject = new MMDeviceEnumeratorComObject();
++            var deviceEnumerator = (IMMDeviceEnumerator)deviceEnumeratorObject;
++            if (deviceEnumerator.GetDefaultAudioEndpoint(EDataFlow.Render, ERole.Multimedia, out device) != 0
++                || device is null) return default;
++            var iid = typeof(IAudioSessionManager2).GUID;
++            if (device.Activate(ref iid, ClsCtxAll, 0, out managerObject) != 0
++                || managerObject is not IAudioSessionManager2 manager
++                || manager.GetSessionEnumerator(out sessionEnumerator) != 0
++                || sessionEnumerator.GetCount(out var count) != 0)
++                return default;
++
++            var candidates = new List<ActiveAudioApplicationSnapshot>();
++            for (var index = 0; index < count; index++)
++            {
++                IAudioSessionControl2? control = null;
++                try
++                {
++                    if (sessionEnumerator.GetSession(index, out control) != 0 || control is null
++                        || control.GetState(out var state) != 0 || state != AudioSessionState.Active
++                        || control.GetProcessId(out var processId) != 0 || processId == 0
++                        || processId == Environment.ProcessId)
++                        continue;
++
++                    using var process = Process.GetProcessById((int)processId);
++                    if (process.HasExited) continue;
++                    var appName = ResolveApplicationName(process);
++                    var windowTitle = SafeMainWindowTitle(process);
++                    candidates.Add(new ActiveAudioApplicationSnapshot(
++                        true,
++                        string.IsNullOrWhiteSpace(windowTitle) ? $"{appName} 正在播放" : windowTitle,
++                        appName,
++                        (int)processId));
++                }
++                catch (Exception ex) when (ex is ArgumentException or InvalidOperationException
++                    or System.ComponentModel.Win32Exception or COMException)
++                {
++                    // Audio sessions can disappear between enumeration and inspection.
++                }
++                finally
++                {
++                    ReleaseCom(control);
++                }
++            }
++
++            return candidates
++                .OrderByDescending(candidate => !string.IsNullOrWhiteSpace(candidate.Title))
++                .FirstOrDefault();
++        }
++        catch (Exception ex) when (ex is COMException or InvalidCastException
++            or DllNotFoundException or EntryPointNotFoundException or PlatformNotSupportedException)
++        {
++            return default;
++        }
++        finally
++        {
++            ReleaseCom(sessionEnumerator);
++            ReleaseCom(managerObject);
++            ReleaseCom(device);
++            ReleaseCom(deviceEnumeratorObject);
++        }
++    }
++
++    private static string ResolveApplicationName(Process process)
++    {
++        try
++        {
++            var description = process.MainModule?.FileVersionInfo.FileDescription;
++            if (!string.IsNullOrWhiteSpace(description)) return description;
++        }
++        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception
++            or InvalidOperationException or NotSupportedException)
++        {
++        }
++
++        return process.ProcessName;
++    }
++
++    private static string SafeMainWindowTitle(Process process)
++    {
++        try { return process.MainWindowTitle; }
++        catch (InvalidOperationException) { return string.Empty; }
++    }
++
++    private static void ReleaseCom(object? value)
++    {
++        if (value is not null && Marshal.IsComObject(value)) _ = Marshal.FinalReleaseComObject(value);
++    }
++
++    private const uint ClsCtxAll = 23;
++    private enum EDataFlow { Render, Capture, All }
++    private enum ERole { Console, Multimedia, Communications }
++    private enum AudioSessionState { Inactive, Active, Expired }
++
++    [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
++    private sealed class MMDeviceEnumeratorComObject;
++
++    [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("A95664D2-9614-4F35-A746-DE8DB63617E6")]
++    private interface IMMDeviceEnumerator
++    {
++        [PreserveSig] int EnumAudioEndpoints(EDataFlow dataFlow, uint stateMask, out nint devices);
++        [PreserveSig] int GetDefaultAudioEndpoint(EDataFlow dataFlow, ERole role, out IMMDevice device);
++    }
++
++    [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("D666063F-1587-4E43-81F1-B948E807363F")]
++    private interface IMMDevice
++    {
++        [PreserveSig] int Activate(ref Guid iid, uint clsCtx, nint activationParams,
++            [MarshalAs(UnmanagedType.IUnknown)] out object instance);
++    }
++
++    [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("BFA971F1-4D5E-40BB-935E-967039BFBEE4")]
++    private interface IAudioSessionManager2
++    {
++        [PreserveSig] int GetAudioSessionControl(ref Guid sessionGuid, uint streamFlags, out nint sessionControl);
++        [PreserveSig] int GetSimpleAudioVolume(ref Guid sessionGuid, uint streamFlags, out nint simpleAudioVolume);
++        [PreserveSig] int GetSessionEnumerator(out IAudioSessionEnumerator sessionEnumerator);
++        [PreserveSig] int RegisterSessionNotification(nint sessionNotification);
++        [PreserveSig] int UnregisterSessionNotification(nint sessionNotification);
++        [PreserveSig] int RegisterDuckNotification([MarshalAs(UnmanagedType.LPWStr)] string sessionId, nint duckNotification);
++        [PreserveSig] int UnregisterDuckNotification(nint duckNotification);
++    }
++
++    [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("E2F5BB11-0570-40CA-ACDD-3AA01277DEE8")]
++    private interface IAudioSessionEnumerator
++    {
++        [PreserveSig] int GetCount(out int sessionCount);
++        [PreserveSig] int GetSession(int sessionIndex, out IAudioSessionControl2 sessionControl);
++    }
++
++    [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("BFB7FF88-7239-4FC9-8FA2-07C950BE9C6D")]
++    private interface IAudioSessionControl2
++    {
++        [PreserveSig] int GetState(out AudioSessionState state);
++        [PreserveSig] int GetDisplayName(out nint displayName);
++        [PreserveSig] int SetDisplayName([MarshalAs(UnmanagedType.LPWStr)] string value, nint eventContext);
++        [PreserveSig] int GetIconPath(out nint iconPath);
++        [PreserveSig] int SetIconPath([MarshalAs(UnmanagedType.LPWStr)] string value, nint eventContext);
++        [PreserveSig] int GetGroupingParam(out Guid groupingId);
++        [PreserveSig] int SetGroupingParam(ref Guid groupingId, nint eventContext);
++        [PreserveSig] int RegisterAudioSessionNotification(nint events);
++        [PreserveSig] int UnregisterAudioSessionNotification(nint events);
++        [PreserveSig] int GetSessionIdentifier(out nint sessionIdentifier);
++        [PreserveSig] int GetSessionInstanceIdentifier(out nint sessionInstanceIdentifier);
++        [PreserveSig] int GetProcessId(out uint processId);
++        [PreserveSig] int IsSystemSoundsSession();
++        [PreserveSig] int SetDuckingPreference([MarshalAs(UnmanagedType.Bool)] bool optOut);
++    }
++}
++
++public enum MediaKeyCommand { Previous, PlayPause, Next }
++
++public static class MediaKeySender
++{
++    public static bool Send(MediaKeyCommand command)
++    {
++        try
++        {
++            var virtualKey = command switch
++            {
++                MediaKeyCommand.Previous => (byte)0xB1,
++                MediaKeyCommand.Next => (byte)0xB0,
++                _ => (byte)0xB3,
++            };
++            KeybdEvent(virtualKey, 0, 0, 0);
++            KeybdEvent(virtualKey, 0, 2, 0);
++            return true;
++        }
++        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException)
++        {
++            return false;
++        }
++    }
++
++    [DllImport("user32.dll", EntryPoint = "keybd_event")]
++    private static extern void KeybdEvent(byte virtualKey, byte scanCode, uint flags, nuint extraInfo);
++}
+diff --git a/src/GlassDesk.Platform/BluetoothDeviceReader.cs b/src/GlassDesk.Platform/BluetoothDeviceReader.cs
+new file mode 100644
+index 0000000000000000000000000000000000000000..dbdb53029a2eccbffcffb37cb98c13c3c1c33f71
+--- /dev/null
++++ b/src/GlassDesk.Platform/BluetoothDeviceReader.cs
+@@ -0,0 +1,80 @@
++using Windows.Devices.Bluetooth;
++using Windows.Devices.Enumeration;
++
++namespace GlassDesk.Platform;
++
++public sealed record BluetoothDeviceOption(string Id, string Name, bool IsConnected, bool IsPaired);
++
++/// <summary>读取 Windows 已配对的经典蓝牙设备及当前连接状态。</summary>
++public static class BluetoothDeviceReader
++{
++    public static async Task<IReadOnlyList<BluetoothDeviceOption>> GetPairedDevicesAsync()
++    {
++        try
++        {
++            var classicTask = DeviceInformation.FindAllAsync(
++                BluetoothDevice.GetDeviceSelectorFromPairingState(true)).AsTask();
++            var lowEnergyTask = DeviceInformation.FindAllAsync(
++                BluetoothLEDevice.GetDeviceSelectorFromPairingState(true)).AsTask();
++            await Task.WhenAll(classicTask, lowEnergyTask);
++            var devices = (await classicTask).Select(info => (Info: info, LowEnergy: false))
++                .Concat((await lowEnergyTask).Select(info => (Info: info, LowEnergy: true)))
++                .DistinctBy(candidate => candidate.Info.Id)
++                .Take(30)
++                .ToArray();
++            var results = new List<BluetoothDeviceOption>();
++            foreach (var candidate in devices)
++            {
++                var info = candidate.Info;
++                IDisposable? device = null;
++                try
++                {
++                    var connected = false;
++                    if (candidate.LowEnergy)
++                    {
++                        var lowEnergyDevice = await BluetoothLEDevice.FromIdAsync(info.Id);
++                        device = lowEnergyDevice;
++                        connected = lowEnergyDevice?.ConnectionStatus == BluetoothConnectionStatus.Connected;
++                    }
++                    else
++                    {
++                        var classicDevice = await BluetoothDevice.FromIdAsync(info.Id);
++                        device = classicDevice;
++                        connected = classicDevice?.ConnectionStatus == BluetoothConnectionStatus.Connected;
++                    }
++
++                    results.Add(new BluetoothDeviceOption(
++                        info.Id,
++                        string.IsNullOrWhiteSpace(info.Name) ? "蓝牙设备" : info.Name,
++                        connected,
++                        true));
++                }
++                catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidOperationException
++                    or System.Runtime.InteropServices.COMException)
++                {
++                    results.Add(new BluetoothDeviceOption(
++                        info.Id,
++                        string.IsNullOrWhiteSpace(info.Name) ? "蓝牙设备" : info.Name,
++                        false,
++                        true));
++                }
++                finally
++                {
++                    device?.Dispose();
++                }
++            }
++
++            return results
++                .GroupBy(device => device.Name, StringComparer.CurrentCultureIgnoreCase)
++                .Select(group => group.OrderByDescending(device => device.IsConnected).First())
++                .OrderByDescending(device => device.IsConnected)
++                .ThenBy(device => device.Name, StringComparer.CurrentCultureIgnoreCase)
++                .ToArray();
++        }
++        catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidOperationException
++            or PlatformNotSupportedException or TypeLoadException or System.Runtime.InteropServices.COMException)
++        {
++            return [];
++        }
++    }
++}
+diff --git a/src/GlassDesk.Platform/FanSpeedReader.cs b/src/GlassDesk.Platform/FanSpeedReader.cs
+index 01bf77faa8b6b00f87e3f1fd78efbd1826005dc0..6d5a5819579be451bcd646b8f2628631fd0d9089 100644
+--- a/src/GlassDesk.Platform/FanSpeedReader.cs
++++ b/src/GlassDesk.Platform/FanSpeedReader.cs
+@@ -1,5 +1,6 @@
+ using System.Collections;
+ using System.Runtime.InteropServices;
++using System.Text.Json;
+ using Microsoft.CSharp.RuntimeBinder;
+ 
+ namespace GlassDesk.Platform;
+@@ -12,6 +13,11 @@ public static class FanSpeedReader
+ {
+     private const int MinimumPlausibleRpm = 100;
+     private const int MaximumPlausibleRpm = 30_000;
++    private static readonly TimeSpan HelperFreshness = TimeSpan.FromSeconds(20);
++    private static readonly JsonSerializerOptions HelperJsonOptions = new()
++    {
++        PropertyNameCaseInsensitive = true,
++    };
+ 
+     private static readonly string[] HardwareMonitorNamespaces =
+     [
+@@ -25,6 +31,9 @@ public static class FanSpeedReader
+     {
+         if (!OperatingSystem.IsWindows()) return null;
+ 
++        var helperValue = ReadHelperRpm(GetHelperStatusPath(), DateTimeOffset.UtcNow);
++        if (helperValue is not null) return helperValue;
++
+         foreach (var wmiNamespace in HardwareMonitorNamespaces)
+         {
+             var value = ReadHardwareMonitorRpm(wmiNamespace);
+@@ -38,6 +47,40 @@ public static class FanSpeedReader
+     public static bool IsPlausibleRpm(double value)
+         => double.IsFinite(value) && value is >= MinimumPlausibleRpm and <= MaximumPlausibleRpm;
+ 
++    /// <summary>
++    /// 读取管理员级只读助手最近写入的快照。快照过期、损坏或不可信时返回 null，
++    /// 从而让非华硕或不支持该接口的电脑自动隐藏风扇信息。
++    /// </summary>
++    public static int? ReadHelperRpm(string path, DateTimeOffset utcNow)
++    {
++        try
++        {
++            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return null;
++            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read,
++                FileShare.ReadWrite | FileShare.Delete);
++            var snapshot = JsonSerializer.Deserialize<FanHelperSnapshot>(stream, HelperJsonOptions);
++            if (snapshot is not { Version: 1, Rpm: { } rpm }) return null;
++
++            var age = utcNow - snapshot.TimestampUtc;
++            if (age < TimeSpan.FromSeconds(-5) || age > HelperFreshness) return null;
++            return IsPlausibleRpm(rpm) ? rpm : null;
++        }
++        catch (Exception ex) when (ex is IOException
++            or UnauthorizedAccessException
++            or JsonException
++            or NotSupportedException)
++        {
++            return null;
++        }
++    }
++
++    private static string GetHelperStatusPath()
++        => Path.Combine(
++            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
++            "GlassDesk",
++            "FanSensor",
++            "fan-status.json");
++
+     private static int? ReadHardwareMonitorRpm(string wmiNamespace)
+     {
+         object? locatorObject = null;
+@@ -110,4 +153,6 @@ public static class FanSpeedReader
+             catch (InvalidComObjectException) { }
+         }
+     }
++
++    private sealed record FanHelperSnapshot(int Version, DateTimeOffset TimestampUtc, int? Rpm);
+ }
+diff --git a/src/GlassDesk.Platform/MediaSessionController.cs b/src/GlassDesk.Platform/MediaSessionController.cs
+new file mode 100644
+index 0000000000000000000000000000000000000000..1f00a1b5ffa1265bcd17a457d111f7926d8d6bb0
+--- /dev/null
++++ b/src/GlassDesk.Platform/MediaSessionController.cs
+@@ -0,0 +1,197 @@
++using Windows.Media.Control;
++using Windows.Storage.Streams;
++
++namespace GlassDesk.Platform;
++
++public readonly record struct MediaSessionSnapshot(
++    bool Available,
++    string Title,
++    string Artist,
++    bool IsPlaying,
++    bool CanGoPrevious,
++    bool CanTogglePlayPause,
++    bool CanGoNext,
++    byte[]? Artwork);
++
++/// <summary>封装 Windows 全局媒体会话，让玻璃胶囊无需了解 WinRT 细节。</summary>
++public sealed class MediaSessionController : IDisposable
++{
++    private GlobalSystemMediaTransportControlsSessionManager? _manager;
++    private bool _disposed;
++    private bool _usingAudioFallback;
++    private MediaSessionSnapshot? _lastSnapshot;
++    private string? _lastSourceAppUserModelId;
++
++    public string LastDiagnostic { get; private set; } = "尚未读取媒体会话";
++
++    public async Task<MediaSessionSnapshot> ReadAsync()
++    {
++        try
++        {
++            var session = await GetCurrentSessionAsync();
++            if (session is null)
++            {
++                return ReadAudioFallback();
++            }
++            _usingAudioFallback = false;
++            var properties = await session.TryGetMediaPropertiesAsync();
++            var playback = session.GetPlaybackInfo();
++            var controls = playback.Controls;
++            var artwork = await ReadArtworkAsync(properties.Thumbnail);
++            LastDiagnostic = $"已读取媒体会话：{session.SourceAppUserModelId}";
++            var snapshot = new MediaSessionSnapshot(
++                true,
++                string.IsNullOrWhiteSpace(properties.Title) ? "正在播放" : properties.Title,
++                string.IsNullOrWhiteSpace(properties.Artist) ? session.SourceAppUserModelId : properties.Artist,
++                playback.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing,
++                controls.IsPreviousEnabled,
++                controls.IsPlayPauseToggleEnabled || controls.IsPlayEnabled || controls.IsPauseEnabled,
++                controls.IsNextEnabled,
++                artwork);
++            _lastSnapshot = snapshot;
++            _lastSourceAppUserModelId = session.SourceAppUserModelId;
++            return snapshot;
++        }
++        catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidOperationException
++            or PlatformNotSupportedException or TypeLoadException or System.Runtime.InteropServices.COMException)
++        {
++            LastDiagnostic = $"{ex.GetType().Name} (0x{ex.HResult:X8})：{ex.Message}";
++            return ReadAudioFallback();
++        }
++    }
++
++    private MediaSessionSnapshot ReadAudioFallback()
++    {
++        var audio = ActiveAudioApplicationReader.Read();
++        if (!audio.Available)
++        {
++            _usingAudioFallback = false;
++            if (_lastSnapshot is { Available: true } remembered)
++            {
++                // Some players remove their GSMTC session after being paused for a
++                // while. Keep the last useful controls: a global media key can wake
++                // that player and the real session will be selected when it returns.
++                var retained = remembered with { IsPlaying = false, CanTogglePlayPause = true };
++                _lastSnapshot = retained;
++                LastDiagnostic = _manager is null
++                    ? "媒体会话管理器暂不可用；已保留上次媒体，可用系统媒体键恢复"
++                    : "Windows 暂未返回媒体会话；已保留上次媒体，可用系统媒体键恢复";
++                return retained;
++            }
++            LastDiagnostic = _manager is null ? "媒体会话管理器不可用，且没有活动音频应用" : "Windows 未返回媒体会话，且没有活动音频应用";
++            return default;
++        }
++
++        _usingAudioFallback = true;
++        LastDiagnostic = $"兼容模式：正在发声的应用为 {audio.ApplicationName} ({audio.ProcessId})";
++        var snapshot = new MediaSessionSnapshot(
++            true,
++            audio.Title,
++            $"{audio.ApplicationName} · 兼容模式",
++            true,
++            true,
++            true,
++            true,
++            null);
++        _lastSnapshot = snapshot;
++        _lastSourceAppUserModelId = null;
++        return snapshot;
++    }
++
++    private static async Task<byte[]?> ReadArtworkAsync(IRandomAccessStreamReference? reference)
++    {
++        if (reference is null) return null;
++        try
++        {
++            using var stream = await reference.OpenReadAsync();
++            if (stream.Size is 0 or > 4_194_304) return null;
++            var length = checked((uint)stream.Size);
++            using var reader = new DataReader(stream.GetInputStreamAt(0));
++            var loaded = await reader.LoadAsync(length);
++            if (loaded == 0) return null;
++            var bytes = new byte[loaded];
++            reader.ReadBytes(bytes);
++            return bytes;
++        }
++        catch (Exception ex) when (ex is InvalidOperationException or OverflowException
++            or System.Runtime.InteropServices.COMException)
++        {
++            return null;
++        }
++    }
++
++    public Task<bool> PreviousAsync() => InvokeAsync(
++        session => session.TrySkipPreviousAsync(), MediaKeyCommand.Previous);
++
++    public Task<bool> TogglePlayPauseAsync() => InvokeAsync(
++        session => session.TryTogglePlayPauseAsync(), MediaKeyCommand.PlayPause);
++
++    public Task<bool> NextAsync() => InvokeAsync(
++        session => session.TrySkipNextAsync(), MediaKeyCommand.Next);
++
++    private async Task<GlobalSystemMediaTransportControlsSession?> GetCurrentSessionAsync()
++    {
++        if (_disposed) return null;
++        _manager ??= await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
++        var current = _manager.GetCurrentSession();
++        var sessions = _manager.GetSessions();
++        foreach (var session in sessions)
++        {
++            try
++            {
++                if (session.GetPlaybackInfo().PlaybackStatus
++                    == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
++                    return session;
++            }
++            catch (System.Runtime.InteropServices.COMException)
++            {
++                // A session may disappear while its source app switches tracks.
++            }
++        }
++
++        if (!string.IsNullOrWhiteSpace(_lastSourceAppUserModelId))
++        {
++            foreach (var session in sessions)
++            {
++                if (string.Equals(session.SourceAppUserModelId, _lastSourceAppUserModelId,
++                    StringComparison.OrdinalIgnoreCase)) return session;
++            }
++        }
++
++        return current ?? (sessions.Count > 0 ? sessions[0] : null);
++    }
++
++    private async Task<bool> InvokeAsync(
++        Func<GlobalSystemMediaTransportControlsSession, Windows.Foundation.IAsyncOperation<bool>> action,
++        MediaKeyCommand fallbackCommand)
++    {
++        try
++        {
++            var session = await GetCurrentSessionAsync();
++            if (session is not null)
++            {
++                _usingAudioFallback = false;
++                if (await action(session)) return true;
++            }
++
++            var canResumeRememberedMedia = _lastSnapshot is { Available: true };
++            var sent = (_usingAudioFallback || canResumeRememberedMedia) && MediaKeySender.Send(fallbackCommand);
++            if (sent && fallbackCommand == MediaKeyCommand.PlayPause && _lastSnapshot is { } remembered)
++                _lastSnapshot = remembered with { IsPlaying = !remembered.IsPlaying, CanTogglePlayPause = true };
++            return sent;
++        }
++        catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidOperationException
++            or PlatformNotSupportedException or TypeLoadException or System.Runtime.InteropServices.COMException)
++        {
++            return false;
++        }
++    }
++
++    public void Dispose()
++    {
++        _disposed = true;
++        _manager = null;
++        _lastSnapshot = null;
++        _lastSourceAppUserModelId = null;
++    }
++}
+diff --git a/src/GlassDesk.Platform/Shell/FullscreenWatcher.cs b/src/GlassDesk.Platform/Shell/FullscreenWatcher.cs
+index 56c3d7401a788ea994bd67a4bea3972b8540459e..7225fdc6094634c4498d35ae237cef58ed00ae40 100644
+--- a/src/GlassDesk.Platform/Shell/FullscreenWatcher.cs
++++ b/src/GlassDesk.Platform/Shell/FullscreenWatcher.cs
+@@ -22,8 +22,8 @@ namespace GlassDesk.Platform.Shell;
+ /// 回调在钩子线程上触发，需要更新界面的调用方要自行切回自己的线程。
+ /// </para>
+ /// <para>
+-/// 事件合并：拖动窗口时位置变化事件每秒可达数百条。重算被合并到一个 120 毫秒的延时上，
+-/// 也就是说判定最多滞后 120 毫秒。这个定时器**只由事件安排、只触发一次**，不是周期轮询。
++/// 事件合并：拖动窗口时位置变化事件每秒可达数百条。重算被合并到一个 40 毫秒的延时上，
++/// 也就是说判定最多滞后 40 毫秒。这个定时器**只由事件安排、只触发一次**，不是周期轮询。
+ /// </para>
+ /// <para>
+ /// 刻意**不加** <c>WINEVENT_SKIPOWNPROCESS</c>：本产品自己的窗口成为前台窗口时，
+@@ -35,7 +35,7 @@ namespace GlassDesk.Platform.Shell;
+ public sealed class FullscreenWatcher : IDisposable
+ {
+     /// <summary>事件合并窗口（毫秒）。拖动时的事件风暴被压缩成一次重算。</summary>
+-    private const int CoalesceMilliseconds = 120;
++    private const int CoalesceMilliseconds = 40;
+ 
+     /// <summary>等待钩子线程报告安装结果的上限。</summary>
+     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(5);
+diff --git a/src/GlassDesk.Platform/SystemRadioController.cs b/src/GlassDesk.Platform/SystemRadioController.cs
+new file mode 100644
+index 0000000000000000000000000000000000000000..03029eb20c62f5b84bb0b57e0cd6a9fb130b0cba
+--- /dev/null
++++ b/src/GlassDesk.Platform/SystemRadioController.cs
+@@ -0,0 +1,53 @@
++using Windows.Devices.Radios;
++
++namespace GlassDesk.Platform;
++
++public readonly record struct SystemRadioState(bool Available, bool IsOn, bool CanControl);
++
++/// <summary>读取并在系统允许时切换 Wi-Fi / 蓝牙无线电。</summary>
++public static class SystemRadioController
++{
++    public static Task<SystemRadioState> ReadWifiAsync() => ReadAsync(RadioKind.WiFi);
++
++    public static Task<SystemRadioState> ReadBluetoothAsync() => ReadAsync(RadioKind.Bluetooth);
++
++    public static Task<bool> SetWifiAsync(bool enabled) => SetAsync(RadioKind.WiFi, enabled);
++
++    public static Task<bool> SetBluetoothAsync(bool enabled) => SetAsync(RadioKind.Bluetooth, enabled);
++
++    private static async Task<SystemRadioState> ReadAsync(RadioKind kind)
++    {
++        try
++        {
++            var access = await Radio.RequestAccessAsync();
++            if (access != RadioAccessStatus.Allowed) return new(false, false, false);
++            var radio = (await Radio.GetRadiosAsync()).FirstOrDefault(candidate => candidate.Kind == kind);
++            return radio is null
++                ? new(false, false, false)
++                : new(true, radio.State == RadioState.On, true);
++        }
++        catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidOperationException
++            or PlatformNotSupportedException or TypeLoadException or System.Runtime.InteropServices.COMException)
++        {
++            return new(false, false, false);
++        }
++    }
++
++    private static async Task<bool> SetAsync(RadioKind kind, bool enabled)
++    {
++        try
++        {
++            var access = await Radio.RequestAccessAsync();
++            if (access != RadioAccessStatus.Allowed) return false;
++            var radio = (await Radio.GetRadiosAsync()).FirstOrDefault(candidate => candidate.Kind == kind);
++            if (radio is null) return false;
++            var result = await radio.SetStateAsync(enabled ? RadioState.On : RadioState.Off);
++            return result == RadioAccessStatus.Allowed;
++        }
++        catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidOperationException
++            or PlatformNotSupportedException or TypeLoadException or System.Runtime.InteropServices.COMException)
++        {
++            return false;
++        }
++    }
++}
+diff --git a/src/GlassDesk.Platform/SystemStatusReader.cs b/src/GlassDesk.Platform/SystemStatusReader.cs
+index f0326562470c998b6b0ec52cbd73d35c664a16ec..69e607580024b3bb590a61f6705bdea7ed9b32f8 100644
+--- a/src/GlassDesk.Platform/SystemStatusReader.cs
++++ b/src/GlassDesk.Platform/SystemStatusReader.cs
+@@ -9,11 +9,7 @@ public readonly record struct SystemStatusSnapshot(
+     bool IsCharging,
+     string NetworkLabel,
+     int? VolumePercent,
+-    bool IsMuted)
+-{
+-    // An unavailable percentage is different from a machine with no battery.
+-    public bool HasBattery { get; init; } = true;
+-}
++    bool IsMuted);
+ 
+ /// <summary>适合按秒刷新、无需 WMI 或性能计数器服务的轻量性能快照。</summary>
+ public readonly record struct SystemPerformanceSnapshot(int? CpuPercent, int? MemoryPercent);
+@@ -31,13 +27,21 @@ public static class SystemStatusReader
+         var battery = ReadBattery();
+         var network = ReadNetworkLabel();
+         var volume = ReadVolume();
+-        return new SystemStatusSnapshot(battery.Percent, battery.Charging, network, volume.Percent, volume.Muted)
+-        { HasBattery = battery.HasBattery };
++        return new SystemStatusSnapshot(battery.Percent, battery.Charging, network, volume.Percent, volume.Muted);
+     }
+ 
+     public static SystemPerformanceSnapshot ReadPerformance()
+         => new(ReadCpuPercent(), ReadMemoryPercent());
+ 
++    /// <summary>设置默认播放设备的主音量。传入值会被限制在 0–100。</summary>
++    public static bool SetVolumePercent(int percent)
++        => WithAudioEndpoint(endpoint =>
++            endpoint.SetMasterVolumeLevelScalar(Math.Clamp(percent, 0, 100) / 100f, 0) == 0);
++
++    /// <summary>设置默认播放设备的静音状态。</summary>
++    public static bool SetMuted(bool muted)
++        => WithAudioEndpoint(endpoint => endpoint.SetMute(muted, 0) == 0);
++
+     private static int? ReadCpuPercent()
+     {
+         try
+@@ -86,22 +90,17 @@ public static class SystemStatusReader
+         }
+     }
+ 
+-    private static (int? Percent, bool Charging, bool HasBattery) ReadBattery()
++    private static (int? Percent, bool Charging) ReadBattery()
+     {
+         try
+         {
+-            if (!GetSystemPowerStatus(out var status)) return (null, false, true);
+-            // BatteryFlag 128 means no system battery. Some desktop drivers still
+-            // return 100% in BatteryLifePercent; that value must not expose a battery.
+-            // 255 means unknown flags, not an authoritative no-battery report.
+-            if (status.BatteryFlag != byte.MaxValue && (status.BatteryFlag & 128) != 0)
+-                return (null, false, false);
+-            return (status.BatteryLifePercent == byte.MaxValue ? null : Math.Clamp((int)status.BatteryLifePercent, 0, 100),
+-                status.ACLineStatus == 1, true);
++            if (!GetSystemPowerStatus(out var status) || status.BatteryLifePercent == byte.MaxValue)
++                return (null, status.ACLineStatus == 1);
++            return (Math.Clamp((int)status.BatteryLifePercent, 0, 100), status.ACLineStatus == 1);
+         }
+         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException)
+         {
+-            return (null, false, true);
++            return (null, false);
+         }
+     }
+ 
+@@ -153,6 +152,35 @@ public static class SystemStatusReader
+         }
+     }
+ 
++    private static bool WithAudioEndpoint(Func<IAudioEndpointVolume, bool> action)
++    {
++        object? enumeratorObject = null;
++        IMMDevice? device = null;
++        object? endpointObject = null;
++        try
++        {
++            enumeratorObject = new MMDeviceEnumeratorComObject();
++            var enumerator = (IMMDeviceEnumerator)enumeratorObject;
++            if (enumerator.GetDefaultAudioEndpoint(EDataFlow.Render, ERole.Multimedia, out device) != 0 || device is null)
++                return false;
++            var iid = typeof(IAudioEndpointVolume).GUID;
++            if (device.Activate(ref iid, ClsCtxAll, 0, out endpointObject) != 0
++                || endpointObject is not IAudioEndpointVolume endpoint)
++                return false;
++            return action(endpoint);
++        }
++        catch (Exception ex) when (ex is COMException or InvalidCastException or PlatformNotSupportedException)
++        {
++            return false;
++        }
++        finally
++        {
++            ReleaseCom(endpointObject);
++            ReleaseCom(device);
++            ReleaseCom(enumeratorObject);
++        }
++    }
++
+     private static void ReleaseCom(object? value)
+     {
+         if (value is not null && Marshal.IsComObject(value)) _ = Marshal.FinalReleaseComObject(value);
+diff --git a/src/GlassDesk.Platform/WifiNetworkController.cs b/src/GlassDesk.Platform/WifiNetworkController.cs
+new file mode 100644
+index 0000000000000000000000000000000000000000..6e541bce62083fc13af14aab2e10f3b9b674b057
+--- /dev/null
++++ b/src/GlassDesk.Platform/WifiNetworkController.cs
+@@ -0,0 +1,269 @@
++using System.Runtime.InteropServices;
++using System.Text;
++
++namespace GlassDesk.Platform;
++
++public sealed record WifiNetworkOption(
++    Guid InterfaceId,
++    string Name,
++    string ProfileName,
++    int SignalQuality,
++    bool IsConnected,
++    bool HasSavedProfile);
++
++/// <summary>通过桌面 Native Wi-Fi API 枚举附近网络并连接已有配置文件。</summary>
++public static class WifiNetworkController
++{
++    public static async Task<IReadOnlyList<WifiNetworkOption>> ScanAndGetAvailableNetworksAsync()
++    {
++        await Task.Run(RequestScan);
++        // Native Wi-Fi scan completes asynchronously; a short bounded delay lets the
++        // service refresh its cache without blocking the GlassDesk UI thread.
++        await Task.Delay(1200);
++        return await Task.Run(GetAvailableNetworks);
++    }
++
++    public static IReadOnlyList<WifiNetworkOption> GetAvailableNetworks()
++    {
++        nint client = 0;
++        nint interfacesPointer = 0;
++        try
++        {
++            if (WlanOpenHandle(2, 0, out _, out client) != 0 || client == 0) return [];
++            if (WlanEnumInterfaces(client, 0, out interfacesPointer) != 0 || interfacesPointer == 0) return [];
++
++            var count = Marshal.ReadInt32(interfacesPointer);
++            var offset = 8;
++            var interfaceSize = Marshal.SizeOf<WlanInterfaceInfo>();
++            var results = new Dictionary<string, WifiNetworkOption>(StringComparer.OrdinalIgnoreCase);
++            for (var index = 0; index < count; index++)
++            {
++                var infoPointer = nint.Add(interfacesPointer, offset + index * interfaceSize);
++                var info = Marshal.PtrToStructure<WlanInterfaceInfo>(infoPointer);
++                AppendNetworks(client, info.InterfaceGuid, results);
++            }
++
++            return results.Values
++                .OrderByDescending(network => network.IsConnected)
++                .ThenByDescending(network => network.SignalQuality)
++                .ThenBy(network => network.Name, StringComparer.CurrentCultureIgnoreCase)
++                .ToArray();
++        }
++        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException
++            or AccessViolationException or SEHException)
++        {
++            return [];
++        }
++        finally
++        {
++            if (interfacesPointer != 0) WlanFreeMemory(interfacesPointer);
++            if (client != 0) _ = WlanCloseHandle(client, 0);
++        }
++    }
++
++    public static bool Connect(WifiNetworkOption network)
++    {
++        if (!network.HasSavedProfile || string.IsNullOrWhiteSpace(network.ProfileName)) return false;
++        nint client = 0;
++        try
++        {
++            if (WlanOpenHandle(2, 0, out _, out client) != 0 || client == 0) return false;
++            var parameters = new WlanConnectionParameters
++            {
++                ConnectionMode = WlanConnectionMode.Profile,
++                Profile = network.ProfileName,
++                DesiredSsid = 0,
++                DesiredBssidList = 0,
++                BssType = Dot11BssType.Any,
++                Flags = 0,
++            };
++            var interfaceId = network.InterfaceId;
++            return WlanConnect(client, ref interfaceId, ref parameters, 0) == 0;
++        }
++        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or SEHException)
++        {
++            return false;
++        }
++        finally
++        {
++            if (client != 0) _ = WlanCloseHandle(client, 0);
++        }
++    }
++
++    /// <summary>断开指定无线网卡当前连接的网络，不会删除已保存的网络配置。</summary>
++    public static bool Disconnect(WifiNetworkOption network)
++    {
++        nint client = 0;
++        try
++        {
++            if (WlanOpenHandle(2, 0, out _, out client) != 0 || client == 0) return false;
++            var interfaceId = network.InterfaceId;
++            return WlanDisconnect(client, ref interfaceId, 0) == 0;
++        }
++        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or SEHException)
++        {
++            return false;
++        }
++        finally
++        {
++            if (client != 0) _ = WlanCloseHandle(client, 0);
++        }
++    }
++
++    private static void RequestScan()
++    {
++        nint client = 0;
++        nint interfacesPointer = 0;
++        try
++        {
++            if (WlanOpenHandle(2, 0, out _, out client) != 0 || client == 0) return;
++            if (WlanEnumInterfaces(client, 0, out interfacesPointer) != 0 || interfacesPointer == 0) return;
++            var count = Marshal.ReadInt32(interfacesPointer);
++            var offset = 8;
++            var interfaceSize = Marshal.SizeOf<WlanInterfaceInfo>();
++            for (var index = 0; index < count; index++)
++            {
++                var infoPointer = nint.Add(interfacesPointer, offset + index * interfaceSize);
++                var info = Marshal.PtrToStructure<WlanInterfaceInfo>(infoPointer);
++                var interfaceId = info.InterfaceGuid;
++                _ = WlanScan(client, ref interfaceId, 0, 0, 0);
++            }
++        }
++        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or SEHException)
++        {
++            // The cached list remains a valid fallback.
++        }
++        finally
++        {
++            if (interfacesPointer != 0) WlanFreeMemory(interfacesPointer);
++            if (client != 0) _ = WlanCloseHandle(client, 0);
++        }
++    }
++
++    private static void AppendNetworks(nint client, Guid interfaceId,
++        Dictionary<string, WifiNetworkOption> results)
++    {
++        nint listPointer = 0;
++        try
++        {
++            if (WlanGetAvailableNetworkList(client, ref interfaceId, 0, 0, out listPointer) != 0
++                || listPointer == 0) return;
++            var count = Marshal.ReadInt32(listPointer);
++            var offset = 8;
++            var itemSize = Marshal.SizeOf<WlanAvailableNetwork>();
++            for (var index = 0; index < count; index++)
++            {
++                var itemPointer = nint.Add(listPointer, offset + index * itemSize);
++                var item = Marshal.PtrToStructure<WlanAvailableNetwork>(itemPointer);
++                var name = DecodeSsid(item.Ssid);
++                if (string.IsNullOrWhiteSpace(name)) continue;
++                var option = new WifiNetworkOption(
++                    interfaceId,
++                    name,
++                    item.ProfileName ?? string.Empty,
++                    (int)Math.Clamp(item.SignalQuality, 0u, 100u),
++                    (item.Flags & 1) != 0,
++                    (item.Flags & 2) != 0 && !string.IsNullOrWhiteSpace(item.ProfileName));
++                if (!results.TryGetValue(name, out var existing)
++                    || option.IsConnected
++                    || option.SignalQuality > existing.SignalQuality)
++                    results[name] = option;
++            }
++        }
++        finally
++        {
++            if (listPointer != 0) WlanFreeMemory(listPointer);
++        }
++    }
++
++    private static string DecodeSsid(Dot11Ssid ssid)
++    {
++        if (ssid.Bytes is null || ssid.Length == 0) return string.Empty;
++        var length = Math.Min((int)ssid.Length, ssid.Bytes.Length);
++        try
++        {
++            return Encoding.UTF8.GetString(ssid.Bytes, 0, length).TrimEnd('\0');
++        }
++        catch (DecoderFallbackException)
++        {
++            return Encoding.Default.GetString(ssid.Bytes, 0, length).TrimEnd('\0');
++        }
++    }
++
++    [DllImport("wlanapi.dll")]
++    private static extern uint WlanOpenHandle(uint clientVersion, nint reserved,
++        out uint negotiatedVersion, out nint clientHandle);
++
++    [DllImport("wlanapi.dll")]
++    private static extern uint WlanCloseHandle(nint clientHandle, nint reserved);
++
++    [DllImport("wlanapi.dll")]
++    private static extern uint WlanEnumInterfaces(nint clientHandle, nint reserved, out nint interfaceList);
++
++    [DllImport("wlanapi.dll")]
++    private static extern uint WlanGetAvailableNetworkList(nint clientHandle, ref Guid interfaceGuid,
++        uint flags, nint reserved, out nint availableNetworkList);
++
++    [DllImport("wlanapi.dll")]
++    private static extern uint WlanScan(nint clientHandle, ref Guid interfaceGuid,
++        nint dot11Ssid, nint ieData, nint reserved);
++
++    [DllImport("wlanapi.dll")]
++    private static extern uint WlanConnect(nint clientHandle, ref Guid interfaceGuid,
++        ref WlanConnectionParameters connectionParameters, nint reserved);
++
++    [DllImport("wlanapi.dll")]
++    private static extern uint WlanDisconnect(nint clientHandle, ref Guid interfaceGuid, nint reserved);
++
++    [DllImport("wlanapi.dll")]
++    private static extern void WlanFreeMemory(nint memory);
++
++    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
++    private struct WlanInterfaceInfo
++    {
++        public Guid InterfaceGuid;
++        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)] public string Description;
++        public int State;
++    }
++
++    [StructLayout(LayoutKind.Sequential)]
++    private struct Dot11Ssid
++    {
++        public uint Length;
++        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)] public byte[] Bytes;
++    }
++
++    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
++    private struct WlanAvailableNetwork
++    {
++        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)] public string ProfileName;
++        public Dot11Ssid Ssid;
++        public int BssType;
++        public uint NumberOfBssids;
++        [MarshalAs(UnmanagedType.Bool)] public bool NetworkConnectable;
++        public uint NotConnectableReason;
++        public uint NumberOfPhyTypes;
++        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)] public int[] PhyTypes;
++        [MarshalAs(UnmanagedType.Bool)] public bool MorePhyTypes;
++        public uint SignalQuality;
++        [MarshalAs(UnmanagedType.Bool)] public bool SecurityEnabled;
++        public int DefaultAuthAlgorithm;
++        public int DefaultCipherAlgorithm;
++        public uint Flags;
++        public uint Reserved;
++    }
++
++    private enum WlanConnectionMode { Profile, TemporaryProfile, DiscoverySecure, DiscoveryUnsecure, Auto, Invalid }
++    private enum Dot11BssType { Infrastructure = 1, Independent = 2, Any = 3 }
++
++    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
++    private struct WlanConnectionParameters
++    {
++        public WlanConnectionMode ConnectionMode;
++        [MarshalAs(UnmanagedType.LPWStr)] public string Profile;
++        public nint DesiredSsid;
++        public nint DesiredBssidList;
++        public Dot11BssType BssType;
++        public uint Flags;
++    }
++}
+diff --git a/src/GlassDesk.UI/CaptureCompatibility/AsyncBackdropState.cs b/src/GlassDesk.UI/CaptureCompatibility/AsyncBackdropState.cs
+index d9ce4e6e6924a630746ea5b153d550eb70bba6e7..a0f26c2e976f4ae7b7bf3aa1da3030f3b63796b2 100644
+--- a/src/GlassDesk.UI/CaptureCompatibility/AsyncBackdropState.cs
++++ b/src/GlassDesk.UI/CaptureCompatibility/AsyncBackdropState.cs
+@@ -131,10 +131,15 @@ internal sealed class LatestBackdropState : IDisposable
+             frame=null;
+             var reason=disposed ? "WorkerStopped" : latest is null ? "NoFrame" : latest.Request!=current ? "GeometryMismatch"
+                 : now<latest.EndTicks ? "FutureReadback" : maximumAgeTicks<0 ? "InvalidAgeBudget"
+-                : !latest.IsStatic && now-latest.EndTicks>maximumAgeTicks ? "ExpiredReadback" : now<latest.SourceTicks ? "FutureSource"
+-                : !latest.IsStatic && now-latest.SourceTicks>maximumAgeTicks ? "ExpiredSource" : "Delivered";
++                : now<latest.SourceTicks ? "FutureSource" : "Delivered";
+             TraceObserved?.Invoke(new("Consumer",reason,now,latest?.SourceTicks ?? 0,latest?.EndTicks ?? 0,Generation:generation));
+             if(reason!="Delivered") return false;
++            // The request generation is the freshness authority. Window movement,
++            // foreground changes, resume and geometry changes all clear or replace the
++            // current generation before a reader can receive the old pixels. WGC is
++            // allowed to stop emitting frames when a scene is visually static, so wall
++            // clock age alone must not turn a valid desktop sample into the gray basic
++            // background. A failed worker still disposes this state and clears latest.
+             frame=latest!.Acquire(); return true;
+         }
+     }
+diff --git a/src/GlassDesk.UI/Controls/LiquidGlassSurface.cs b/src/GlassDesk.UI/Controls/LiquidGlassSurface.cs
+index 11e5a2106983d3d254273aaf990683bfcb5202c4..d5a40791e1553512eb7e0299665f015e10714715 100644
+--- a/src/GlassDesk.UI/Controls/LiquidGlassSurface.cs
++++ b/src/GlassDesk.UI/Controls/LiquidGlassSurface.cs
+@@ -35,6 +35,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
+     private long _lifecycleGeneration;
+     private long _lastCaptureSequence, _lastCaptureGeneration, _lastCaptureSourceTicks;
+     private long _revealCaptureUntil;
++    private long _relocationHandoffUntil;
+     private int _renderFrameSignals;
+     private readonly TransitionGlassLayer _transitionLayer = new();
+     private readonly TransitionGlassLayer _compatibilityLayer = new();
+@@ -52,6 +53,10 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
+         LiquidGlassDispersionParameters Dispersion, long RecoveryGeneration);
+     private ThemeService? _theme;
+     private double _observedBackgroundClarity = .5;
++    // Compatibility with the specialised Dock panels added by the experimental build.
++    // These panels need a local material/clarity without changing the shared setting.
++    private bool _useFrostedMaterial;
++    private double _backgroundClarityOverride = double.NaN;
+     private double _transitionBlurRadius;
+     private Rect? _panelShape;
+     private double _panelRadius;
+@@ -100,8 +105,35 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
+     public bool UseLaunchpadOptics { get; set; }
+     /// <summary>Selects launcher transparency independently of the shared optical material.</summary>
+     public bool UseLauncherTransparency { get; set; }
++    /// <summary>Uses the frosted material only for this surface.</summary>
++    public bool UseFrostedMaterial
++    {
++        get => _useFrostedMaterial;
++        set
++        {
++            if (_useFrostedMaterial == value) return;
++            _useFrostedMaterial = value;
++            RefreshMaterialOverride();
++        }
++    }
++    /// <summary>Overrides shared transparency only for this surface; NaN follows settings.</summary>
++    public double BackgroundClarityOverride
++    {
++        get => _backgroundClarityOverride;
++        set
++        {
++            if (_backgroundClarityOverride.Equals(value)) return;
++            _backgroundClarityOverride = value;
++            RefreshMaterialOverride();
++        }
++    }
++    private GlassMaterialMode Material => _useFrostedMaterial
++        ? GlassMaterialMode.FrostedGlass
++        : ThemeService.Current?.Appearance.GlassMaterial ?? GlassMaterialMode.AndroidLiquidGlass;
+     private double BackgroundClarity => AndroidLiquidGlassRenderer.NormalizeBackgroundClarity(
+-        UseLauncherTransparency
++        double.IsFinite(_backgroundClarityOverride)
++            ? _backgroundClarityOverride
++            : UseLauncherTransparency
+             ? ThemeService.Current?.Appearance.LauncherGlassTransparency ?? AppearanceSettings.DefaultLauncherGlassTransparency
+             : ThemeService.Current?.Appearance.DockGlassTransparency ?? AppearanceSettings.DefaultDockGlassTransparency);
+     public GlassBackdropSource BackdropSource { get; private set; }
+@@ -123,6 +155,11 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
+     /// <summary>Stable capture rectangle in owner-window DIPs when the surface is visually transformed.</summary>
+     public Rect? CaptureBoundsInWindow { get; set; }
+ 
++    private void RefreshMaterialOverride()
++    {
++        if (IsLoaded) OnAppearanceChanged(this, EventArgs.Empty);
++    }
++
+     /// <summary>Capture the full animation path; only the shared live geometry masks it.</summary>
+     public void SetContainerTransitionBounds(Rect? bounds)
+     {
+@@ -248,6 +285,16 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
+         InvalidateVisual();
+     }
+ 
++    /// <summary>
++    /// Keeps the completed material visible while this surface moves on screen.
++    /// Its first destination frame replaces it; the handoff is strictly bounded.
++    /// </summary>
++    public void BeginRelocationHandoff()
++    {
++        if (_performanceSleeping || _frame is null && _transitionBackdrop is null) return;
++        _relocationHandoffUntil = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 3 / 4;
++    }
++
+     /// <summary>A fully clipped panel must reacquire content, even when foreign HWNDs are unchanged.</summary>
+     public void RetireConcealedMaterial()
+     {
+@@ -259,7 +306,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
+         _transitionBackdrop = null; _transitionBackdropScene = null;
+         _compatibilityBackdrop = null; _compatibilityStamp = null;
+         _compatibilityIsDesktopSnapshot = false; _compatibilityScene = null;
+-        _handoffStarted = _materialRetentionUntil = _revealCaptureUntil = 0;
++        _handoffStarted = _materialRetentionUntil = _revealCaptureUntil = _relocationHandoffUntil = 0;
+         _wallpaperCancellation?.Cancel(); _wallpaperCancellation = null;
+         _wallpaperPreparationPending = false;
+         _background.Suspend(); _timer.Stop(); StopRenderClock(); CancelQueuedRefresh();
+@@ -288,7 +335,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
+             _timer.Stop(); StopRenderClock(); CancelQueuedRefresh();
+             _optics = new(); _androidGlass = new();
+             _opticalFrameTimestamps.Clear(); _opticalRefreshRate = 0;
+-            _handoffStarted = 0;
++            _handoffStarted = _relocationHandoffUntil = 0;
+             // Deep sleep reacquires the current desktop on the next reveal. Retaining
+             // a hidden full-size texture also retains WPF's shader input resources.
+             _frame = null; _frameScene = null;
+@@ -444,7 +491,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
+         var weightParameters = LiquidGlassDebugState.WeightParameters;
+         var lodParameters = LiquidGlassDebugState.LodParameters;
+         var debugView = LiquidGlassDebugState.View;
+-        var material = ThemeService.Current?.Appearance.GlassMaterial ?? GlassMaterialMode.AndroidLiquidGlass;
++        var material = Material;
+         var dark = ThemeService.Current?.IsDark != false;
+         var backgroundClarity = BackgroundClarity;
+         var useAndroidGlass = (material is GlassMaterialMode.AndroidLiquidGlass or GlassMaterialMode.FrostedGlass)
+@@ -630,7 +677,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
+             }
+             _lastOpticsMilliseconds = result.Milliseconds;
+             if (!_compatibilityIsDesktopSnapshot || _compatibilityScene?.Equals(_backdropScene) == true)
+-                _materialRetentionUntil = 0;
++                _materialRetentionUntil = _relocationHandoffUntil = 0;
+             _frameUsesAndroidGlass = useAndroidGlass;
+             _materialStamp = ReadMaterialStamp();
+             _opticalFrameTimestamps.Enqueue(Stopwatch.GetTimestamp());
+@@ -780,7 +827,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
+             dc.Pop(); return;
+         }
+         var compatibleChrome = debugView == LiquidGlassDebugView.None && (_frameUsesAndroidGlass
+-            || _frame is null && (ThemeService.Current?.Appearance.GlassMaterial ?? GlassMaterialMode.AndroidLiquidGlass)
++            || _frame is null && Material
+                 is GlassMaterialMode.AndroidLiquidGlass or GlassMaterialMode.FrostedGlass);
+         var opticalFrameMatches = _frame is not null && _sampledGlassPanelBounds == rect
+             && _sampledGlassPanelRadius == radius;
+@@ -907,11 +954,11 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
+             && _transitionBackdrop is not null && _transitionBackdropBounds.Contains(panel)
+             && LiquidGlassDebugState.View == LiquidGlassDebugView.None
+             && ThemeService.Current?.UseOpaquePanels != true
+-            && (ThemeService.Current?.Appearance.GlassMaterial ?? GlassMaterialMode.AndroidLiquidGlass)
++            && Material
+                 is GlassMaterialMode.AndroidLiquidGlass or GlassMaterialMode.FrostedGlass;
+         _transitionLayer.SetBackdrop(enabled ? _transitionBackdrop : null);
+         _transitionLayer.Opacity = enabled ? 1 : 0;
+-        var frosted = ThemeService.Current?.Appearance.GlassMaterial == GlassMaterialMode.FrostedGlass;
++        var frosted = Material == GlassMaterialMode.FrostedGlass;
+         if (enabled) _transitionLayer.SetPanel(panel, _transitionBackdropBounds, radius, .6 + .4 * _transitionProgress, UseLaunchpadOptics, frosted);
+         var liveReady = !_background.RequiresBasicBackground && (enabled || opticalMatches);
+         var needsCompatibility = ThemeService.Current?.UseOpaquePanels != true
+@@ -964,13 +1011,16 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
+             origin = owner.PointToScreen(new Point()); dpi = VisualTreeHelper.GetDpi(owner);
+         }
+         return new(origin, _transitionCaptureBounds ?? CaptureBoundsInWindow ?? new Rect(RenderSize),
+-            dpi, ThemeService.Current?.Appearance.GlassMaterial ?? GlassMaterialMode.AndroidLiquidGlass,
++            dpi, Material,
+             ThemeService.Current?.IsDark != false, BackgroundClarity, UseLaunchpadOptics,
+             LiquidGlassDebugState.SamplingParameters, LiquidGlassDebugState.WeightParameters, LiquidGlassDebugState.LodParameters,
+             LiquidGlassDebugState.FinishingParameters, LiquidGlassDebugState.BrdfParameters,
+             LiquidGlassDebugState.DispersionParameters, GlassDesk.UI.BackdropRecovery.Generation);
+     }
+ 
++    private static bool MatchesExceptOrigin(MaterialStamp left, MaterialStamp right)
++        => left with { Origin = right.Origin } == right;
++
+     private void PrepareCompatibleMaterial(Size size)
+     {
+         var stamp = ReadMaterialStamp();
+@@ -1211,6 +1261,10 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
+         var queryStarted = Stopwatch.GetTimestamp();
+         var scene = ReadBackdropScene();
+         var stamp = ReadMaterialStamp();
++        var now = Stopwatch.GetTimestamp();
++        var relocationHandoff = _relocationHandoffUntil > now
++            && _materialStamp is not null
++            && MatchesExceptOrigin(_materialStamp, stamp);
+         _maximumSceneQueryMilliseconds = Math.Max(_maximumSceneQueryMilliseconds,
+             Stopwatch.GetElapsedTime(queryStarted).TotalMilliseconds);
+         var snapshotDiscarded = false;
+@@ -1232,9 +1286,13 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
+         }
+         if ((_frame is not null || _transitionBackdrop is not null) && _materialStamp is not null && _materialStamp != stamp)
+         {
+-            RecordMaterialRetirement("MaterialStampChanged");
+-            _frame = null; _frameScene = null; _transitionBackdrop = null; _transitionBackdropScene = null;
+-            _worker.Invalidate(); _lastSource = null; _handoffStarted = 0;
++            if (!relocationHandoff)
++            {
++                RecordMaterialRetirement("MaterialStampChanged");
++                _frame = null; _frameScene = null; _transitionBackdrop = null; _transitionBackdropScene = null;
++                _worker.Invalidate(); _lastSource = null; _handoffStarted = 0;
++                _relocationHandoffUntil = 0;
++            }
+         }
+         if (_frame is not null) _frameScene ??= _backdropScene;
+         if (_transitionBackdrop is not null) _transitionBackdropScene ??= _backdropScene;
+@@ -1262,6 +1320,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
+         var discarded = false;
+         bool Reusable(GlassBackdropScene? materialScene)
+         {
++            if (relocationHandoff) return true;
+             if (scene is null) return false;
+             if (scene.Equals(materialScene)) return true;
+             var visibleHandoff = Window.GetWindow(this)?.IsVisible == true && IsVisible
+diff --git a/tests/GlassDesk.Dock.Tests/StaticBackdropTests.cs b/tests/GlassDesk.Dock.Tests/StaticBackdropTests.cs
+index a75502623a1f82afbcff2a169556e73396a9d52a..7abb1a883cc90f2ef337fa58f93fbd0f49cfb598 100644
+--- a/tests/GlassDesk.Dock.Tests/StaticBackdropTests.cs
++++ b/tests/GlassDesk.Dock.Tests/StaticBackdropTests.cs
+@@ -4,6 +4,21 @@ namespace GlassDesk.Dock.Tests;
+ 
+ public sealed class StaticBackdropTests
+ {
++    [Fact]
++    public void ValidatedLivePixelsRemainAvailableUntilTheSceneGenerationChanges()
++    {
++        using var state = new LatestBackdropState();
++        var request = state.Request(new(0, 0, 2, 2), 2, 2);
++        var frame = new BackdropFrame(request, 1, 100, 110, new byte[16], 100);
++        Assert.True(state.Publish(frame));
++
++        Assert.True(state.TryRead(10000, 120, out var reused));
++        reused?.Dispose();
++
++        state.InvalidateScene();
++        Assert.False(state.TryRead(10001, 120, out _));
++    }
++
+     [Fact]
+     public void ValidatedStaticPixelsKeepTheirSourceTimeAndExpireAtSceneBoundaries()
+     {
+diff --git a/tests/GlassDesk.Dock.Tests/StatusBarWindowTests.cs b/tests/GlassDesk.Dock.Tests/StatusBarWindowTests.cs
+new file mode 100644
+index 0000000000000000000000000000000000000000..0ffd7d1f6d401ecd3b36d6913ad99474878cfd7b
+--- /dev/null
++++ b/tests/GlassDesk.Dock.Tests/StatusBarWindowTests.cs
+@@ -0,0 +1,139 @@
++using System.IO;
++using System.Windows.Controls;
++using GlassDesk.Platform;
++
++namespace GlassDesk.Dock.Tests;
++
++public sealed class StatusBarWindowTests
++{
++    [Fact]
++    public void SystemSnapshotReturnsBoundedValues()
++    {
++        var snapshot = SystemStatusReader.Read();
++        if (snapshot.BatteryPercent is { } battery) Assert.InRange(battery, 0, 100);
++        if (snapshot.VolumePercent is { } volume) Assert.InRange(volume, 0, 100);
++        Assert.False(string.IsNullOrWhiteSpace(snapshot.NetworkLabel));
++
++        var first = SystemStatusReader.ReadPerformance();
++        Thread.Sleep(20);
++        var performance = SystemStatusReader.ReadPerformance();
++        if (first.CpuPercent is { } firstCpu) Assert.InRange(firstCpu, 0, 100);
++        if (performance.CpuPercent is { } cpu) Assert.InRange(cpu, 0, 100);
++        if (performance.MemoryPercent is { } memory) Assert.InRange(memory, 0, 100);
++        var fanRpm = FanSpeedReader.ReadRpm();
++        if (fanRpm is { } rpm) Assert.True(FanSpeedReader.IsPlausibleRpm(rpm));
++        Assert.False(FanSpeedReader.IsPlausibleRpm(0));
++        Assert.False(FanSpeedReader.IsPlausibleRpm(99));
++        Assert.False(FanSpeedReader.IsPlausibleRpm(30_001));
++    }
++
++    [Fact]
++    public void FanHelperSnapshotRequiresFreshPlausibleData()
++    {
++        var now = DateTimeOffset.UtcNow;
++        var path = Path.GetTempFileName();
++        try
++        {
++            File.WriteAllText(path, $$"""{"version":1,"timestampUtc":"{{now:o}}","rpm":12300}""");
++            Assert.Equal(12_300, FanSpeedReader.ReadHelperRpm(path, now));
++
++            Assert.Null(FanSpeedReader.ReadHelperRpm(path, now.AddMinutes(1)));
++            File.WriteAllText(path, $$"""{"version":1,"timestampUtc":"{{now:o}}","rpm":90000}""");
++            Assert.Null(FanSpeedReader.ReadHelperRpm(path, now));
++        }
++        finally
++        {
++            File.Delete(path);
++        }
++    }
++
++    [Fact]
++    public void StatusWindowBuildsSevenCoreFieldsAndOptionalFanField()
++    {
++        StaTest.Run(() =>
++        {
++            var window = new StatusBarWindow();
++            try
++            {
++                Assert.IsType<TextBlock>(window.FindName("TimeText"));
++                Assert.IsType<TextBlock>(window.FindName("DateText"));
++                Assert.IsType<TextBlock>(window.FindName("BatteryText"));
++                Assert.IsType<TextBlock>(window.FindName("NetworkText"));
++                Assert.IsType<TextBlock>(window.FindName("VolumeText"));
++                Assert.IsType<TextBlock>(window.FindName("CpuText"));
++                Assert.IsType<TextBlock>(window.FindName("MemoryText"));
++                Assert.IsType<TextBlock>(window.FindName("FanText"));
++                Assert.IsType<StackPanel>(window.FindName("FanPanel"));
++                Assert.Equal(System.Windows.Visibility.Collapsed,
++                    ((StackPanel)window.FindName("FanPanel")).Visibility);
++            }
++            finally
++            {
++                window.Close();
++            }
++        });
++    }
++
++    [Fact]
++    public void GlassCompanionWindowsBuildTheirInteractiveControls()
++    {
++        StaTest.Run(() =>
++        {
++            var controlCenter = new ControlCenterWindow();
++            var datePanel = new DateNotificationWindow();
++            var media = new MediaCapsuleWindow();
++            try
++            {
++                Assert.IsType<Slider>(controlCenter.FindName("VolumeSlider"));
++                Assert.IsType<Button>(controlCenter.FindName("WifiButton"));
++                Assert.IsType<Button>(controlCenter.FindName("BluetoothButton"));
++                Assert.IsType<ListBox>(controlCenter.FindName("SelectorList"));
++                Assert.IsType<Calendar>(datePanel.FindName("MonthCalendar"));
++                Assert.IsType<TextBlock>(media.FindName("TitleText"));
++                Assert.IsType<Button>(media.FindName("PlayPauseButton"));
++                Assert.IsType<Button>(media.FindName("SideRevealButton"));
++                Assert.IsType<Button>(media.FindName("ManualCollapseButton"));
++            }
++            finally
++            {
++                controlCenter.Close();
++                datePanel.Close();
++                media.Close();
++            }
++        });
++    }
++
++    [Fact]
++    public async Task DevicePickersReturnSafeSnapshots()
++    {
++        var networks = await WifiNetworkController.ScanAndGetAvailableNetworksAsync()
++            .WaitAsync(TimeSpan.FromSeconds(10));
++        Assert.Equal(networks.Count, networks.Select(network => network.Name)
++            .Distinct(StringComparer.OrdinalIgnoreCase).Count());
++        foreach (var network in networks)
++        {
++            Assert.False(string.IsNullOrWhiteSpace(network.Name));
++            Assert.InRange(network.SignalQuality, 0, 100);
++        }
++
++        var devices = await BluetoothDeviceReader.GetPairedDevicesAsync()
++            .WaitAsync(TimeSpan.FromSeconds(10));
++        foreach (var device in devices)
++        {
++            Assert.False(string.IsNullOrWhiteSpace(device.Name));
++            Assert.True(device.IsPaired);
++        }
++    }
++
++    [Fact]
++    public async Task MediaReaderSupportsSystemSessionsOrActiveAudioFallback()
++    {
++        using var controller = new MediaSessionController();
++        var media = await controller.ReadAsync().WaitAsync(TimeSpan.FromSeconds(10));
++        Assert.False(string.IsNullOrWhiteSpace(controller.LastDiagnostic));
++        if (!media.Available) return;
++        Assert.False(string.IsNullOrWhiteSpace(media.Title));
++        Assert.False(string.IsNullOrWhiteSpace(media.Artist));
++        Assert.True(media.CanTogglePlayPause);
++    }
++}
+diff --git a/tests/GlassDesk.Dock.Tests/Windows11BackdropCompatibilityTests.cs b/tests/GlassDesk.Dock.Tests/Windows11BackdropCompatibilityTests.cs
+index 0ed84a6021e6f4823e43648eb8c1cdbde702ac9a..b14b63d2f2784f3d233f0c73649710a582b619a5 100644
+--- a/tests/GlassDesk.Dock.Tests/Windows11BackdropCompatibilityTests.cs
++++ b/tests/GlassDesk.Dock.Tests/Windows11BackdropCompatibilityTests.cs
+@@ -10,6 +10,39 @@ namespace GlassDesk.Dock.Tests;
+ 
+ public sealed class Windows11BackdropCompatibilityTests(ITestOutputHelper output)
+ {
++    [Fact]
++    public void OwnWindowExclusionChangesDoNotAdvanceTheForeignSceneRevision()
++    {
++        StaTest.Run(() =>
++        {
++            SetThreadDpiAwarenessContext(-4);
++            using var capture = new SharedDesktopSceneCapture(new(300, 200, 240, 160),
++                isolatedParentProcess: Environment.ProcessId);
++            var revision = capture.SceneRevision;
++            var own = new Window
++            {
++                Left = 330,
++                Top = 230,
++                Width = 120,
++                Height = 80,
++                ShowInTaskbar = false,
++                WindowStyle = WindowStyle.None,
++            };
++            try
++            {
++                own.Show();
++                Assert.False(capture.UpdateExclusions());
++                Assert.Equal(revision, capture.SceneRevision);
++            }
++            finally
++            {
++                own.Close();
++            }
++            Assert.False(capture.UpdateExclusions());
++            Assert.Equal(revision, capture.SceneRevision);
++        });
++    }
++
+     [Fact]
+     public void SharedCarrierIsExcludedFromTaskSwitchingWhileLiveCaptureKeepsUpdating()
+     {
+diff --git a/tools/FanSensor.ps1 b/tools/FanSensor.ps1
+new file mode 100644
+index 0000000000000000000000000000000000000000..8896dedd119f5c9a175f7128938aeeadabc3dade
+--- /dev/null
++++ b/tools/FanSensor.ps1
+@@ -0,0 +1,74 @@
++param(
++    [switch] $Once
++)
++
++$ErrorActionPreference = 'Stop'
++$sensorDirectory = Join-Path $env:ProgramData 'GlassDesk\FanSensor'
++$statusPath = Join-Path $sensorDirectory 'fan-status.json'
++$temporaryPath = Join-Path $sensorDirectory 'fan-status.tmp.json'
++New-Item -ItemType Directory -Path $sensorDirectory -Force | Out-Null
++
++$deviceIds = @(
++    [uint32]0x00110013, # CPU fan
++    [uint32]0x00110014, # GPU fan
++    [uint32]0x00110031  # Middle fan
++)
++
++function Write-FanSnapshot {
++    param(
++        $Rpm,
++        [bool] $Supported,
++        [string] $Source,
++        [string] $ErrorMessage
++    )
++
++    [ordered]@{
++        version = 1
++        timestampUtc = [DateTimeOffset]::UtcNow.ToString('o')
++        rpm = $Rpm
++        supported = $Supported
++        source = $Source
++        error = $ErrorMessage
++    } | ConvertTo-Json -Compress | Set-Content -LiteralPath $temporaryPath -Encoding UTF8
++    Move-Item -LiteralPath $temporaryPath -Destination $statusPath -Force
++}
++
++function Read-AsusFanRpm {
++    $instance = Get-CimInstance -Namespace 'root/wmi' -ClassName 'AsusAtkWmi_WMNB' -OperationTimeoutSec 3
++    $bestRpm = $null
++    $supported = $false
++
++    foreach ($deviceId in $deviceIds) {
++        $result = Invoke-CimMethod -InputObject $instance -MethodName 'DSTS' -Arguments @{
++            Device_ID = $deviceId
++        } -OperationTimeoutSec 3
++        $status = [uint32]$result.device_status
++        if ($status -eq 4294967294) { continue }
++
++        $rawSpeed = [int]($status -band 0xffff)
++        $isPresent = ($status -band [uint32]0x00010000) -ne 0
++        if (-not $isPresent -and $rawSpeed -eq 0) { continue }
++
++        $supported = $true
++        $rpm = $rawSpeed * 100
++        if ($rpm -ge 100 -and $rpm -le 30000) {
++            if ($null -eq $bestRpm -or $rpm -gt $bestRpm) { $bestRpm = $rpm }
++        }
++    }
++
++    return [pscustomobject]@{ Rpm = $bestRpm; Supported = $supported }
++}
++
++Write-FanSnapshot -Rpm $null -Supported $false -Source 'starting' -ErrorMessage $null
++
++do {
++    try {
++        $reading = Read-AsusFanRpm
++        Write-FanSnapshot -Rpm $reading.Rpm -Supported $reading.Supported -Source 'asus-wmi-dsts' -ErrorMessage $null
++    }
++    catch {
++        Write-FanSnapshot -Rpm $null -Supported $false -Source 'asus-wmi-dsts' -ErrorMessage $_.Exception.Message
++    }
++
++    if (-not $Once) { Start-Sleep -Seconds 4 }
++} while (-not $Once)
+diff --git a/tools/Install-FanSensor.cmd b/tools/Install-FanSensor.cmd
+new file mode 100644
+index 0000000000000000000000000000000000000000..1c03593e8158480d9e3b2a65c36386db9cae9c5d
+--- /dev/null
++++ b/tools/Install-FanSensor.cmd
+@@ -0,0 +1,16 @@
++@echo off
++net session >nul 2>&1
++if errorlevel 1 (
++    powershell.exe -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
++    exit /b
++)
++
++powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Install-FanSensor.ps1"
++echo.
++if errorlevel 1 (
++    echo Installation failed. Send the error text to Codex.
++    pause
++    exit /b 1
++)
++echo GlassDesk Fan Sensor installed and started successfully.
++pause
+diff --git a/tools/Install-FanSensor.ps1 b/tools/Install-FanSensor.ps1
+new file mode 100644
+index 0000000000000000000000000000000000000000..c3742b312fce8e7e4686f23134bab8cc65afa927
+--- /dev/null
++++ b/tools/Install-FanSensor.ps1
+@@ -0,0 +1,45 @@
++$ErrorActionPreference = 'Stop'
++
++$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
++$principal = [Security.Principal.WindowsPrincipal]::new($identity)
++if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
++    throw 'Administrator privileges are required.'
++}
++
++$sourcePath = Join-Path $PSScriptRoot 'FanSensor.ps1'
++$installDirectory = Join-Path $env:LOCALAPPDATA 'GlassDesk\FanSensor'
++$installedScript = Join-Path $installDirectory 'FanSensor.ps1'
++$statusPath = Join-Path $env:ProgramData 'GlassDesk\FanSensor\fan-status.json'
++New-Item -ItemType Directory -Path $installDirectory -Force | Out-Null
++Copy-Item -LiteralPath $sourcePath -Destination $installedScript -Force
++
++$powerShellPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
++$actionArguments = "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$installedScript`""
++$action = New-ScheduledTaskAction -Execute $powerShellPath -Argument $actionArguments
++$trigger = New-ScheduledTaskTrigger -AtLogOn -User $identity.Name
++$taskPrincipal = New-ScheduledTaskPrincipal -UserId $identity.Name -LogonType Interactive -RunLevel Highest
++$settings = New-ScheduledTaskSettingsSet `
++    -AllowStartIfOnBatteries `
++    -DontStopIfGoingOnBatteries `
++    -Hidden `
++    -ExecutionTimeLimit ([TimeSpan]::Zero) `
++    -RestartCount 3 `
++    -RestartInterval ([TimeSpan]::FromMinutes(1))
++
++$task = New-ScheduledTask -Action $action -Trigger $trigger -Principal $taskPrincipal -Settings $settings
++Register-ScheduledTask -TaskName 'GlassDesk Fan Sensor' -InputObject $task -Force | Out-Null
++Start-ScheduledTask -TaskName 'GlassDesk Fan Sensor'
++
++$deadline = [DateTimeOffset]::UtcNow.AddSeconds(12)
++do {
++    Start-Sleep -Milliseconds 300
++    if (Test-Path -LiteralPath $statusPath) {
++        $status = Get-Content -LiteralPath $statusPath -Raw | ConvertFrom-Json
++        if ($status.version -eq 1 -and $status.timestampUtc) {
++            Write-Host "GlassDesk Fan Sensor installed. Current reading: $($status.rpm) RPM"
++            exit 0
++        }
++    }
++} while ([DateTimeOffset]::UtcNow -lt $deadline)
++
++throw 'The scheduled task was created, but no sensor snapshot was produced.'

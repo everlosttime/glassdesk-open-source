@@ -1,4 +1,3 @@
-// Public 1.6.0 adaptation: information-bar-specific implementation is excluded.
 using System.Globalization;
 using System.Text;
 using System.Windows;
@@ -63,13 +62,14 @@ public partial class SettingsWindow : GlassWindow
             _loadingAppearanceControls = false;
         }
 
-        _sectionHeadings = [AppearanceSectionHeading, DockSectionHeading, LauncherSectionHeading,
+        _sectionHeadings = [AppearanceSectionHeading, DockSectionHeading, InformationBarSectionHeading, LauncherSectionHeading,
             ShortcutsSectionHeading, PerformanceSectionHeading, NaiwaSectionHeading, NearbySectionHeading, BackupSectionHeading,
             SponsorshipSectionHeading, AboutSectionHeading];
         PlannedPages =
         [
             "外观",
             "Dock",
+            "信息栏",
             "启动台",
             "快捷操作",
             "性能",
@@ -81,6 +81,7 @@ public partial class SettingsWindow : GlassWindow
         ];
         ResetPageButton.IsEnabled = false;
         LoadSponsorshipCodes();
+        InitializeStatusBarSecondaryControls();
     }
 
     private void OnSettingsWindowLoaded(object sender, RoutedEventArgs e) => SyncCategoryFromScroll();
@@ -203,8 +204,14 @@ public partial class SettingsWindow : GlassWindow
             var dock = current.Dock;
             DockDisplayModeCombo.SelectedIndex = dock.AutoHide ? 1 : 0;
             ShowLauncherEntryCheckBox.IsChecked = dock.ShowLauncherEntry;
+            ShowStatusBarCheckBox.IsChecked = dock.ShowStatusBar;
+            ShowStatusBarNetworkSpeedCheckBox.IsChecked = dock.ShowStatusBarNetworkSpeed;
+            LoadStatusBarSecondaryControls();
             ShowThisPcEntryCheckBox.IsChecked = dock.ShowThisPcEntry;
             ShowDesktopIconsEntryCheckBox.IsChecked = dock.ShowDesktopIconsEntry;
+            StatusBarEdgeCombo.SelectedIndex = (int)dock.StatusBarEdge;
+            StatusBarScaleSlider.Value = dock.StatusBarSizeScale;
+            StatusBarScaleReadout.Text = $"{dock.StatusBarSizeScale:P0} · {380 * dock.StatusBarSizeScale:0} × {54 * dock.StatusBarSizeScale:0} DIP";
             DockScaleSlider.Value = dock.SizeScale;
             DockScaleReadout.Text = $"{dock.SizeScale:P0} · 图标 {48 * dock.SizeScale:0} DIP";
             DockPlacementCombo.SelectedIndex = (int)dock.Placement;
@@ -214,6 +221,11 @@ public partial class SettingsWindow : GlassWindow
             var availableWidthDip = display is null
                 ? DockSettings.MaximumFrameLengthDip
                 : display.ToDips((int)display.WorkArea.Width) - 32;
+            StatusBarOffsetXSlider.Minimum = Math.Max(-10000, Math.Min(0,
+                380 * dock.StatusBarSizeScale + 18 - (availableWidthDip + 32)));
+            StatusBarOffsetXSlider.Value = Math.Clamp(dock.StatusBarOffsetX,
+                StatusBarOffsetXSlider.Minimum, StatusBarOffsetXSlider.Maximum);
+            StatusBarOffsetXReadout.Text = $"{dock.StatusBarOffsetX:0} DIP";
             var maximum = Math.Min(DockSettings.MaximumFrameLengthDip, Math.Max(64, (dock.Placement is DockPlacement.LeftCenter or DockPlacement.RightCenter) && display is not null
                 ? display.ToDips((int)display.WorkArea.Height) - 32 : availableWidthDip));
             var entryCount = (dock.ShowLauncherEntry ? 1 : 0) + (dock.ShowThisPcEntry ? 1 : 0)
@@ -368,9 +380,13 @@ public partial class SettingsWindow : GlassWindow
     private void OnDockControlChanged(object sender, RoutedEventArgs e)
     {
         if (_loadingDockControls || _dataStore is null || DockPlacementCombo.SelectedIndex < 0
+            || StatusBarEdgeCombo.SelectedIndex < 0
             || DockDisplayModeCombo.SelectedIndex < 0) return;
         if (_dockValuesOutOfRange) { LoadDockControls(); return; }
-        var status = DockSettingsStatus;
+        var status = ReferenceEquals(sender, ShowStatusBarCheckBox) || ReferenceEquals(sender, StatusBarEdgeCombo)
+            || ReferenceEquals(sender, ShowStatusBarNetworkSpeedCheckBox)
+            || ReferenceEquals(sender, StatusBarScaleSlider) || ReferenceEquals(sender, StatusBarOffsetXSlider)
+            ? InformationBarSettingsStatus : DockSettingsStatus;
 
         var current = _dataStore.Settings.Current;
         var previousDock = current.Dock;
@@ -379,10 +395,9 @@ public partial class SettingsWindow : GlassWindow
         {
             SizeScale = DockScaleSlider.Value,
             ShowLauncherEntry = ShowLauncherEntryCheckBox.IsChecked == true,
-            ShowStatusBar = previousDock.ShowStatusBar,
-            ShowStatusBarNetworkSpeed = previousDock.ShowStatusBarNetworkSpeed,
-            CalendarShowLunar = previousDock.CalendarShowLunar,
-            StatusBarSecondaryItems = previousDock.StatusBarSecondaryItems.ToArray(),
+            ShowStatusBar = ShowStatusBarCheckBox.IsChecked == true,
+            ShowStatusBarNetworkSpeed = ShowStatusBarNetworkSpeedCheckBox.IsChecked == true,
+            StatusBarSecondaryItems = StatusBarSecondaryItemCatalog.Normalize(previousDock.StatusBarSecondaryItems),
             StatusBarMouseDeviceKey = previousDock.StatusBarMouseDeviceKey,
             StatusBarHeadsetDeviceKey = previousDock.StatusBarHeadsetDeviceKey,
             StatusBarKeyboardDeviceKey = previousDock.StatusBarKeyboardDeviceKey,
@@ -402,10 +417,11 @@ public partial class SettingsWindow : GlassWindow
             Placement = (DockPlacement)DockPlacementCombo.SelectedIndex,
             OffsetX = DockOffsetXSlider.Value,
             OffsetY = DockOffsetYSlider.Value,
-            StatusBarEdge = previousDock.StatusBarEdge,
-            StatusBarSizeScale = previousDock.StatusBarSizeScale,
-            StatusBarOffsetX = previousDock.StatusBarOffsetX,
-            StatusBarOffsetY = previousDock.StatusBarOffsetY,
+            StatusBarEdge = (StatusBarEdge)StatusBarEdgeCombo.SelectedIndex,
+            StatusBarSizeScale = StatusBarScaleSlider.Value,
+            StatusBarOffsetX = ReferenceEquals(sender, StatusBarOffsetXSlider)
+                ? StatusBarOffsetXSlider.Value : previousDock.StatusBarOffsetX,
+            StatusBarOffsetY = 0,
             AutoHide = DockDisplayModeCombo.SelectedIndex == 1,
             AutoHideLeaveDelayMs = previousDock.AutoHideLeaveDelayMs,
             EdgeRevealEnabled = false,
@@ -438,7 +454,7 @@ public partial class SettingsWindow : GlassWindow
                 ? $"固定外框：{DockFrameLengthSlider.Value:0} DIP"
                 : "当前随图标内容自动调整；拖动滑块后固定外框长度。";
             LoadDockControls();
-            status.Text = $"已保存；Dock {next.SizeScale:P0}。";
+            status.Text = $"已保存；Dock {next.SizeScale:P0}，信息栏 {next.StatusBarSizeScale:P0}。";
         }
         catch (Exception ex)
         {

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>x64</PlatformTarget>
+    <ApplicationManifest>../../src/GlassDesk.App/app.manifest</ApplicationManifest>
+    <NativeRenderingDll Condition="'$(NativeRenderingDll)' == ''">$(MSBuildProjectDirectory)/../../artifacts/native-rendering/GlassDesk.Rendering.Native.dll</NativeRenderingDll>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../capture-release-probe/MonitorCaptureReference.cs" Link="Diagnostics/MonitorCaptureReference.cs" />
+    <ProjectReference Include="../../src/GlassDesk.Rendering/GlassDesk.Rendering.csproj" />
+    <ProjectReference Include="../../src/GlassDesk.UI/GlassDesk.UI.csproj" />
+    <Content Include="$(NativeRenderingDll)" Link="GlassDesk.Rendering.Native.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../LICENSE" Link="LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../NOTICE" Link="NOTICE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../docs/third-party/dotnet-10.0.12/*" Link="licenses/dotnet/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../docs/third-party/android-liquid-glass/*" Link="licenses/android-liquid-glass/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../docs/third-party/unicode-license-v3.txt" Link="licenses/unicode-license-v3.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../docs/third-party/windows-sdk-license-en-us.txt" Link="licenses/windows-sdk-license-en-us.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="RequireNativeCore" BeforeTargets="Build">
+    <Error Condition="!Exists('$(NativeRenderingDll)')" Text="Build the native core with build/Build-NativeRendering.ps1 before the probe." />
+  </Target>
+</Project>
