@@ -190,13 +190,26 @@ public static class AppEntryFactory
 
     private static (AppEntry?, ImportFailureReason, string) CreateFromInternetShortcut(ImportRequest request, string path)
     {
+        if (new FileInfo(path).Length > InternetShortcutReader.MaximumShortcutBytes)
+            return (CreatePlain(request, path, AppItemKind.File), default, string.Empty);
+        var explicitIcon = InternetShortcutReader.ReadIconSource(path);
+        var game = GameShortcutProtocol.Read(path);
+        if (game is not null)
+            return (new AppEntry
+            {
+                Id = AppLibraryStore.NewId(), Kind = AppItemKind.Shortcut, Target = path,
+                DisplayName = ResolveName(request.DisplayName, ItemKindDetector.DeriveDisplayName(path, AppItemKind.Shortcut)),
+                IconSource = explicitIcon ?? path, AutomaticSourceKey = "protocol:" + game,
+            }, default, string.Empty);
         var url = InternetShortcutReader.ReadUrl(path);
 
         if (url is null)
         {
             // 后缀是 .url 但里面没有可用地址——要么文件坏了，要么它其实是别的东西。
             // 退回按普通文件处理比直接失败有用。
-            return (CreatePlain(request, path, AppItemKind.File), default, string.Empty);
+            var file = CreatePlain(request, path, AppItemKind.File);
+            file.IconSource = explicitIcon ?? file.IconSource;
+            return (file, default, string.Empty);
         }
 
         var entry = new AppEntry
@@ -206,8 +219,8 @@ public static class AppEntryFactory
             Target = url,
             DisplayName = ResolveName(request.DisplayName, ItemKindDetector.DeriveDisplayName(path, AppItemKind.Url)),
 
-            // 网页的图标交给外壳按这个地址去取，而不是取那个 .url 文件的图标。
-            IconSource = url,
+            // Preserve the shortcut's explicit icon before asking the shell for a website icon.
+            IconSource = explicitIcon ?? url,
         };
 
         return (entry, default, string.Empty);

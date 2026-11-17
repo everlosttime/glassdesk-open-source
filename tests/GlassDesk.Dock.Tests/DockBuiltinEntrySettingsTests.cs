@@ -96,8 +96,11 @@ public sealed class DockBuiltinEntrySettingsTests
         });
     }
 
-    [Fact]
-    public void ShortFrameSettingMatchesTheSpaceRequiredByEnabledEntries()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(8)]
+    [InlineData(24)]
+    public void ShortFrameSettingMatchesTheSpaceRequiredByEnabledEntries(double spacing)
     {
         StaTest.Run(() =>
         {
@@ -112,6 +115,7 @@ public sealed class DockBuiltinEntrySettingsTests
                 var host = DockSettingsHost.Initialize(Dispatcher.CurrentDispatcher);
                 dock.AttachServices(services, host, () => { });
                 window.AttachDataStore(data, null);
+                Assert.IsType<Slider>(window.FindName("DockSpacingSlider")).Value = spacing;
                 dock.Show();
                 var frame = Assert.IsType<Slider>(window.FindName("DockFrameLengthSlider"));
                 frame.Value = frame.Minimum + 8;

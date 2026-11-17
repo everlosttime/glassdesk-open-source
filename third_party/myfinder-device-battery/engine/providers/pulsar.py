@@ -4,8 +4,9 @@ MyFinder extension: unlisted ATK VID 373B devices may use protocol-family matchi
 (协议族匹配，未实测; level C). Only FF02:0002 with a known output length of exactly
 17 bytes receives the existing power query. N9 headset IDs 1204/1262/12D6 are
 excluded before collection/length probing. FF04/FF05 alone and unknown lengths
-are not sufficient. Exact 373B:1216 uses the separate, descriptor-guarded
-FF05 BITMOUSE reader below; it never enters the legacy FF02/DPI path.
+are not sufficient. Exact official FF04 receiver IDs and FF05 BITMOUSE
+receiver IDs use separate descriptor-guarded battery readers below, without
+probing sibling collections or capturing DPI.
 DPI uses a separate exact allow-list below; the server keeps
 native 373B:1278 excluded. Scyrox 3554:F517, VGN F2 Master+ 3554:FB56 and
 VXE R1 SE 1K 3554:F58E also require FF02:0002 and exactly 17 output bytes;
@@ -205,7 +206,83 @@ PIDS: Dict[int, Dict[int, str]] = {
 }
 
 # Separate from PIDS: that table's listed mice use the legacy CompX protocol.
-NANO_PIDS = {0x373B: {0x1216: "ATK / VXE NANO receiver"}}
+# Exact receiver identities from ATK HUB 3.2.32; see upstream-protocols.md.
+ATK_COMPX_PIDS = {
+    0x3554: {
+        0xF503: "ATK / VXE Mouse 1K Dongle",
+        0xF505: "ATK / VXE Mouse 4K Dongle",
+        0xF50B: "ATK / VXE Mouse 1K Dongle",
+        0xF58A: "ATK / VXE Mouse 1K Dongle",
+        0xF58D: "ATK / VXE Mouse 4K Dongle",
+        0xF58E: "ATK / VXE Mouse 1K Dongle",
+        0xFB12: "VXE Mouse 1K Dongle",
+    },
+    0x373B: {
+        0x101A: "ATK Mouse 1K Dongle",
+        0x101B: "ATK Mouse 8K Dongle",
+        0x1031: "ATK 8K Dongle Light Version",
+        0x1040: "ATK / VXE MAD 8K Dongle",
+        0x104D: "ATK / VXE MAD 1K Dongle",
+        0x1067: "ATK / VXE 2.4G receiver",
+        0x1068: "ATK / VXE 2.4G receiver",
+        0x1069: "ATK / VXE 2.4G receiver",
+        0x106A: "ATK / VXE 2.4G receiver",
+        0x1085: "ATK / VXE Wireless mouse 1k dongle",
+        0x10C9: "ATK / VXE NK Mouse Dongle",
+        0x10CA: "ATK / VXE 2.4G receiver",
+        0x10CB: "ATK / VXE 2.4G receiver",
+        0x10CC: "ATK / VXE 2.4G receiver",
+        0x111A: "ATK / VXE Wireless mouse -8K NANO dongle",
+        0x111B: "ATK / VXE Wireless mouse -8K NANO dongle",
+        0x1159: "ATK 8K Dongle Light Version",
+        0x115E: "ATK / VXE Wireless mouse 8k dongle",
+        0x11A7: "ATK Mouse 8K Dongle",
+        0x11A9: "ATK / VXE Wireless mouse 4k dongle",
+        0x11B3: "ATK / VXE Flow 7",
+        0x11C8: "ATK / VXE Wireless mouse -8K TypeC dongle",
+        0x11CD: "ATK / VXE Wireless mouse -8K TypeC dongle",
+        0x11CE: "ATK / VXE Wireless mouse-8K NANO dongle",
+        0x11D8: "ATK / VXE Wireless mouse 8k dongle-H",
+        0x11D9: "ATK / VXE Wireless mouse 8k dongle-L",
+        0x11F4: "ATK / VXE Wireless mouse -8K TOWER dongle",
+        0x11FD: "ATK / VXE Wireless mouse 8k NANO dongle-L",
+        0x11FE: "ATK / VXE Wireless mouse 8k NANO dongle-L",
+        0x1246: "ATK / VXE Wireless mouse -1K TOWER dongle",
+        0x1279: "ATK / VXE Wireless mouse 8k NANO dongle-L",
+        0x127A: "ATK / VXE Wireless mouse 8k NANO dongle-L",
+        0x12CC: "ATK / VXE Wireless mouse 8k dongle-H",
+        0x12DA: "ATK Wireless Charging dongle",
+        0x12E9: "ATK / VXE Wireless mouse 8k NANO dongle-M",
+        0x1303: "ATK / VXE Wireless mouse 8k dongle-M",
+        0x1342: "ATK Wireless Charging-S dongle",
+    },
+}
+
+NANO_PIDS = {
+    0x373B: {
+        0x1155: "ATK / VXE Wireless mouse 8k dongle-L1",
+        0x11DC: "ATK / VXE NK mouse 8K NANO dongle",
+        0x1216: "ATK / VXE NK mouse NANO dongle",
+        0x124F: "ATK / VXE Wireless mouse 8k dongle-L0",
+        0x1290: "ATK / VXE Wireless mouse 8k dongle-M1",
+        0x1291: "ATK / VXE Wireless mouse 8k NANO dongle-M1",
+        0x12AF: "ATK / VXE Wireless mouse 8k NANO dongle-L",
+        0x12CD: "ATK / VXE Wireless mouse 8k NANO dongle-M1",
+        0x12D1: "ATK / VXE Wireless mouse -8K TOWER dongle",
+        0x12EA: "ATK / VXE Wireless mouse 8k dongle-G",
+        0x12F5: "ATK / VXE Wireless mouse 8k dongle-M1",
+        0x1302: "ATK / VXE Wireless mouse 8k dongle-O",
+        0x1315: "ATK / VXE Wireless mouse 8k NANO dongle-M1",
+        0x1332: "ATK / VXE Wireless mouse 8k dongle-G",
+        0x133E: "ATK / VXE Wireless mouse 8k NANO dongle-A1",
+        0x133F: "ATK / VXE NK mouse NANO dongle",
+        0x1346: "ATK / VXE Wireless mouse 8k dongle-M1",
+        0x1347: "ATK / VXE Wireless mouse 8k NANO dongle-M1",
+        0x1348: "ATK / VXE Wireless mouse 8k NANO dongle-M1",
+        0x134B: "ATK / VXE Wireless mouse 8k dongle",
+        0x1375: "ATK / VXE Wireless mouse 8k dongle-O",
+    },
+}
 
 
 def make_nano_request():
@@ -229,7 +306,7 @@ def parse_nano_reply(reply, report_id):
 
 
 class AtkNanoProvider(BatteryHidProvider):
-    """Private BITMOUSE path owned by PulsarProvider; no CompX fallbacks.
+    """Official BITMOUSE receivers owned by PulsarProvider; no CompX fallbacks.
 
     The upstream listener ignores input reportId. Require a sole proven input
     byte-array report instead of assuming that its ID equals output report 08.
@@ -264,6 +341,45 @@ class AtkNanoProvider(BatteryHidProvider):
 
     def parse_reply(self, reply):
         return parse_nano_reply(reply, self.input_id)
+
+
+class AtkCompxReceiverProvider(BatteryHidProvider):
+    """FF04 receivers only. FF02-only devices retain their existing reader.
+
+    A matching FF04 collection reserves this physical receiver even if its
+    descriptor is invalid: do not fall back to a sibling collection or DPI.
+    No initialization, pairing, model query or configuration is sent.
+    """
+    name = "pulsar"
+    collection = (0xFF04, 0x0002)
+    input_id = output_id = 8
+    input_bounds = (17, 17)
+    output_bytes = 17
+    kind = "mouse"
+    charging_known = True
+
+    def __init__(self, vid):
+        super().__init__()
+        self.vid = vid
+        self.pids = ATK_COMPX_PIDS[vid]
+
+    def _pick(self, infos):
+        info = super()._pick(infos)
+        if info is not None and info.get("input_report_sizes") != {"8": 17}:
+            self._diag.append("ATK receiver requires sole input report 8/17: nothing sent")
+            return None
+        return info
+
+    @staticmethod
+    def make_request():
+        return make_request()
+
+    @staticmethod
+    def parse_reply(reply):
+        if len(reply) != 17 or list(reply) == make_request() or reply[7] not in (0, 1):
+            return None
+        parsed = parse_link8k_power(reply)
+        return (parsed[0], parsed[1], "") if parsed is not None else None
 
 
 # Exact IDs with strict descriptor guards, including the maintainer-tested F505.
@@ -668,7 +784,16 @@ class PulsarProvider(Provider):
             except Exception as e:  # pragma: no cover
                 log.warning("hid.enumerate(%04x): %s", vid, e)
                 continue
-            if vid == 0x373B and any(d.get("product_id") == 0x1216 for d in infos):
+            # Only official FF04 receiver IDs use this additional path. The
+            # existing FF02 behavior stays in place when FF04 is absent.
+            compx_reserved = {(d.get("product_id"), d.get("physical_id", "")) for d in infos
+                              if d.get("product_id") in ATK_COMPX_PIDS.get(vid, {})
+                              and (d.get("usage_page"), d.get("usage")) == (0xFF04, 2)}
+            if compx_reserved:
+                compx = AtkCompxReceiverProvider(vid)
+                out.extend(compx.poll())
+                self._diag.extend(compx.diagnostics())
+            if vid in NANO_PIDS and any(d.get("product_id") in NANO_PIDS[vid] for d in infos):
                 nano = AtkNanoProvider()
                 out.extend(nano.poll())
                 self._diag.extend(nano.diagnostics())
@@ -676,12 +801,13 @@ class PulsarProvider(Provider):
             if vid == 0x373B:
                 candidates += sorted({d["product_id"] for d in infos if d["product_id"] not in pids})
             for pid in candidates:
-                if vid == 0x373B and pid == 0x1216:
-                    continue  # Never fall back to CompX, even if NANO proof fails.
+                if pid in NANO_PIDS.get(vid, {}):
+                    continue  # Never probe sibling collections after exact selection.
                 if vid == 0x373B and pid in ATK_HEADSET_PIDS:
                     self._diag.append(f"  ATK {vid:04x}:{pid:04x} headset reserved: nothing sent")
                     continue
-                mine = [d for d in infos if d["product_id"] == pid]
+                mine = [d for d in infos if d["product_id"] == pid
+                        and (pid, d.get("physical_id", "")) not in compx_reserved]
                 if not mine:
                     continue
                 key = f"pulsar:{vid:04x}{pid:04x}"

@@ -10,10 +10,22 @@ internal sealed partial class AppHost
 {
     private int _maintenanceStarted;
 
-    private void OnSettingsUserDataDeletionRequested(object? sender, EventArgs e)
+    private async void OnSettingsUserDataDeletionRequested(object? sender, EventArgs e)
     {
         if (Interlocked.Exchange(ref _maintenanceStarted, 1) != 0)
         {
+            return;
+        }
+
+        _deferredCommandGate.Close();
+        _shuttingDown = true;
+        _settings?.PrepareForUserDataMaintenance();
+        StopLauncherOrganization();
+        try { if (_services is not null) await _services.DesktopDiscovery.StopAsync(); }
+        catch (Exception error)
+        {
+            MessageBox.Show("未能停止桌面自动添加任务，未删除数据。请重启 GlassDesk 后重试。\n\n" + error.Message,
+                "GlassDesk 数据未删除", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
@@ -34,6 +46,7 @@ internal sealed partial class AppHost
             },
             stopServices: () =>
             {
+                DisposeLauncherAutoOrganization();
                 StopNaiwa();
                 DisposeNearbyUi();
                 _services?.Dispose();
@@ -46,6 +59,7 @@ internal sealed partial class AppHost
             },
             releaseDataLease: () =>
             {
+                StopLibraryCommandBroker();
                 _userDataLease?.Dispose();
                 _userDataLease = null;
             },

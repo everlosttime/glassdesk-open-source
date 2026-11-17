@@ -22,6 +22,8 @@ public sealed class DockSettings
 {
     public const double FixedIconSize = 48;
     public const double FixedIconSpacing = 8;
+    public const double MinimumIconSpacing = 0;
+    public const double MaximumIconSpacing = 24;
     public const double FixedMagnificationPeak = 1.15;
     public const double MinimumFrameLengthDip = 180;
     public const double MaximumFrameLengthDip = 10000;
@@ -81,7 +83,7 @@ public sealed class DockSettings
     /// <summary>图标边长，单位为 DIP。</summary>
     public double IconSize { get; set; } = FixedIconSize;
 
-    /// <summary>图标之间的间隙，单位为 DIP。</summary>
+    /// <summary>图标之间的基础间隙，单位为 DIP；显示时随整体尺寸倍率缩放。</summary>
     public double IconSpacing { get; set; } = FixedIconSpacing;
 
     /// <summary>光标处的放大峰值，以 <see cref="IconSize"/> 为基准的倍数。</summary>

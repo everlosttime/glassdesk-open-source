@@ -39,7 +39,8 @@ public partial class LauncherWindow
         var groups = _workspace.Layout.FilterGroups;
         if (!_settings.GroupModeEnabled || !groups.Any(group => group.Id == _activeFilterGroupId))
             _activeFilterGroupId = null;
-        FilterGroupBar.Visibility = _settings.GroupModeEnabled && groups.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        FilterGroupBar.Visibility = _settings.GroupModeEnabled && (groups.Count > 0 || _workspace.Layout.DisabledAutomaticCategoryIds.Count > 0)
+            ? Visibility.Visible : Visibility.Collapsed;
         var key = (_services.Layouts.LauncherVersion, _settings.GroupModeEnabled);
         if (_filterButtonsKey != key)
         {
@@ -63,6 +64,7 @@ public partial class LauncherWindow
                 chip.ContextMenu = menu;
                 FilterGroupButtons.Children.Add(chip);
             }
+            AddRestoreAutomaticCategoriesButton();
             _filterButtonsKey = key;
         }
         RefreshFilterSelection();
@@ -86,6 +88,7 @@ public partial class LauncherWindow
 
     private void AddFilterGroupMenuOnOpen(ContextMenu menu, string itemId)
     {
+        AddAutomaticClassificationMenuOnOpen(menu, itemId);
         var insertAt = menu.Items.Count;
         MenuItem? submenu = null;
         menu.Opened += (_, _) =>

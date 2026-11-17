@@ -39,7 +39,7 @@ TABLES = {
     "hyperx_cloud3s": ("PIDS",), "jbl": ("PIDS",),
     "keychron": ("PIDS",), "lamzu": ("PIDS",), "lofree": ("DONGLES",),
     "logitech": ("HEADSETS",), "logitech_centurion": ("PIDS",),
-    "mchose": ("A5_PIDS",), "mchose_headset": ("PIDS",), "nzxt": ("PIDS",), "pulsar": ("PIDS", "NANO_PIDS"),
+    "mchose": ("A5_PIDS",), "mchose_headset": ("PIDS",), "nzxt": ("PIDS",), "pulsar": ("PIDS", "NANO_PIDS", "ATK_COMPX_PIDS"),
     "mchose_qhw_keyboard": ("PIDS",), "mchose_glw_keyboard": ("PIDS",),
     "mchose_by_keyboard": ("PIDS",),
     "moondrop": ("PIDS",),
@@ -166,7 +166,7 @@ def build_index(root=None, *, engine_root=None):
             keyboard_ids = ({word(source.literal(key)) for key, _ in source.table("KEYBOARD_INTERFACE")}
                             if module == "razer" and "KEYBOARD_INTERFACE" in source.values else set())
             for table in TABLES.get(module, ()):
-                if module == "pulsar" and table == "NANO_PIDS" and table not in source.values:
+                if module == "pulsar" and table in ("NANO_PIDS", "ATK_COMPX_PIDS") and table not in source.values:
                     continue  # Older external snapshots predate the BITMOUSE reader.
                 # Each table has an explicit VID relation, not a cross product.
                 if module in ("mchose_headset", "mchose_by_keyboard", "vgn_beiying"):

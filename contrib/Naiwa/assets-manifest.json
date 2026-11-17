@@ -1,0 +1,98 @@
+{
+  "version": "2.5.1",
+  "source": "https://github.com/LIN4RUN/naiwa-desktop-pet/releases/tag/v2.5.1",
+  "archiveName": "naiwa-pet-v2.5.1-portable.zip",
+  "archiveSha256": "4529f445e6b75f3f39a50c338ef54e6bbddb620db9772ca025fd88597e10b13b",
+  "files": [
+    {
+      "name": "素材.nwp",
+      "length": 71285488,
+      "sha256": "36829fd6ce89bc2661fa44f3633bbcbb0857ad8e3da4b345278cf280bff170d1"
+    },
+    {
+      "name": "idle_gif.nwp",
+      "length": 52034989,
+      "sha256": "d3e64be390eb71961a2d1466c70475a61213583ba6f289071a28dcda9cf3e670"
+    },
+    {
+      "name": "drag.nwp",
+      "length": 39941110,
+      "sha256": "f2d18ca5e29df8827c284f58e8626d26523ac74467b37046cb44d608c508df2d"
+    },
+    {
+      "name": "dance.mp3",
+      "length": 19179822,
+      "sha256": "c83d2530db9a029ed255d9663399b8808182000fc116b5d7236eaab989a8d245"
+    },
+    {
+      "name": "dance.nwp",
+      "length": 3365574,
+      "sha256": "b793f542ab732c921f9d17ba565a7dda0c4d20dc0d35b1ec5c8d14adcd97d0a1"
+    },
+    {
+      "name": "eye_art.nwp",
+      "length": 51816,
+      "sha256": "dc2fbcbadd4dedcdae3b41db3f473b922591f090f4a31a77244ab51de697b992"
+    },
+    {
+      "name": "fat.nwp",
+      "length": 208931,
+      "sha256": "52a03ace5b60ef2ae5a6e06650dfce2224dc9074f0dc71f130b5109afcb4eb40"
+    },
+    {
+      "name": "feed.nwp",
+      "length": 189647,
+      "sha256": "2c27b6f6c0aa1a0c827a2e4a061eaa6076131e59c6b136bc44ee20528d4496e0"
+    },
+    {
+      "name": "head.nwp",
+      "length": 171426,
+      "sha256": "c1e804fe4e21cc3f2d9095264182cf26a543fc6e845c17510fa3d9c3f9bcf6a4"
+    },
+    {
+      "name": "hold.nwp",
+      "length": 185657,
+      "sha256": "5eb6d4802995dcfaeb7556337e343af04f129f79991fac0ed7af8778bed5bd22"
+    },
+    {
+      "name": "hunger.nwp",
+      "length": 198824,
+      "sha256": "c420da046026b5141510d1d3251c7c85d8772f8bcce3026bf43f663cfbf6bfdc"
+    },
+    {
+      "name": "rest.nwp",
+      "length": 5296660,
+      "sha256": "67724ebfe52d31c2370d1d3f550b72a207d45d3d8741feae027deb7291f6effc"
+    },
+    {
+      "name": "rest2.nwp",
+      "length": 196122,
+      "sha256": "ee9b85a0bdca30f6a6f699e0002013c950ee0cf465751a64d0a948449c905166"
+    },
+    {
+      "name": "sad.nwp",
+      "length": 260601,
+      "sha256": "b80318ef30ea20eb602314e7b3251f3cb7d41ca237ea1da94f9ae369069b55f3"
+    },
+    {
+      "name": "seq.nwp",
+      "length": 698292,
+      "sha256": "584f71605dbcdd0ff50198612297f0cefc26156c7e505e88cf2e506634f6cada"
+    },
+    {
+      "name": "walk.nwp",
+      "length": 1412086,
+      "sha256": "ac36b6e75aa059d235e190f36f7a2485a6550dd4a0f9ca35d4e3584f32e99114"
+    },
+    {
+      "name": "原版笑声.wav",
+      "length": 549742,
+      "sha256": "5e0f7cf540a46e699a46cb5a72aa2a383f1e3a36d3f8959da0606e9c001c5081"
+    },
+    {
+      "name": "cry.wav",
+      "length": 800078,
+      "sha256": "d36bfd30a908b6b62e56cc9b49214478f3e380da18e934f26576ff475822e77a"
+    }
+  ]
+}

@@ -13,7 +13,7 @@ public sealed class InteractionSettingsTests
     public void MouseChordUsesExistingSaveConflictAndRollbackFlow(string key)
     {
         using var fixture = new Fixture();
-        var binding = new ShortcutSettings { ToggleLauncher = new() { Enabled = true, Key = key }, NextPage = new(), PreviousPage = new(), ToggleGameSleep = new() };
+        var binding = new ShortcutSettings { ToggleLauncher = new() { Enabled = true, Key = key }, NextPage = new(), PreviousPage = new(), ToggleGameSleep = new(), SelectWindowTopmost = new() };
         Assert.Null(fixture.Service.Apply(binding, new()));
         var before = File.ReadAllBytes(fixture.Data.Settings.FilePath);
         using (File.Open(fixture.Data.Settings.FilePath, FileMode.Open, FileAccess.Read, FileShare.None))
@@ -68,7 +68,7 @@ public sealed class InteractionSettingsTests
         using var fixture = new Fixture();
         Assert.Null(fixture.Service.Apply(Bound("Q"), new()));
         var id = fixture.Registry.Items.Single().Key;
-        var next = new ShortcutSettings { HideLauncher = Bound("Q").ToggleLauncher, NextPage = new(), PreviousPage = new(), ToggleGameSleep = new() };
+        var next = new ShortcutSettings { HideLauncher = Bound("Q").ToggleLauncher, NextPage = new(), PreviousPage = new(), ToggleGameSleep = new(), SelectWindowTopmost = new() };
         Assert.Null(fixture.Service.Apply(next, new()));
         Assert.Equal(InputAction.HideLauncher, fixture.Service.ResolveAction(id));
         fixture.Service.Dispose();
@@ -79,7 +79,7 @@ public sealed class InteractionSettingsTests
     public void GameSleepUsesConflictRollbackRebindingAndClearFlow()
     {
         using var fixture = new Fixture();
-        var shortcuts = new ShortcutSettings { NextPage = new(), PreviousPage = new() };
+        var shortcuts = new ShortcutSettings { NextPage = new(), PreviousPage = new(), SelectWindowTopmost = new() };
         Assert.Null(fixture.Service.Apply(shortcuts, new()));
         var original = Assert.Single(fixture.Registry.Items);
         Assert.Equal(new HotkeyChord(3, 71), original.Value);
@@ -103,7 +103,7 @@ public sealed class InteractionSettingsTests
         Assert.False(reload.Current.Shortcuts.ToggleGameSleep.Enabled);
     }
 
-    private static ShortcutSettings Bound(string key) => new() { ToggleLauncher = new() { Enabled = true, Control = true, Alt = true, Key = key }, NextPage = new(), PreviousPage = new(), ToggleGameSleep = new() };
+    private static ShortcutSettings Bound(string key) => new() { ToggleLauncher = new() { Enabled = true, Control = true, Alt = true, Key = key }, NextPage = new(), PreviousPage = new(), ToggleGameSleep = new(), SelectWindowTopmost = new() };
     private sealed class Registry : IHotkeyRegistry
     {
         public readonly Dictionary<int, HotkeyChord> Items = [];

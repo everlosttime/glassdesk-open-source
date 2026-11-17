@@ -28,6 +28,27 @@ public sealed class AppPaths
     /// <summary>产品数据目录的绝对路径。</summary>
     public string RootDirectory { get; }
 
+    public const string ManagedShortcutsSubdirectory = "managed-shortcuts";
+    public string ManagedShortcutsDirectory => Path.Combine(RootDirectory, ManagedShortcutsSubdirectory);
+    public string DesktopSyncFile => Path.Combine(RootDirectory, "desktop-sync.json");
+
+    public static string? RebaseManagedShortcut(string? value, string dataRoot)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return value;
+        return string.Equals(Path.GetFileName(Path.GetDirectoryName(value)), ManagedShortcutsSubdirectory, StringComparison.OrdinalIgnoreCase)
+            ? Path.Combine(dataRoot, ManagedShortcutsSubdirectory, Path.GetFileName(value)) : value;
+    }
+
+    public static IReadOnlyList<string> ManagedShortcutRelativePaths(string root)
+    {
+        var directory = Path.Combine(root, ManagedShortcutsSubdirectory);
+        if (!Directory.Exists(directory) || (File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0) return [];
+        return Directory.GetFiles(directory).Where(file =>
+            (File.GetAttributes(file) & FileAttributes.ReparsePoint) == 0
+            && Path.GetExtension(file).ToLowerInvariant() is ".lnk" or ".url")
+            .Select(file => Path.Combine(ManagedShortcutsSubdirectory, Path.GetFileName(file))).ToArray();
+    }
+
     public string SettingsFile => Path.Combine(RootDirectory, "settings.json");
 
     public string AppLibraryFile => Path.Combine(RootDirectory, "apps.json");
@@ -119,6 +140,7 @@ public sealed class AppPaths
         "apps.json",
         "dock-layout.json",
         "launcher-layout.json",
+        "desktop-sync.json",
     ];
 
     /// <summary>

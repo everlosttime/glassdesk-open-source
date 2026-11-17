@@ -47,6 +47,9 @@ public sealed class AppEntry
     /// </remarks>
     public string? AppUserModelId { get; set; }
 
+    /// <summary>Stable launch identity of an automatically discovered desktop shortcut.</summary>
+    public string? AutomaticSourceKey { get; set; }
+
     /// <summary>
     /// 原始图标的来源，例如可执行文件路径或 shell 图标位置。
     /// 保留它是为了在缓存被清空后能重新提取图标。

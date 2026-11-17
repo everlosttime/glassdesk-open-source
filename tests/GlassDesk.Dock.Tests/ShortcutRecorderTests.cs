@@ -94,6 +94,53 @@ public sealed class ShortcutRecorderTests
     }
 
     [Fact]
+    public void WindowTopmostRecorderRetainsTheBindingWhenOtherShortcutsAreEdited()
+    {
+        StaTest.Run(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "GlassDesk-topmost-recorder-" + Guid.NewGuid().ToString("N"));
+            var data = new GlassDeskDataStore(new AppPaths(root));
+            data.LoadAll();
+            var window = new SettingsWindow();
+            try
+            {
+                window.AttachDataStore(data, null);
+                window.InteractionSettingsApply = (shortcuts, display) =>
+                {
+                    data.Settings.Current.Shortcuts = shortcuts;
+                    data.Settings.Save();
+                    return null;
+                };
+                var recorder = Assert.IsType<ShortcutRecorder>(window.FindName("SelectWindowTopmostHotkeyBox"));
+                Assert.Equal("Ctrl+Alt+T", recorder.Text);
+                recorder.BeginRecording();
+                recorder.CaptureKey(Key.F9, ModifierKeys.None);
+                var other = Assert.IsType<ShortcutRecorder>(window.FindName("ToggleLauncherHotkeyBox"));
+                other.BeginRecording(); other.CaptureKey(Key.F4, ModifierKeys.None);
+                var reload = new SettingsStore(data.Settings.FilePath);
+                reload.Load();
+                Assert.Equal("F9", reload.Current.Shortcuts.SelectWindowTopmost.Describe());
+
+                window.InteractionSettingsApply = (_, _) => "快捷键已被占用";
+                recorder.BeginRecording(); recorder.CaptureKey(Key.F10, ModifierKeys.None);
+                Assert.Equal("F9", recorder.Text);
+
+                window.InteractionSettingsApply = (shortcuts, display) =>
+                {
+                    data.Settings.Current.Shortcuts = shortcuts;
+                    data.Settings.Save();
+                    return null;
+                };
+                recorder.BeginRecording(); recorder.CaptureKey(Key.Delete, ModifierKeys.None);
+                other.BeginRecording(); other.CaptureKey(Key.F5, ModifierKeys.None);
+                reload.Load();
+                Assert.False(reload.Current.Shortcuts.SelectWindowTopmost.Enabled);
+            }
+            finally { window.Close(); Directory.Delete(root, true); }
+        });
+    }
+
+    [Fact]
     public void GameSleepRecorderLoadsDefaultAndRetainsChangesWhenOtherShortcutsAreEdited()
     {
         StaTest.Run(() =>

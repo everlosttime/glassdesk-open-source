@@ -40,6 +40,14 @@ public sealed class LauncherWorkspace
         var draft = session.IsGroupMode
             ? LauncherFilterRules.ApplyProjection(Layout, session.Draft, session.FilterGroupId, session.Capacity)
             : session.Draft;
+        var remaining = LauncherLayoutRules.AppIds(draft).ToHashSet(StringComparer.Ordinal);
+        var removed = LauncherLayoutRules.AppIds(Layout).Where(id => !remaining.Contains(id)).ToArray();
+        foreach (var id in removed)
+        {
+            if (_host.Library.Find(id) is not { } entry) continue;
+            var key = LauncherAutoOrganizationService.GetLogicalKey(entry);
+            if (!draft.SuppressedAutoAddKeys.Contains(key, StringComparer.Ordinal)) draft.SuppressedAutoAddKeys.Add(key);
+        }
         return _host.Layouts.CommitLauncher(draft, session.LayoutVersion);
     }
 }

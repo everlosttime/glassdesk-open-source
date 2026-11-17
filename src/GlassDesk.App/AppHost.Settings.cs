@@ -22,7 +22,14 @@ internal sealed partial class AppHost
             window.AttachDataStore(data,_loadReport);
             window.AttachStartupRegistration(new StartupRegistration(),Environment.ProcessPath??string.Empty);
             window.AttachInstallation(new InstallationLocator().Inspect(Environment.ProcessPath??string.Empty));
-            window.LauncherSettingsChanged+=(_,settings)=>_launcher?.ApplySettings(settings);
+            window.LauncherSettingsChanged+=(_,settings)=>
+            {
+                _launcher?.ApplySettings(settings);
+                ReconcileLauncherAutoOrganization();
+            };
+            window.EnableDesktopAutoAddAsync=EnableDesktopAutoAddAsync;
+            window.OrganizeLauncherAppsAsync=OrganizeExistingLauncherAppsAsync;
+            window.ScanDesktopAppsAsync=ScanDesktopAppsAsync;
             window.PerformanceSettingsChanged+=OnPerformanceSettingsChanged;
             window.InteractionSettingsApply=ApplyInteractionSettings;
             window.DesktopIconsRead=()=>_interaction?.ReadDesktopIcons();
@@ -37,8 +44,8 @@ internal sealed partial class AppHost
             if (_interactionStatus is { } status) window.ShowInteractionStatus(status);
             window.NearbySettingsApply=ApplyNearbySettingsAsync;
             window.OpenNearbyPanel=()=>ShowNearbyPanel(null);
-            window.BeforeDataRestore=StopNearbyForRestoreAsync;
-            window.AfterDataRestoreFailure=ResumeNearbyAfterFailedRestoreAsync;
+            window.BeforeDataRestore=StopBackgroundServicesForRestoreAsync;
+            window.AfterDataRestoreFailure=ResumeBackgroundServicesAfterFailedRestoreAsync;
             if (_services is not null) window.UpdateNearbyStatus(NearbyStatusText());
             window.OnboardingRequested+=OnOnboardingRequested;
             BindSettingsUpdates(window);

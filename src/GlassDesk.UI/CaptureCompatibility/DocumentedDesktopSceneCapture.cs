@@ -232,7 +232,10 @@ internal sealed class DocumentedDesktopSceneCapture : IDesktopSceneCapture
             {
                 _liveWallpaper = scanned; _liveHost = liveHost;
                 _liveSurface?.Dispose(); _liveSurface = null; _livePixels = null;
-                _trace?.Invoke(new("Wallpaper", scanned == 0 ? "StaticOnly" : "LiveWindow", Stopwatch.GetTimestamp()));
+                var name = new System.Text.StringBuilder(64);
+                if (scanned != 0) GetClassNameW(scanned, name, name.Capacity);
+                _trace?.Invoke(new("Wallpaper", scanned == 0 ? "StaticOnly" : "LiveWindow", Stopwatch.GetTimestamp(),
+                    WindowHandle: scanned, WindowClass: name.ToString()));
             }
             _nextWallpaperScanTicks = Stopwatch.GetTimestamp() + Stopwatch.Frequency;
         }
@@ -318,12 +321,17 @@ internal sealed class DocumentedDesktopSceneCapture : IDesktopSceneCapture
             return true;
         };
         EnumWindows(hosts, 0);
-        // DX11 renderers can return empty PrintWindow pixels. An internal
-        // WorkerW composites the renderer without the outer desktop's owned bars.
+        // DX11 renderers can return black PrintWindow pixels even on success.
+        // Capture their composing WorkerW instead. Some Windows 11 layouts use
+        // the enumerated top-level host itself rather than a nested WorkerW.
+        // Only reject the actual Shell/bars owner, whose pixels include
+        // the bars; a separate wallpaper host is safe at either hierarchy depth.
         if (!_requireVerifiedWallpaper && best != 0)
         {
             var parent = GetParent(best);
-            if (parent != 0 && parent != bestHost && IsDesktopHost(parent) && IsChild(bestHost, parent))
+            if (parent != 0 && parent != _desktopWindow()
+                && parent != GlassDesk.Platform.DesktopWindowAttachment.FindDesktopHost()
+                && IsDesktopHost(parent) && (parent == bestHost || IsChild(bestHost, parent)))
                 best = parent;
         }
         host = bestHost;

@@ -41,3 +41,15 @@ MCHOSE V9 PRO subsequently returned90% (state02) both through an opt-in read-onl
 Queries run serially at 60-second intervals plus debounced device changes. HID operations have bounded waits and cancel/reap overlapped operations before releasing their buffers. Provider timeouts reject late results and prevent overlap with an unfinished request. HeadsetControl child queries have a 10-second deadline and terminate on cancellation. Readings older than two minutes are unavailable. Disconnects and stale values never become artificial 0% readings.
 
 Selected item settings survive unrelated Dock edits and failed saves. Manual device bindings stay bound offline; automatic selection retains a connected choice and prefers the default audio endpoint for headsets. Receiver slots are distinct devices; generic Windows receiver placeholders are suppressed when slot readings exist.
+
+## ATK receiver expansion — 2026-11-12
+
+The isolated engine covers 44 exact official FF04:0002 receiver identities and 21 FF05:0001 receiver identities from ATK HUB 3.2.32. These count receiver IDs, not individually validated mouse models. The native 373B:1278 adapter and FF02-only receiver paths retain their behavior. New reads require the eligible collection and per-report descriptor proof. FF05 charging remains unknown. All added identities remain verification C pending hardware testing. See [the evidence record](evidence/atk-receivers-20261112.md) and adjacent JSON for the protocol rules, source hashes and exact receiver IDs.
+
+## MCHOSE expansion — 2026-11-13
+
+G87 41E4:2001 now selects its descriptor-proven FF02:0002 BY channel; the feature-only FF04 sibling is not a telemetry channel. The connected G87 returned 100%, matching M HUB, and the user confirmed 100% in the installed information bar. Only the current full-battery state is verified.
+
+The existing 18-name BY keyboard identification table remains model-gated. V3 mouse coverage now includes 19 exact USB identities (17 added), including shared receivers, without treating those IDs as individual models. Existing V2/RealTek, G7, A5 and ATK paths are retained. Four new wireless headset identities cover V9 Turbo, X9, V9 PRO 2 and R9; shared 291D:385D names cover V9, V9 PRO, S9 PRO and G9 PRO. New headset/V3 identities have protocol evidence and offline fixtures, not local hardware confirmation. Wired-only devices and docks without battery telemetry are excluded.
+
+See [source facts and hardware acceptance](evidence/mchose-battery-20261113.md) and its JSON manifest for exact IDs, protocol rules and remaining limits. This does not establish support for every MCHOSE model or firmware.

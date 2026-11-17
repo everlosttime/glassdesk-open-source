@@ -29,6 +29,7 @@ public sealed class AppEntryEditor(AppLibraryStore library, AppPaths paths, Acti
             Id = old.Id, DisplayName = name, Kind = old.Kind, Target = old.Target,
             Arguments = old.Arguments, WorkingDirectory = old.WorkingDirectory,
             AppUserModelId = old.AppUserModelId, IconSource = old.IconSource,
+            AutomaticSourceKey = old.AutomaticSourceKey,
             CustomIconPath = staged ?? old.CustomIconPath,
             SearchAliases = filteredAliases, PinyinIndex = null, PinyinInitials = null,
             IsTargetMissing = old.IsTargetMissing, AddedAtUtc = old.AddedAtUtc,

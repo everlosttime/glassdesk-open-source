@@ -249,7 +249,7 @@ public sealed class Windows10DesktopBackgroundTests
         return frame;
     }
 
-    private sealed class ForeignWindows : IDisposable
+    internal sealed class ForeignWindows : IDisposable
     {
         private readonly string _root = Path.Combine(Path.GetTempPath(), "GlassDesk-wallpaper-" + Guid.NewGuid().ToString("N"));
         private readonly Process _process;

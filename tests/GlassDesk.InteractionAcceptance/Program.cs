@@ -35,6 +35,10 @@ internal static class Program
     private static int Main(string[] args)
     {
         if (GlassDesk.UI.BackdropCaptureWorker.RunIfRequested(args, out var workerExit)) return workerExit;
+        if (args is ["--window-topmost-host-probe", var topmostReport])
+            return WindowTopmostHostProbe.Run(topmostReport);
+        if (args is ["--window-topmost-target", var topmostMarker])
+            return WindowTopmostHostProbe.RunTarget(topmostMarker);
         Cases.Clear();
         Screenshots.Clear();
         _failed = 0;

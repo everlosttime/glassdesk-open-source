@@ -11,6 +11,7 @@ using GlassDesk.Dock;
 using GlassDesk.Platform.Displays;
 using GlassDesk.Settings;
 using GlassDesk.UI.Theming;
+using GlassDesk.UI.Controls;
 
 internal static partial class Program
 {
@@ -27,7 +28,7 @@ internal static partial class Program
         var observations = new List<object>();
         foreach (var name in new[] { "center", "devices", "calendar" })
         {
-            Window window = name == "center" ? center : name == "devices" ? picker : calendar;
+            GlassWindow window = name == "center" ? center : name == "devices" ? picker : calendar;
             if (name == "center") center.ShowNear(anchor);
             else if (name == "devices")
             {
@@ -37,19 +38,19 @@ internal static partial class Program
             else calendar.ShowNear(anchor);
             var content = (FrameworkElement)window.FindName("PopupContent");
             var shift = (TranslateTransform)content.RenderTransform;
-            var initialOpacity = window.Opacity;
+            var initialOpacity = window.PresentationOpacity;
             var watch = Stopwatch.StartNew();
             var values = new List<double>();
             while (watch.ElapsedMilliseconds < 350)
             {
-                values.Add(window.Opacity);
-                observations.Add(new { name, milliseconds = watch.Elapsed.TotalMilliseconds, opacity = window.Opacity, offsetY = shift.Y });
+                values.Add(window.PresentationOpacity);
+                observations.Add(new { name, milliseconds = watch.Elapsed.TotalMilliseconds, opacity = window.PresentationOpacity, offsetY = shift.Y });
                 Pump(TimeSpan.FromMilliseconds(16));
             }
             var reversals = values.Zip(values.Skip(1)).Count(pair => pair.Second < pair.First - .001);
             Check(name + "平滑淡入到完整状态", "status/popover-animation",
-                (!SystemParameters.ClientAreaAnimation || initialOpacity < 1) && window.Opacity == 1 && shift.Y == 0 && reversals == 0 && !window.HasAnimatedProperties,
-                "initial fade, monotonic to opacity 1 / offset 0, no retained clock", $"initial={initialOpacity:F3},opacity={window.Opacity},Y={shift.Y},reversals={reversals}");
+                (!SystemParameters.ClientAreaAnimation || initialOpacity < 1) && window.PresentationOpacity == 1 && shift.Y == 0 && reversals == 0 && !window.HasAnimatedProperties,
+                "initial fade, monotonic to opacity 1 / offset 0, no retained clock", $"initial={initialOpacity:F3},opacity={window.PresentationOpacity},Y={shift.Y},reversals={reversals}");
             Capture(window, Path.Combine(evidence, name + "-settled.png"));
             window.Hide(); center.Hide();
         }
@@ -65,14 +66,14 @@ internal static partial class Program
         Check("重新启用立即生效并保存", "status/setting-on", bar.IsVisible && reload.Current.Dock.ShowStatusBar, "visible and saved true", $"{bar.IsVisible}/{reload.Current.Dock.ShowStatusBar}");
         ThemeService.Current.Update(new AppearanceSettings { ReduceMotion = true });
         center.ShowNear(anchor);
-        Check("减少动画时直接显示", "status/reduced-motion", center.Opacity == 1 && !center.HasAnimatedProperties, "complete without animation", center.Opacity.ToString());
+        Check("减少动画时直接显示", "status/reduced-motion", center.PresentationOpacity == 1 && !center.HasAnimatedProperties, "complete without animation", center.PresentationOpacity.ToString());
         center.Hide();
         settings.Show(); settings.Activate();
-        ((ListBox)settings.FindName("SettingsPageList")).SelectedIndex = 1;
+        ((ListBox)settings.FindName("SettingsPageList")).SelectedIndex = 2;
         Pump(TimeSpan.FromMilliseconds(500));
         var scroll = (ScrollViewer)settings.FindName("SettingsScroll");
         var position = check.TranslatePoint(new Point(), scroll);
-        Check("Dock 设置入口中能直接看到信息栏开关", "status/setting-discoverable", position.Y >= 0 && position.Y + check.ActualHeight <= scroll.ActualHeight,
+        Check("信息栏设置入口中能直接看到信息栏开关", "status/setting-discoverable", position.Y >= 0 && position.Y + check.ActualHeight <= scroll.ActualHeight,
             "switch inside viewport", $"Y={position.Y:F1},height={scroll.ActualHeight:F1}");
         Capture(settings, Path.Combine(evidence, "settings-information-bar.png"));
         File.WriteAllText(report, JsonSerializer.Serialize(new { success = _failed == 0, cases = Cases, observations,

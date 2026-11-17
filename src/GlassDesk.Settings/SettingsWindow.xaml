@@ -18,6 +18,9 @@
       <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="Controls/SlimScrollBars.xaml"/>
       </ResourceDictionary.MergedDictionaries>
+      <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+        <EventSetter Event="PreviewMouseWheel" Handler="OnSettingsComboPreviewMouseWheel" />
+      </Style>
       <Style x:Key="StatusBarBatteryDeviceItemStyle" TargetType="ComboBoxItem">
         <Setter Property="ToolTip" Value="{Binding Details}" />
       </Style>
@@ -231,6 +234,13 @@
                       SmallChange="0.05" LargeChange="0.1" IsMoveToPointEnabled="True"
                       AutomationProperties.Name="Dock 整体大小" ValueChanged="OnDockControlChanged" />
               <TextBlock x:Name="DockScaleReadout" Margin="0,2,0,6" FontSize="11" AutomationProperties.Name="Dock 整体大小当前值" />
+              <TextBlock Margin="0,12,0,4" Text="图标间距（DIP）" />
+              <Slider x:Name="DockSpacingSlider" Minimum="0" Maximum="24" Value="8"
+                      TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="4"
+                      IsMoveToPointEnabled="True" AutomationProperties.Name="Dock 图标间距"
+                      ValueChanged="OnDockControlChanged" />
+              <TextBlock x:Name="DockSpacingReadout" Margin="0,2,0,6" FontSize="11"
+                         AutomationProperties.Name="Dock 图标间距当前值" />
               <TextBlock Margin="0,12,0,4" Text="外框长度（DIP）" />
               <Slider x:Name="DockFrameLengthSlider" Minimum="180" Maximum="180" TickFrequency="8"
                       AutomationProperties.Name="Dock 外框长度（DIP）"
@@ -357,6 +367,26 @@
               </ComboBox>
               <TextBlock Text="分组模式通过搜索框下方的按钮筛选图标，拖动不会合并文件夹。切换模式会保留原有文件夹和分组。"
                          TextWrapping="Wrap" Opacity="0.65" Margin="0,6,0,8" />
+              <CheckBox x:Name="LauncherAutoAddDesktopCheck" Margin="0,8,0,0" Content="同步桌面项目到启动台"
+                        AutomationProperties.Name="同步桌面项目到启动台"
+                        Checked="OnLauncherAutoAddChanged" Unchecked="OnLauncherAutoAddChanged" />
+              <TextBlock x:Name="LauncherDesktopItemsDescription" Margin="0,4,0,0" TextWrapping="Wrap" Opacity="0.65"
+                         Text="文件夹、文件、图片和快捷方式都会加入。只读取桌面顶层，不展开目录；仅创建启动台入口，不复制原文件。首次开启可选择导入已有项目，或只接收以后新增的项目。" />
+              <TextBlock x:Name="LauncherDesktopSyncDescription" Margin="0,4,0,0" TextWrapping="Wrap" Opacity="0.65"
+                         Text="桌面新增项目自动加入，改名更新入口；桌面删除项目时，同步移除对应的自动管理入口。" />
+              <TextBlock x:Name="LauncherDesktopSyncSafetyDescription" Margin="0,4,0,0" TextWrapping="Wrap" Opacity="0.65"
+                         Text="同步不删除实际文件，不影响单独手动添加的内容。桌面目录不可访问时保留入口，恢复访问后再同步。" />
+              <Button x:Name="LauncherScanDesktopButton" Content="扫描桌面项目…" HorizontalAlignment="Left"
+                      Margin="0,8,0,0" Padding="12,5" Click="OnScanDesktopLauncherApps"
+                      AutomationProperties.Name="扫描桌面项目" />
+              <CheckBox x:Name="LauncherSmartGroupingCheck" Margin="0,8,0,0" Content="新项目按文件类型自动分组"
+                        AutomationProperties.Name="新项目按文件类型自动分组"
+                        Checked="OnLauncherControlChanged" Unchecked="OnLauncherControlChanged" />
+              <TextBlock x:Name="LauncherTypeGroupingDescription" Margin="0,4,0,0" TextWrapping="Wrap" Opacity="0.65"
+                         Text="在分组模式下按文件类型分类；关闭后可手动创建、命名和整理分组，已有手动分组和排列保留。" />
+              <Button x:Name="LauncherOrganizeExistingButton" Content="整理已有项目…" HorizontalAlignment="Left"
+                      Margin="0,8,0,0" Padding="12,5" Click="OnOrganizeExistingLauncherApps"
+                      AutomationProperties.Name="整理已有启动台项目" />
               <CheckBox x:Name="LauncherFocusSearchCheck" Margin="0,8,0,0" Content="打开时聚焦搜索"
                         AutomationProperties.Name="打开时聚焦搜索"
                         Checked="OnLauncherControlChanged" Unchecked="OnLauncherControlChanged" />
@@ -381,6 +411,7 @@
                 <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="切换桌面图标" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleDesktopIconsHelp" HelpTitle="切换桌面图标" Description="显示或隐藏 Windows 桌面上的图标。只改变图标可见性，不会删除文件，也不会移除 Dock 或启动台入口；再次按下即可切换回来。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleDesktopIconsHotkeyBox" AutomationProperties.Name="切换桌面图标快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
                 <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="阻止Dock+信息栏遮挡唤出" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleDockRevealLockHelp" HelpTitle="阻止 Dock 与信息栏遮挡唤出" Description="同时切换 Dock 和信息栏的遮挡唤出锁。锁定后，被窗口覆盖或全屏遮挡时，鼠标靠近边缘也不会将它们唤出；再次按下解除。未被遮挡时仍按原显示设置工作，仅本次运行有效。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleDockRevealLockHotkeyBox" AutomationProperties.Name="阻止Dock+信息栏遮挡唤出快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
                 <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="开关游戏休眠模式" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleGameSleepHelp" HelpTitle="开关游戏休眠模式" Description="手动开启或关闭游戏休眠。开启后隐藏桌面组件并暂停部分背景处理，减少游戏时的干扰；程序仍在运行。再次按下同一快捷键可解除手动休眠，托盘菜单也可切换；若仍有全屏应用，自动休眠可能继续生效。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleGameSleepHotkeyBox" AutomationProperties.Name="开关游戏休眠模式快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
+                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="选择窗口置顶/取消置顶" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="SelectWindowTopmostHelp" HelpTitle="选择窗口置顶/取消置顶" Description="按下后移动鼠标，高亮需要保留在前方的窗口，左键点击即可切换置顶。可分别置顶多个窗口；再次选择同一窗口取消置顶。Esc、右键或再次按快捷键取消选择，退出 GlassDesk 后恢复本次修改的窗口状态。"/></StackPanel><settings:ShortcutRecorder x:Name="SelectWindowTopmostHotkeyBox" AutomationProperties.Name="选择窗口置顶或取消置顶快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
               </UniformGrid>
               <TextBlock x:Name="InteractionSettingsStatus" Margin="0,8,0,14" TextWrapping="Wrap"
                          AutomationProperties.Name="快捷操作设置状态" />

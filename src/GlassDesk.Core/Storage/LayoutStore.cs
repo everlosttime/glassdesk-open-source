@@ -97,6 +97,9 @@ public sealed class LayoutStore
             Launcher.SchemaVersion = lastSaved.SchemaVersion;
             Launcher.FlatOrder = lastSaved.FlatOrder;
             Launcher.FilterGroups = lastSaved.FilterGroups;
+            Launcher.AutoClassifications = lastSaved.AutoClassifications;
+            Launcher.DisabledAutomaticCategoryIds = lastSaved.DisabledAutomaticCategoryIds;
+            Launcher.SuppressedAutoAddKeys = lastSaved.SuppressedAutoAddKeys;
             throw;
         }
     }
@@ -113,6 +116,9 @@ public sealed class LayoutStore
         Launcher.SchemaVersion = committed.SchemaVersion;
         Launcher.FlatOrder = committed.FlatOrder;
         Launcher.FilterGroups = committed.FilterGroups;
+        Launcher.AutoClassifications = committed.AutoClassifications;
+        Launcher.DisabledAutomaticCategoryIds = committed.DisabledAutomaticCategoryIds;
+        Launcher.SuppressedAutoAddKeys = committed.SuppressedAutoAddKeys;
         SaveLauncher();
         return true;
     }

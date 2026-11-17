@@ -22,6 +22,8 @@ internal sealed class InteractionController : IDisposable
     private volatile bool _launcherVisible;
     private volatile bool _canNavigatePages;
 
+    public string? InitializationWarning { get; private set; }
+
     public InteractionController(GlassDeskDataStore data, PrimaryDisplaySession primaryDisplay, nint hwnd, Dispatcher dispatcher,
         Func<InputAction, bool> canExecute, Action<InputAction> execute, Action<string> reportError)
     {
@@ -63,7 +65,11 @@ internal sealed class InteractionController : IDisposable
         shortcuts.MouseSideButtonsEnabled = false;
         var needsDesktop = shortcuts.ToggleDesktopIcons.Enabled;
         if (needsDesktop && !_desktopAvailable) return "当前 Windows 桌面图标状态不可读，已拒绝启用相关动作。";
-        var error = _settings.Apply(shortcuts, display, persist);
+        string? warning = null;
+        var error = persist
+            ? _settings.Apply(shortcuts, display)
+            : _settings.Initialize(shortcuts, display, out warning);
+        if (!persist) InitializationWarning = warning;
         if (error is not null) return error;
         RefreshDisplays();
         return null;
@@ -84,6 +90,7 @@ internal sealed class InteractionController : IDisposable
         InputAction.ToggleDesktopIcons => _desktopAvailable,
         InputAction.ToggleDockRevealLock => true,
         InputAction.ToggleGameSleep => true,
+        InputAction.SelectWindowTopmost => true,
         _ => false,
     };
 
@@ -95,6 +102,8 @@ internal sealed class InteractionController : IDisposable
     }
 
     public bool IsGameSleepHotkey(int id) => _settings.ResolveAction(id) == InputAction.ToggleGameSleep;
+
+    public bool IsWindowTopmostHotkey(int id) => _settings.ResolveAction(id) == InputAction.SelectWindowTopmost;
 
     public bool? ReadDesktopIcons()
     {

@@ -81,10 +81,10 @@ internal sealed class GlassBackgroundLayer : IDisposable
         _compatible = compatible ?? new();
     }
     internal bool RequiresBasicBackground { get; private set; }
-    internal bool UsesTranslucentCaptureFallback => !_useOpaqueCaptureFallback;
-    internal bool MustDiscardUnverifiedMaterial => _usingLiveCapture && !_useOpaqueCaptureFallback
-        && (_desktopOnly ? _desktopOnlyFeed.Failure is not null
-            : _rejectedWallpaper || _compatible.Failure is not null);
+    internal bool UsesTranslucentCaptureFallback => _desktopOnly || !_useOpaqueCaptureFallback;
+    internal bool MustDiscardUnverifiedMaterial => _usingLiveCapture && UsesTranslucentCaptureFallback
+        && (_rejectedWallpaper || (_desktopOnly ? _desktopOnlyFeed.Failure is not null
+            : _compatible.Failure is not null));
     internal object InspectPerformance() => new
     { live = _compatible.InspectPerformance(), wallpaper = _wallpaperFeed.InspectPerformance(),
         desktopOnly = _desktopOnlyFeed.InspectPerformance(), desktopOnlySelected = _desktopOnly };
@@ -107,7 +107,7 @@ internal sealed class GlassBackgroundLayer : IDisposable
         bool desktopOnly = false)
     {
         if (_desktopOnly != desktopOnly) { Suspend(); _desktopOnly = desktopOnly; }
-        _usingLiveCapture=allowDesktop;
+        _usingLiveCapture=allowDesktop || desktopOnly;
         if (GlassDesk.UI.BackdropRecovery.RequiresBasicRendering)
         {
             RequiresBasicBackground = true;
@@ -119,6 +119,18 @@ internal sealed class GlassBackgroundLayer : IDisposable
             RequiresBasicBackground = false;
             if (_desktopOnlyFeed.TryRead(region, width, height, out var desktop) && desktop is not null)
             {
+                // Recovery can supply the Windows wallpaper file/color after live
+                // readback fails. Dynamic wallpaper providers often leave a black
+                // backing image there; it is not the visible desktop. Reject by
+                // provenance, so real black desktop frames remain valid.
+                if (desktop.Source == GlassBackdropSource.Wallpaper)
+                {
+                    desktop.Dispose();
+                    _rejectedWallpaper = true;
+                    LastCaptureTiming = null;
+                    return null;
+                }
+                _rejectedWallpaper = false;
                 LastCaptureTiming = Describe(desktop);
                 return GlassBackgroundFrame.FromCapture(desktop);
             }

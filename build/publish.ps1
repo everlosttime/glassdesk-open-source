@@ -266,6 +266,7 @@ try {
             throw 'Naiwa companion build failed.'
         }
         Copy-Item -LiteralPath (Join-Path $repoRoot 'contrib/Naiwa/LICENSE') -Destination (Join-Path $naiwaOutput 'LICENSE.txt')
+        & (Join-Path $PSScriptRoot 'Copy-NaiwaAssets.ps1') -OutputDirectory $naiwaOutput
     }
 
     & (Join-Path $PSScriptRoot 'Copy-HeadsetControl.ps1') -OutputDirectory $OutputDirectory

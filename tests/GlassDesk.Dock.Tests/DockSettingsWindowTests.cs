@@ -54,7 +54,7 @@ public class DockSettingsWindowTests
     }
 
     [Fact]
-    public void DockSizeControlsAreRemovedAndLegacyMetricsAreLockedOnTheNextChange()
+    public void DockIconSizeAndPeakStayLockedWhileSpacingIsAdjustable()
     {
         StaTest.Run(() =>
         {
@@ -71,7 +71,7 @@ public class DockSettingsWindowTests
                 var window = new SettingsWindow();
                 window.AttachDataStore(data, null);
                 Assert.Null(window.FindName("DockIconSizeSlider"));
-                Assert.Null(window.FindName("DockSpacingSlider"));
+                Assert.Equal(8, Assert.IsType<Slider>(window.FindName("DockSpacingSlider")).Value);
                 Assert.Null(window.FindName("DockPeakSlider"));
                 Assert.Null(window.FindName("DockCornerSlider"));
                 Assert.IsType<Slider>(window.FindName("DockOffsetXSlider")).Value = 25;
@@ -108,7 +108,7 @@ public class DockSettingsWindowTests
                 var notifications = 0;
                 host.Changed += (_, _) => notifications++;
                 Assert.Null(window.FindName("DockIconSizeSlider"));
-                Assert.Null(window.FindName("DockSpacingSlider"));
+                Assert.Equal(8, Assert.IsType<Slider>(window.FindName("DockSpacingSlider")).Value);
                 Assert.Null(window.FindName("DockPeakSlider"));
                 Assert.Null(window.FindName("DockCornerSlider"));
 

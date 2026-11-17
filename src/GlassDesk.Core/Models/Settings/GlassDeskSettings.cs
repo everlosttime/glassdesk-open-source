@@ -74,6 +74,9 @@ public sealed class GlassDeskSettings
         Appearance.NormalizeGlassMaterials();
         Dock.SizeScale = double.IsFinite(Dock.SizeScale)
             ? Math.Clamp(Dock.SizeScale, DockSettings.MinimumSizeScale, DockSettings.MaximumSizeScale) : 1;
+        Dock.IconSpacing = double.IsFinite(Dock.IconSpacing)
+            ? Math.Clamp(Dock.IconSpacing, DockSettings.MinimumIconSpacing, DockSettings.MaximumIconSpacing)
+            : DockSettings.FixedIconSpacing;
         Dock.StatusBarSizeScale = double.IsFinite(Dock.StatusBarSizeScale)
             ? Math.Clamp(Dock.StatusBarSizeScale, DockSettings.MinimumStatusBarSizeScale, DockSettings.MaximumStatusBarSizeScale) : 1;
         Dock.StatusBarOffsetX = double.IsFinite(Dock.StatusBarOffsetX)

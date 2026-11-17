@@ -20,6 +20,53 @@ namespace GlassDesk.Dock.Tests;
 
 public sealed class LauncherGroupModeTests
 {
+    [Fact]
+    public void SmartCategoryMenuReplacesOwnedMembershipAndKeepsManualGroups()
+    {
+        StaTest.Run(() =>
+        {
+            using var f = new Fixture(); AddSortingGroups(f);
+            var classified = LauncherAutoGroupingRules.ApplyClassification(f.Host.Layouts.Launcher, "a0", new("development", "known app"));
+            Assert.True(f.Host.Layouts.CommitLauncher(classified, f.Host.Layouts.LauncherVersion));
+            Call(f.Window, "RenderTiles", false, false);
+            var tile = f.Grid.Children.OfType<Button>().Single(item => Equals(item.Tag, "a0"));
+            var menu = tile.ContextMenu!;
+            menu.RaiseEvent(new RoutedEventArgs(ContextMenu.OpenedEvent));
+            var smart = Assert.Single(menu.Items.OfType<MenuItem>(), item => Equals(item.Header, "调整智能分类"));
+            var office = Assert.Single(smart.Items.OfType<MenuItem>(), item => Equals(item.Header, "Word"));
+            office.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            menu.RaiseEvent(new RoutedEventArgs(ContextMenu.ClosedEvent));
+
+            var reloaded = new GlassDeskDataStore(f.Data.Paths); reloaded.LoadAll();
+            var layout = reloaded.Layouts.Launcher;
+            Assert.Equal(["a0"], layout.FilterGroups.Single(group => group.CategoryId == "word").ItemIds);
+            Assert.Empty(layout.FilterGroups.Single(group => group.CategoryId == "development").ItemIds);
+            Assert.Contains("a0", layout.FilterGroups.Single(group => group.Id == "work").ItemIds);
+            Assert.True(Assert.Single(layout.AutoClassifications).IsManualOverride);
+        });
+    }
+
+    [Fact]
+    public void RestoreAutomaticCategoriesButtonEnablesFutureImportsWithoutReorganizingExistingItems()
+    {
+        StaTest.Run(() =>
+        {
+            using var f = new Fixture();
+            var classified = LauncherAutoGroupingRules.ApplyClassification(f.Host.Layouts.Launcher, "a0", new("development", "known app"));
+            var groupId = classified.FilterGroups.Single(group => group.CategoryId == "development").Id;
+            var deleted = LauncherFilterRules.RemoveGroup(classified, groupId);
+            Assert.True(f.Host.Layouts.CommitLauncher(deleted, f.Host.Layouts.LauncherVersion));
+            Call(f.Window, "RenderTiles", false, false);
+            var panel = (StackPanel)f.Window.FindName("FilterGroupButtons");
+            var restore = Assert.Single(panel.Children.OfType<Button>(), item => Equals(item.Content, "恢复自动分类"));
+            restore.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Empty(f.Host.Layouts.Launcher.DisabledAutomaticCategoryIds);
+            Assert.DoesNotContain(f.Host.Layouts.Launcher.FilterGroups, group => group.CategoryId == "development");
+            Assert.Equal(LauncherLayoutRules.AppIds(deleted), LauncherLayoutRules.AppIds(f.Host.Layouts.Launcher));
+        });
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

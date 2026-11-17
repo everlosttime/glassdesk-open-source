@@ -49,7 +49,7 @@ public sealed record RelocationOutcome(RelocateResult Result, string Message, st
 /// </summary>
 /// <remarks>
 /// R-07 要求失效的条目<strong>保留下来</strong>并显示为失效，而不是被悄悄丢掉。
-/// 因此这里从不删除任何条目：它只翻转 <see cref="AppEntry.IsTargetMissing"/> 这一个标记。
+/// 因此目标复查从不删除任何条目：它只翻转 <see cref="AppEntry.IsTargetMissing"/> 这一个标记。
 /// 数据本身、布局对它的引用、图标全部原样留着——用户把移动硬盘插回去，
 /// 下一次复查就会把标记清掉，条目恢复原样。
 ///
@@ -58,7 +58,7 @@ public sealed record RelocationOutcome(RelocateResult Result, string Message, st
 /// 拿文件存在性去判断它只会得到错误结论。
 /// </para>
 /// </remarks>
-public sealed class LibraryMaintenance
+public sealed partial class LibraryMaintenance
 {
     private readonly AppLibraryStore _library;
     private readonly IconCache _icons;

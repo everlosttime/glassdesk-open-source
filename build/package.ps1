@@ -102,6 +102,14 @@ function Get-Sha256HexFromFile {
     finally { $algorithm.Dispose(); $stream.Dispose() }
 }
 
+function Resolve-InnoAttestationStatus {
+    param([int]$ExitCode, [string]$Output, [string]$ReleaseTag)
+    if ($ExitCode -eq 0) { return 'Verified' }
+    $missingPattern = '\Ano attestations found for tag ' + [regex]::Escape($ReleaseTag) + ' \(sha1:[0-9a-f]{40}\)\z'
+    if ($Output.Trim() -cmatch $missingPattern) { return 'NotProvidedByPublisher' }
+    throw 'GitHub release attestation verification failed for the Inno Setup installer.'
+}
+
 function Get-InnoCompileArguments {
     param(
         [string]$AppId,
@@ -395,8 +403,10 @@ try {
     if ($gh) {
         $innoReleaseTag = 'is-' + ([string]$release.innoVersion).Replace('.', '_')
         $attestationResult = Invoke-CapturedProcess -FilePath $gh.Source -Arguments @('release', 'verify-asset', $innoReleaseTag, $innoInstaller, '--repo', 'jrsoftware/issrc') -WorkingDirectory $repoRoot -LogPath (Join-Path $runEvidenceDirectory 'inno-release-attestation.log')
-        if ($attestationResult.ExitCode -ne 0) { throw 'GitHub release attestation verification failed for the Inno Setup installer.' }
-        $attestationStatus = 'Verified'
+        $attestationStatus = Resolve-InnoAttestationStatus -ExitCode $attestationResult.ExitCode -Output $attestationResult.Output -ReleaseTag $innoReleaseTag
+        if ($attestationStatus -eq 'NotProvidedByPublisher') {
+            Write-Warning 'The publisher provides no GitHub release attestation. Pinned SHA-256 and valid publisher signatures remain mandatory.'
+        }
     }
 
     $artifactParent = Split-Path -Parent $candidateDirectory
@@ -505,7 +515,7 @@ try {
         innoCompilerSignatureStatus = $compilerSignature.Status.ToString()
         innoCompilerSha256 = Get-Sha256HexFromFile -Path $compiler
         innoLicenseSha256 = Get-Sha256HexFromFile -Path $pinnedInnoLicense
-        innoAttestationLog = $(if ($attestationStatus -eq 'Verified') { 'inno-release-attestation.log' } else { $null })
+        innoAttestationLog = $(if ($gh) { 'inno-release-attestation.log' } else { $null })
     }
     Write-JsonFile -Path $toolchainPath -Value $toolchain
 

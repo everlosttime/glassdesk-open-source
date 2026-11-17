@@ -3,6 +3,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
     <UseWPF>true</UseWPF>
+    <ApplicationManifest>../../src/GlassDesk.App/app.manifest</ApplicationManifest>
     <IsPackable>false</IsPackable>
     <AssemblyName>GlassDesk.InteractionAcceptance</AssemblyName>
   </PropertyGroup>

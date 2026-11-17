@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Input;
 using Microsoft.Win32;
 using GlassDesk.Core.Input;
 using GlassDesk.Core.Models;
@@ -14,6 +15,16 @@ namespace GlassDesk.Settings;
 
 public partial class SettingsWindow
 {
+    private void OnSettingsComboPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        // A focused WPF ComboBox changes its selection on wheel input. Require
+        // explicit selection, while retaining normal scrolling of the settings page.
+        e.Handled = true;
+        if (sender is ComboBox { IsDropDownOpen: false })
+            SettingsScroll.RaiseEvent(new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+            { RoutedEvent = Mouse.MouseWheelEvent });
+    }
+
     private bool _userDataDeletionPending;
     private InstallationInfo? _installationInfo;
 
@@ -190,6 +201,7 @@ public partial class SettingsWindow
             ToggleDesktopIconsHotkeyBox.Text = HotkeyText.Format(current.Shortcuts.ToggleDesktopIcons);
             ToggleDockRevealLockHotkeyBox.Text = HotkeyText.Format(current.Shortcuts.ToggleDockRevealLock);
             ToggleGameSleepHotkeyBox.Text = HotkeyText.Format(current.Shortcuts.ToggleGameSleep);
+            SelectWindowTopmostHotkeyBox.Text = HotkeyText.Format(current.Shortcuts.SelectWindowTopmost);
             InteractionSettingsStatus.Text = "快捷键录制完成后自动保存并应用。";
         }
         catch (Exception ex)
@@ -206,11 +218,13 @@ public partial class SettingsWindow
             || !TryReadHotkey(NextPageHotkeyBox, out var next) || !TryReadHotkey(PreviousPageHotkeyBox, out var previous)
             || !TryReadHotkey(ToggleDesktopIconsHotkeyBox, out var icons)
             || !TryReadHotkey(ToggleDockRevealLockHotkeyBox, out var dockRevealLock)
-            || !TryReadHotkey(ToggleGameSleepHotkeyBox, out var gameSleep)) return;
+            || !TryReadHotkey(ToggleGameSleepHotkeyBox, out var gameSleep)
+            || !TryReadHotkey(SelectWindowTopmostHotkeyBox, out var windowTopmost)) return;
         var shortcuts = new ShortcutSettings
         {
             ToggleLauncher = toggle, HideLauncher = new(), NextPage = next, PreviousPage = previous,
             ToggleDesktopIcons = icons, ToggleDockRevealLock = dockRevealLock, ToggleGameSleep = gameSleep,
+            SelectWindowTopmost = windowTopmost,
         };
         var display = new DisplaySettings
         {
@@ -252,7 +266,7 @@ public partial class SettingsWindow
     public bool TryCaptureRegisteredHotkey(nint packedChord)
     {
         var recorder = new[] { ToggleLauncherHotkeyBox, NextPageHotkeyBox,
-            PreviousPageHotkeyBox, ToggleDesktopIconsHotkeyBox, ToggleDockRevealLockHotkeyBox, ToggleGameSleepHotkeyBox }
+            PreviousPageHotkeyBox, ToggleDesktopIconsHotkeyBox, ToggleDockRevealLockHotkeyBox, ToggleGameSleepHotkeyBox, SelectWindowTopmostHotkeyBox }
             .FirstOrDefault(control => control.IsRecording && control.IsKeyboardFocusWithin);
         if (recorder is null) return false;
         var packed = unchecked((uint)packedChord.ToInt64());

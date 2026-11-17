@@ -7,11 +7,22 @@ public static class LauncherLayoutRules
     {
         if (left.SchemaVersion != right.SchemaVersion) return false;
         if (!(left.FlatOrder ?? []).SequenceEqual(right.FlatOrder ?? [], StringComparer.Ordinal)) return false;
+        if (!(left.DisabledAutomaticCategoryIds ?? []).SequenceEqual(right.DisabledAutomaticCategoryIds ?? [], StringComparer.Ordinal)) return false;
+        if (!(left.SuppressedAutoAddKeys ?? []).SequenceEqual(right.SuppressedAutoAddKeys ?? [], StringComparer.Ordinal)) return false;
+        var leftAssignments = left.AutoClassifications ?? [];
+        var rightAssignments = right.AutoClassifications ?? [];
+        if (leftAssignments.Count != rightAssignments.Count) return false;
+        for (var i = 0; i < leftAssignments.Count; i++)
+            if (leftAssignments[i].ItemId != rightAssignments[i].ItemId
+                || leftAssignments[i].CategoryId != rightAssignments[i].CategoryId
+                || leftAssignments[i].AutomaticGroupId != rightAssignments[i].AutomaticGroupId
+                || leftAssignments[i].IsManualOverride != rightAssignments[i].IsManualOverride
+                || leftAssignments[i].RuleVersion != rightAssignments[i].RuleVersion) return false;
         var leftFilters = left.FilterGroups ?? [];
         var rightFilters = right.FilterGroups ?? [];
         if (leftFilters.Count != rightFilters.Count) return false;
         for (var i = 0; i < leftFilters.Count; i++)
-            if (leftFilters[i].Id != rightFilters[i].Id || leftFilters[i].Name != rightFilters[i].Name
+            if (leftFilters[i].Id != rightFilters[i].Id || leftFilters[i].Name != rightFilters[i].Name || leftFilters[i].CategoryId != rightFilters[i].CategoryId
                 || !(leftFilters[i].ItemIds ?? []).SequenceEqual(rightFilters[i].ItemIds ?? [], StringComparer.Ordinal)) return false;
         if (left.SchemaVersion < 2 && !(left.ExcludedAppIds ?? []).SequenceEqual(right.ExcludedAppIds ?? [], StringComparer.Ordinal)) return false;
         var leftPages = left.Pages ?? [];
@@ -41,8 +52,15 @@ public static class LauncherLayoutRules
             SchemaVersion = source.SchemaVersion,
             ExcludedAppIds = [.. source.ExcludedAppIds ?? []],
             FlatOrder = [.. source.FlatOrder ?? []],
+            DisabledAutomaticCategoryIds = [.. source.DisabledAutomaticCategoryIds ?? []],
+            SuppressedAutoAddKeys = [.. source.SuppressedAutoAddKeys ?? []],
+            AutoClassifications = (source.AutoClassifications ?? []).Select(item => new LauncherAutoClassification
+            {
+                ItemId = item.ItemId, CategoryId = item.CategoryId, AutomaticGroupId = item.AutomaticGroupId,
+                IsManualOverride = item.IsManualOverride, RuleVersion = item.RuleVersion,
+            }).ToList(),
             FilterGroups = (source.FilterGroups ?? []).Select(group => new LauncherGroup
-            { Id = group.Id, Name = group.Name, ItemIds = [.. group.ItemIds ?? []] }).ToList(),
+            { Id = group.Id, Name = group.Name, CategoryId = group.CategoryId, ItemIds = [.. group.ItemIds ?? []] }).ToList(),
             Pages = (source.Pages ?? []).Select(page => new LauncherPage
             {
                 Id = page.Id,
@@ -114,7 +132,11 @@ public static class LauncherLayoutRules
             ? LauncherLayoutEditor.AddShortcuts(result, ids.Where(id => !hidden.Contains(id) && !seen.Contains(id)), capacity)
             : result;
         result.FlatOrder = [.. source.FlatOrder ?? []];
-        result.FilterGroups = DeepClone(source).FilterGroups;
+        var metadata = DeepClone(source);
+        result.FilterGroups = metadata.FilterGroups;
+        result.AutoClassifications = metadata.AutoClassifications;
+        result.DisabledAutomaticCategoryIds = metadata.DisabledAutomaticCategoryIds;
+        result.SuppressedAutoAddKeys = metadata.SuppressedAutoAddKeys;
         LauncherFilterRules.Normalize(result);
         return result;
     }

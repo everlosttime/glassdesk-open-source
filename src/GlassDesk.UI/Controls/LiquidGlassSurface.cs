@@ -1027,9 +1027,7 @@ public sealed partial class LiquidGlassSurface : FrameworkElement, IDisposable
             if (!opticalFrameMatches && !hasTransitionBackdrop)
                 DrawWaitingRim(dc, CreatePanel(rect, radius), highlightScale);
             if (LiquidGlassDebugState.ShowPerformanceOverlay) DrawMetricsOverlay(dc, rect);
-            if (BackdropSource == GlassBackdropSource.CompatibleScene)
-                DrawCompatibilityNotice(dc, rect, "兼容场景玻璃 · 壁纸为静态", dark);
-            else if (BackdropSource == GlassBackdropSource.Wallpaper)
+            if (BackdropSource == GlassBackdropSource.Wallpaper)
                 DrawCompatibilityNotice(dc, rect, "壁纸玻璃 · 不反映后方窗口", dark);
             dc.Pop();
             return;

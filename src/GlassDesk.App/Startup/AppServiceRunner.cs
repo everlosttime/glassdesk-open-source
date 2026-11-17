@@ -74,6 +74,16 @@ internal static class AppServiceRunner
                 return ShowDesktopProbe.Run(paths);
         }
 
+        if (!GlassDesk.Platform.Storage.LibraryWriterLease.TryAcquire(paths.RootDirectory, out var writerLease))
+        {
+            var forwarded = LibraryCommandBroker.Forward(paths.RootDirectory, Environment.GetCommandLineArgs().Skip(1).ToArray());
+            ReportWriter.Write(forwarded.Report, null);
+            return forwarded.ExitCode;
+        }
+        using var ownedWriterLease = writerLease;
+        if (!GlassDesk.Platform.Storage.UserDataLease.TryAcquireShared(paths.RootDirectory, out var dataLease))
+            return 1;
+        using var ownedDataLease = dataLease;
         report.AppendLine("GlassDesk 应用库命令");
         report.AppendLine(new string('=', 46));
         report.AppendLine(CultureInfo.InvariantCulture, $"命令：{DescribeVerb(options.Verb)}");
@@ -127,6 +137,34 @@ internal static class AppServiceRunner
         return exitCode;
     }
 
+    internal static LibraryCommandReply ExecuteOnHost(AppServiceHost host, CommandLineOptions options)
+    {
+        var report = new StringBuilder();
+        try
+        {
+            var exitCode = options.Verb switch
+            {
+                AppServiceVerb.Import => RunImport(host, options, report),
+                AppServiceVerb.ScanStartMenu => RunScan(options, report),
+                AppServiceVerb.ImportStartMenu => RunImportStartMenu(host, options, report),
+                AppServiceVerb.ListLibrary => RunList(host, options, report),
+                AppServiceVerb.CheckLibrary => RunCheck(host, report),
+                AppServiceVerb.Relocate => RunRelocate(host, options, report),
+                AppServiceVerb.Launch => RunLaunch(host, options, report, activate: false),
+                AppServiceVerb.Activate => RunLaunch(host, options, report, activate: true),
+                AppServiceVerb.VerifyIcons => RunVerifyIcons(host, report),
+                AppServiceVerb.IconContactSheet => RunContactSheet(host, options, report),
+                AppServiceVerb.ClearIconCache => RunClearIcons(host, report),
+            AppServiceVerb.MakeSamples => RunMakeSamples(options, report),
+            AppServiceVerb.SeedLibrary => RunSeed(host, options, report),
+            _ => 0,
+            };
+
+            return new LibraryCommandReply(exitCode, report.ToString());
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        { return new LibraryCommandReply(1, "命令失败：" + ex.Message); }
+    }
     private static int AcceptanceArgumentsError(string usage)
     {
         Console.Error.WriteLine("验收参数不足或冲突。用法：" + usage);

@@ -100,6 +100,24 @@ V3_VID, V3_PID = 0x3837, 0x1018
 V3_PIDS = {
     0x1018: "MCHOSE A7 V3 Pro (V3 8K 接收器)",
     0x1014: "MCHOSE A7 V3 Ultra+",  # 用户实机验证，#276; remains level C.
+    # Official M HUB newMouseFilters; USB identities can be shared receivers.
+    0x1016: "MCHOSE V3 receiver (3837:1016)",
+    0x101D: "MCHOSE V3 receiver (3837:101D)",
+    0x4026: "MCHOSE V3 device (3837:4026)",
+    0x4027: "MCHOSE V3 device (3837:4027)",
+    0x4028: "MCHOSE V3 device (3837:4028)",
+    0x402A: "MCHOSE V3 device (3837:402A)",
+    0x4030: "MCHOSE V3 device (3837:4030)",
+    0x4031: "MCHOSE V3 device (3837:4031)",
+    0x4032: "MCHOSE V3 device (3837:4032)",
+    0x4033: "MCHOSE V3 device (3837:4033)",
+    0x4034: "MCHOSE V3 device (3837:4034)",
+    0x4035: "MCHOSE V3 device (3837:4035)",
+    0x4037: "MCHOSE V3 device (3837:4037)",
+    0x4038: "MCHOSE V3 device (3837:4038)",
+    0x403A: "MCHOSE V3 device (3837:403A)",
+    0x403D: "MCHOSE V3 device (3837:403D)",
+    0x403E: "MCHOSE V3 device (3837:403E)",
 }
 V3_USAGE = (0xFF01, 0x0001)
 V3_REPORT_ID, V3_REPORT_LEN = 0x4D, 64  # includes the report ID; body is 63 bytes
@@ -516,9 +534,9 @@ class MchoseProvider(Provider):
 
         found: Dict[str, List[Tuple[int, bool, int, int]]] = {}   # key -> readings
         for (vid, pid), ifaces in groups.items():
-            if vid == 0x3837 and pid in (0x600A, 0x6008):
-                reason = ("V9 Turbo+ headset reserved for mchose_headset" if pid == 0x600A
-                          else "V9 Turbo lighting device; no battery reader")
+            if vid == 0x3837 and pid in (0x6003, 0x6008, 0x600A, 0x600D, 0x6011,
+                                        0x6013, 0x6045, 0x60C4, 0x60C6, 0x8080):
+                reason = "headset/audio identity reserved; no mouse commands"
                 self._diag.append(f"[MCHOSE] {vid:04x}:{pid:04x} {reason}; no mouse commands sent")
                 continue
             if vid == 0x3837 and pid in (0x1015, 0x3033):

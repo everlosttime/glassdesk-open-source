@@ -57,11 +57,14 @@ internal static partial class Program
                 hostType.GetMethod("InitializeInteractionController", instance)!.Invoke(host, null);
             }
             bar = (StatusBarWindow)hostType.GetField("_statusBar", instance)!.GetValue(host)!;
-            var settings = (SettingsWindow)hostType.GetField("_settings", instance)!.GetValue(host)!;
+            var settings = (SettingsWindow)hostType.GetMethod("EnsureSettingsWindow", instance)!.Invoke(host, null)!;
             // Pin visibility for material/layout capture regardless of the operator's foreground window.
             bar.IsLauncherActive = () => true;
             bar.ShowInTaskbar = true;
             bar.Title = "GlassDesk 信息栏 本地验收";
+            if (args.Contains("--status-popover-reopen"))
+                return VerifyStatusPopoverReopen(bar, data, report, args.Contains("--popover-software"),
+                    Argument(args, "--popover-material") ?? "PlainGlass");
             if (args.Contains("--information-bar-integration"))
                 return VerifyInformationBarIntegration(bar, settings, data, host, hostType, report, evidence);
             if (args.Contains("--status-popover-animation"))

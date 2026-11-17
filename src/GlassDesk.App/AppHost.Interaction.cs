@@ -54,6 +54,7 @@ internal sealed partial class AppHost
         _interaction.SetLauncherAvailability(_launcher.IsVisible, _launcher.CanNavigatePages);
         var error = _interaction.Initialize();
         if (error is not null) ReportInteractionError(error);
+        else if (_interaction.InitializationWarning is { } warning) ReportInteractionError(warning);
         else
         {
             _interactionStatus="快捷操作服务已就绪。";
@@ -86,7 +87,8 @@ internal sealed partial class AppHost
     }
 
     private bool CanExecuteInteraction(InputAction action) => _interaction?.CanExecute(action) == true
-        && (action == InputAction.ToggleGameSleep || !_performancePointerInputSuppressed);
+        && (action == InputAction.ToggleGameSleep
+            || (action == InputAction.SelectWindowTopmost ? CanSelectWindowTopmost : !_performancePointerInputSuppressed));
 
     private void ExecuteInteraction(InputAction action)
     {
@@ -114,6 +116,9 @@ internal sealed partial class AppHost
             case InputAction.ToggleGameSleep:
                 SetManualGameSleep(!RuntimeManualGameSleep);
                 break;
+            case InputAction.SelectWindowTopmost:
+                ToggleWindowTopmostSelection();
+                break;
         }
     }
 
@@ -134,7 +139,10 @@ internal sealed partial class AppHost
     }
 
     private void OnSystemDisplaySettingsChanged(object? sender, EventArgs e)
-    { if (_performance?.State != PerformanceState.Sleeping) GlassDesk.UI.BackdropRecovery.RetryBackground("DisplaySettingsChanged"); QueueDisplayRefresh(); }
+    {
+        QueueDisplayRefresh();
+        if (_performance?.State != PerformanceState.Sleeping) GlassDesk.UI.BackdropRecovery.RetryBackground("DisplaySettingsChanged");
+    }
     private async void OnBackgroundPowerModeChanged(object sender, PowerModeChangedEventArgs e)
     {
         if (e.Mode == PowerModes.Suspend) SetPerformanceSessionSuspended(true);
@@ -173,6 +181,7 @@ internal sealed partial class AppHost
         {
             Interlocked.Exchange(ref _displayRefreshPending, 0);
             if (_disposed) return;
+            _windowTopmostPicker?.Cancel();
             var currentPrimary = DisplayService.Primary();
             var rebound = false;
             if (_primaryDisplaySession is { } primary && !primary.TryRefreshPrimary(currentPrimary))
@@ -209,6 +218,7 @@ internal sealed partial class AppHost
 
     private void DisposeInteractionController()
     {
+        DisposeWindowTopmost();
         SystemEvents.DisplaySettingsChanged -= OnSystemDisplaySettingsChanged;
         SystemEvents.UserPreferenceChanged -= OnSystemUserPreferenceChanged;
         SystemEvents.PowerModeChanged -= OnBackgroundPowerModeChanged;

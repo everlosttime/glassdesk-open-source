@@ -96,8 +96,17 @@ public sealed class InteractionSettingsService(SettingsStore store, IHotkeyRegis
 
     public InputAction ResolveAction(int id) => active.Values.FirstOrDefault(value => value.Id == id).Action;
 
-    public string? Apply(ShortcutSettings shortcuts, DisplaySettings display, bool persist = true)
+    /// <summary>启动时若新增的窗口置顶快捷键冲突，只跳过该动作；配置仍保留，供用户重新录制。</summary>
+    public string? Initialize(ShortcutSettings shortcuts, DisplaySettings display, out string? warning) =>
+        ApplyCore(shortcuts, display, persist: false, allowWindowSelectionConflict: true, out warning);
+
+    public string? Apply(ShortcutSettings shortcuts, DisplaySettings display, bool persist = true) =>
+        ApplyCore(shortcuts, display, persist, allowWindowSelectionConflict: false, out _);
+
+    private string? ApplyCore(ShortcutSettings shortcuts, DisplaySettings display, bool persist,
+        bool allowWindowSelectionConflict, out string? warning)
     {
+        warning = null;
         if (disposed) return "快捷操作服务已经关闭。";
         var next = SettingsPageEditor.Clone(store.Current);
         next.Shortcuts = shortcuts;
@@ -107,18 +116,39 @@ public sealed class InteractionSettingsService(SettingsStore store, IHotkeyRegis
         next.Dock.TargetDisplayId = next.Display.DockDisplayId;
         next.Shortcuts.HotCornersEnabled = false;
         next.Shortcuts.MouseSideButtonsEnabled = false;
-        var invalid = SettingsPageEditor.Validate(next);
+        var validation = next;
+        if (allowWindowSelectionConflict)
+        {
+            validation = SettingsPageEditor.Clone(next);
+            validation.Shortcuts.SelectWindowTopmost = new();
+        }
+        var invalid = SettingsPageEditor.Validate(validation);
         if (invalid is not null) return invalid;
+        var skipWindowSelection = false;
+        if (allowWindowSelectionConflict && next.Shortcuts.SelectWindowTopmost.Enabled)
+        {
+            if (!HotkeyText.TryGetChord(next.Shortcuts.SelectWindowTopmost, out var selectionChord, out var error)) return error;
+            skipWindowSelection = HotkeyText.Bindings(validation.Shortcuts).Any(binding => binding.Definition.Enabled
+                && HotkeyText.TryGetChord(binding.Definition, out var chord, out _) && chord == selectionChord);
+            if (skipWindowSelection)
+                warning = $"窗口置顶快捷键 {next.Shortcuts.SelectWindowTopmost.Describe()} 与其他快捷操作冲突，暂未启用；其他快捷键正常，原配置已保留。";
+        }
         var desired = new Dictionary<HotkeyChord, (int Id, InputAction Action)>();
         var added = new List<int>();
         foreach (var (action, definition) in HotkeyText.Bindings(next.Shortcuts))
         {
             if (!definition.Enabled) continue;
+            if (skipWindowSelection && action == InputAction.SelectWindowTopmost) continue;
             _ = HotkeyText.TryGetChord(definition, out var chord, out _);
             if (active.TryGetValue(chord, out var old)) { desired.Add(chord, (old.Id, action)); continue; }
             var id = nextId++;
             if (!registry.TryRegister(id, chord, out var error))
             {
+                if (allowWindowSelectionConflict && action == InputAction.SelectWindowTopmost)
+                {
+                    warning = $"窗口置顶快捷键 {definition.Describe()} 注册失败（错误 {error}），暂未启用；其他快捷键正常，原配置已保留。";
+                    continue;
+                }
                 foreach (var registered in added) registry.Unregister(registered);
                 return $"快捷键 {definition.Describe()} 注册失败（错误 {error}），可能已被其他程序占用；原设置已保留。";
             }

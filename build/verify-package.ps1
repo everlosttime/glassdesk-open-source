@@ -190,7 +190,7 @@ function Assert-ReleaseIdentity {
         throw 'Toolchain versions do not match the release manifest.'
     }
     if ($Toolchain.innoPublisher -ne 'Pyrsys B.V.' -or $Toolchain.innoInstallerSignatureStatus -ne 'Valid' -or
-        $Toolchain.innoInstallerAttestationStatus -ne 'Verified' -or $Toolchain.innoCompilerSignatureStatus -ne 'Valid' -or
+        $Toolchain.innoInstallerAttestationStatus -cnotin @('Verified', 'NotProvidedByPublisher') -or $Toolchain.innoCompilerSignatureStatus -ne 'Valid' -or
         ([string]$Toolchain.innoInstallerSha256).ToLowerInvariant() -ne ([string]$Release.innoSetupInstallerSha256).ToLowerInvariant() -or
         ([string]$Toolchain.innoCompilerSha256 -notmatch '^[0-9A-Fa-f]{64}$')) {
         throw 'Inno compiler source, publisher signature, or SHA-256 evidence is invalid.'
@@ -314,7 +314,24 @@ try {
         }
     if ($release.PSObject.Properties['naiwaCompanion'] -and $release.naiwaCompanion -eq $true) {
         $payloadFiles = Assert-ManifestEntries -Manifest $payloadManifest -Context 'payload'
-        $expectedNaiwa = @('components/naiwa/glassdesk.naiwa.exe', 'components/naiwa/glassdesk.naiwa.exe.config', 'components/naiwa/license.txt')
+        $expectedNaiwa = @('components/naiwa/glassdesk.naiwa.exe', 'components/naiwa/glassdesk.naiwa.exe.config', 'components/naiwa/license.txt',
+            'components/naiwa/notice.txt', 'components/naiwa/assets-manifest.json')
+        $naiwaManifestPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'contrib/Naiwa/assets-manifest.json'
+        $naiwaManifest = Read-JsonFile -Path $naiwaManifestPath
+        if ($naiwaManifest.version -ne '2.5.1' -or @($naiwaManifest.files).Count -ne 18) { throw 'Unexpected Naiwa asset manifest.' }
+        foreach ($asset in $naiwaManifest.files) {
+            $name = ('components/naiwa/assets-v2.5.1/' + $asset.name).ToLowerInvariant()
+            $expectedNaiwa += $name
+            if (-not $payloadFiles.ContainsKey($name)) { throw "Missing bundled Naiwa asset: '$name'." }
+            if ($payloadFiles[$name].Sha256 -ne $asset.sha256 -or $payloadFiles[$name].Length -ne $asset.length) {
+                throw "Naiwa asset differs from pinned version: '$name'."
+            }
+        }
+        $manifestName = 'components/naiwa/assets-manifest.json'
+        if (-not $payloadFiles.ContainsKey($manifestName) -or
+            $payloadFiles[$manifestName].Sha256 -ne (Get-Sha256HexFromFile -Path $naiwaManifestPath)) {
+            throw 'Missing or modified bundled Naiwa asset manifest.'
+        }
         foreach ($name in $expectedNaiwa) {
             if (-not $payloadFiles.ContainsKey($name)) { throw "Missing required companion payload: '$name'." }
         }

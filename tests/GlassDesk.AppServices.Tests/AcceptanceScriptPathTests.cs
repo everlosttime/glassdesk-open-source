@@ -246,6 +246,37 @@ public sealed class AcceptanceScriptPathTests : IDisposable
             result.Output.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
     }
 
+    [Theory]
+    [InlineData(0, "Verified release asset", "Verified")]
+    [InlineData(1, "no attestations found for tag is-7_1_0 (sha1:ba5ca8a66638b0fa8175e8736fe3a6bd16f70136)", "NotProvidedByPublisher")]
+    [InlineData(1, "HTTP 404: Not Found", "Rejected")]
+    [InlineData(1, "signature verification failed", "Rejected")]
+    [InlineData(1, "no attestations found for tag is-7_0_0 (sha1:ba5ca8a66638b0fa8175e8736fe3a6bd16f70136)", "Rejected")]
+    [InlineData(1, "network error\nno attestations found for tag is-7_1_0 (sha1:ba5ca8a66638b0fa8175e8736fe3a6bd16f70136)", "Rejected")]
+    public void InnoAttestationOnlyAcceptsVerifiedOrExplicitPublisherAbsence(int exitCode, string output, string expected)
+    {
+        const string command = """
+            $ErrorActionPreference = 'Stop'
+            $ProgressPreference = 'SilentlyContinue'
+            $source = [IO.File]::ReadAllText($env:GD_TEST_SCRIPT, [Text.Encoding]::UTF8)
+            $tokens = $null; $errors = $null
+            $ast = [Management.Automation.Language.Parser]::ParseInput($source, [ref]$tokens, [ref]$errors)
+            $definition = $ast.FindAll({ param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Resolve-InnoAttestationStatus' }, $false) | Select-Object -First 1
+            if ($null -eq $definition) { exit 4 }
+            Invoke-Expression $definition.Extent.Text
+            try { Resolve-InnoAttestationStatus -ExitCode ([int]$env:GD_TEST_EXIT) -Output $env:GD_TEST_OUTPUT -ReleaseTag 'is-7_1_0' }
+            catch { Write-Output 'Rejected' }
+            """;
+        var result = RunPowerShell(command, new()
+        {
+            ["GD_TEST_SCRIPT"] = Path.Combine(FindRepositoryRoot().FullName, "build", "package.ps1"),
+            ["GD_TEST_EXIT"] = exitCode.ToString(),
+            ["GD_TEST_OUTPUT"] = output,
+        });
+        Assert.True(result.ExitCode == 0, result.Output);
+        Assert.Equal(expected, result.Output.Trim());
+    }
+
     private (int ExitCode, string Output) RunGuard(string script, string guard, string repo, string target)
     {
         var repository = new DirectoryInfo(AppContext.BaseDirectory);

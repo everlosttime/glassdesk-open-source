@@ -13,6 +13,31 @@ namespace GlassDesk.Dock.Tests;
 
 public sealed class PopupRevealTests
 {
+    [Theory]
+    [InlineData("center")]
+    [InlineData("devices")]
+    [InlineData("calendar")]
+    public void RevealKeepsNativeLayeredWindowOpacityStable(string kind)
+    {
+        StaTest.Run(() =>
+        {
+            if (!SystemParameters.ClientAreaAnimation) return;
+            using var theme = ThemeService.Initialize(Dispatcher.CurrentDispatcher);
+            theme.Update(new AppearanceSettings { ReduceMotion = false });
+            var (window, show) = Create(kind);
+            try
+            {
+                show();
+                Assert.Equal(1, window.Opacity);
+                Assert.InRange(((UIElement)window.Content).Opacity, 0, .99);
+                PumpUntil(() => !window.HasAnimatedProperties);
+                Assert.Equal(1, window.Opacity);
+                Assert.Equal(1, ((UIElement)window.Content).Opacity);
+            }
+            finally { window.Close(); }
+        });
+    }
+
     [Fact]
     public void InitialShowDoesNotExposeAnOpaqueFrameBeforeStartingTheFade()
     {
@@ -23,7 +48,7 @@ public sealed class PopupRevealTests
             using var theme = ThemeService.Initialize(Dispatcher.CurrentDispatcher);
             var (window, show) = Create("center");
             var observer = new Border();
-            BindingOperations.SetBinding(observer, FrameworkElement.TagProperty, new Binding(nameof(Window.Opacity)) { Source = window });
+            BindingOperations.SetBinding(observer, FrameworkElement.TagProperty, new Binding(nameof(GlassWindow.PresentationOpacity)) { Source = window });
             var descriptor = DependencyPropertyDescriptor.FromProperty(FrameworkElement.TagProperty, typeof(Border))!;
             var values = new List<double>();
             EventHandler changed = (_, _) => { if (window.IsVisible) values.Add((double)observer.Tag); };
@@ -49,7 +74,7 @@ public sealed class PopupRevealTests
             {
                 show();
                 theme.Update(new AppearanceSettings { ReduceMotion = true });
-                Assert.Equal(1, window.Opacity);
+                Assert.Equal(1, window.PresentationOpacity);
                 Assert.False(window.HasAnimatedProperties);
                 var content = ((Grid)window.Content).Children.OfType<Grid>().Single();
                 Assert.Equal(0, ((TranslateTransform)content.RenderTransform).Y);
@@ -74,18 +99,18 @@ public sealed class PopupRevealTests
             try
             {
                 show();
-                Assert.InRange(window.Opacity, 0, .99);
+                Assert.InRange(window.PresentationOpacity, 0, .99);
                 var content = ((Grid)window.Content).Children.OfType<Grid>().Single();
                 var shift = Assert.IsType<TranslateTransform>(content.RenderTransform);
                 Assert.True(shift.Y < 0);
-                var previous = window.Opacity;
+                var previous = window.PresentationOpacity;
                 PumpUntil(() =>
                 {
-                    Assert.True(window.Opacity >= previous - .001, "Popup opacity reversed during reveal.");
-                    previous = window.Opacity;
-                    return window.Opacity >= .999 && !shift.HasAnimatedProperties;
+                    Assert.True(window.PresentationOpacity >= previous - .001, "Popup opacity reversed during reveal.");
+                    previous = window.PresentationOpacity;
+                    return window.PresentationOpacity >= .999 && !shift.HasAnimatedProperties;
                 });
-                Assert.Equal(1, window.Opacity);
+                Assert.Equal(1, window.PresentationOpacity);
                 Assert.Equal(0, shift.Y);
                 Assert.False(window.HasAnimatedProperties);
             }
@@ -109,10 +134,10 @@ public sealed class PopupRevealTests
                 show();
                 window.Hide();
                 Assert.False(window.IsVisible);
-                Assert.Equal(1, window.Opacity);
+                Assert.Equal(1, window.PresentationOpacity);
                 Assert.False(window.HasAnimatedProperties);
                 show();
-                PumpUntil(() => window.Opacity >= .999 && !window.HasAnimatedProperties);
+                PumpUntil(() => window.PresentationOpacity >= .999 && !window.HasAnimatedProperties);
                 Assert.True(window.IsVisible);
                 window.Hide();
                 Pump(TimeSpan.FromMilliseconds(300));
@@ -137,7 +162,7 @@ public sealed class PopupRevealTests
             try
             {
                 show();
-                Assert.Equal(1, window.Opacity);
+                Assert.Equal(1, window.PresentationOpacity);
                 Assert.False(window.HasAnimatedProperties);
                 var content = ((Grid)window.Content).Children.OfType<Grid>().Single();
                 Assert.True(content.RenderTransform is not TranslateTransform shift || shift.Y == 0);

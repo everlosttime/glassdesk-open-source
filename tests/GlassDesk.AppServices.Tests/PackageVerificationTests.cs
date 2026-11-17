@@ -31,6 +31,34 @@ public sealed class PackageVerificationTests : IDisposable
         Assert.Contains("Unsupported", result.Output, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Theory]
+    [InlineData("NotProvidedByPublisher", "Valid", true)]
+    [InlineData("NotProvidedByPublisher", "UnknownError", false)]
+    [InlineData("NotRun", "Valid", false)]
+    [InlineData("Unknown", "Valid", false)]
+    public void InnoPublisherAbsenceStillRequiresValidSignature(string status, string signature, bool accepted)
+    {
+        var fixture = CandidateFixture.Create(_root);
+        fixture.SetToolchainProperty("innoInstallerAttestationStatus", status);
+        fixture.SetToolchainProperty("innoInstallerSignatureStatus", signature);
+        var result = RunVerifier(fixture);
+        Assert.True((result.ExitCode == 0) == accepted, result.Output);
+    }
+
+    [Theory]
+    [InlineData("innoInstallerSha256", "0000000000000000000000000000000000000000000000000000000000000000")]
+    [InlineData("innoCompilerSignatureStatus", "UnknownError")]
+    [InlineData("innoPublisher", "Untrusted publisher")]
+    public void MissingAttestationCannotBypassOtherInnoChecks(string property, string value)
+    {
+        var fixture = CandidateFixture.Create(_root);
+        fixture.SetToolchainProperty("innoInstallerAttestationStatus", "NotProvidedByPublisher");
+        fixture.SetToolchainProperty(property, value);
+        var result = RunVerifier(fixture);
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("Inno compiler source", result.Output, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public void BatteryCompanionDeclarationRequiresExecutableLicenseAndSource()
     {
@@ -63,6 +91,20 @@ public sealed class PackageVerificationTests : IDisposable
         var result = RunVerifier(fixture);
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("battery engine", result.Output, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void NaiwaCompanionRequiresBundledAnimationAndAudioAssets()
+    {
+        var fixture = CandidateFixture.Create(_root);
+        foreach (var name in new[] { "GlassDesk.Naiwa.exe", "GlassDesk.Naiwa.exe.config", "LICENSE.txt" })
+            fixture.AddPayloadFile("components/Naiwa/" + name, Encoding.UTF8.GetBytes("fixture"));
+        var manifest = JsonNode.Parse(File.ReadAllText(fixture.ReleaseManifest))!;
+        manifest["naiwaCompanion"] = true;
+        File.WriteAllText(fixture.ReleaseManifest, manifest.ToJsonString());
+        var result = RunVerifier(fixture);
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("naiwa", result.Output, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -515,6 +557,14 @@ public sealed class PackageVerificationTests : IDisposable
             }));
             File.WriteAllText(BuildReportPath, JsonSerializer.Serialize(new { schemaVersion = 1, productName = "GlassDesk", productVersion = ProductVersion, assemblyVersion = AssemblyVersion, fileVersion = FileVersion, appId = AppId, rid = "win-x64", status = "Built" }));
             File.WriteAllText(InnoLicensePath, "Inno Setup license notice");
+            RebuildChecksums();
+        }
+
+        public void SetToolchainProperty(string property, string value)
+        {
+            var toolchain = JsonNode.Parse(File.ReadAllText(ToolchainPath))!;
+            toolchain[property] = value;
+            File.WriteAllText(ToolchainPath, toolchain.ToJsonString());
             RebuildChecksums();
         }
 

@@ -1,8 +1,8 @@
 {
   "product": "GlassDesk",
-  "version": "1.6.0",
+  "version": "1.7.1",
   "variant": "full-product-source",
-  "originalCommit": "3a6310832c8fba2322ef51c59dae175b4dc5faff",
+  "originalCommit": "7a8ee85a97d3f5e1d99ba6aacd0f1756f3125755",
   "originalRepository": "https://github.com/everlosttime/glassdesk",
   "exportMethod": "Complete product source directories exported without functionality changes; public documentation and licensing provenance maintained separately.",
   "sourceDirectories": [
@@ -24,12 +24,33 @@
   ],
   "excludedProductSourceFiles": [],
   "privateDevelopmentHistoryIncluded": false,
-  "previousPublicBaseline": "7fcda32c24a39730a0a94a23e7c4109c70adb28c",
+  "previousPublicBaseline": "080bc3831e5618f0e317814ae2d29bec8585acb0",
   "license": "Scoped: PolyForm-Noncommercial-1.0.0 for eligible original additions/modifications; existing Apache-2.0 and third-party grants retained",
   "licenseScopeDocument": "docs/LICENSING.md",
   "exportedFileManifest": "docs/licensing/FILE-LICENSES.json",
   "releasePublished": true,
   "adaptationReason": "Only two historical acceptance project TargetFramework values aligned to the existing Windows product SDK target. Product implementation unchanged.",
-  "sourceRelease": "https://github.com/everlosttime/glassdesk-open-source/releases/tag/v1.6.0",
-  "softwareRelease": "https://github.com/everlosttime/glassdesk-updates/releases/tag/v1.6.0"
+  "sourceRelease": "https://github.com/everlosttime/glassdesk-open-source/releases/tag/v1.7.1",
+  "softwareRelease": "https://github.com/everlosttime/glassdesk-updates/releases/tag/v1.7.1",
+  "excludedResourceFiles": [
+    "contrib/Naiwa/assets-v2.5.1/cry.wav",
+    "contrib/Naiwa/assets-v2.5.1/dance.mp3",
+    "contrib/Naiwa/assets-v2.5.1/dance.nwp",
+    "contrib/Naiwa/assets-v2.5.1/drag.nwp",
+    "contrib/Naiwa/assets-v2.5.1/eye_art.nwp",
+    "contrib/Naiwa/assets-v2.5.1/fat.nwp",
+    "contrib/Naiwa/assets-v2.5.1/feed.nwp",
+    "contrib/Naiwa/assets-v2.5.1/head.nwp",
+    "contrib/Naiwa/assets-v2.5.1/hold.nwp",
+    "contrib/Naiwa/assets-v2.5.1/hunger.nwp",
+    "contrib/Naiwa/assets-v2.5.1/idle_gif.nwp",
+    "contrib/Naiwa/assets-v2.5.1/rest.nwp",
+    "contrib/Naiwa/assets-v2.5.1/rest2.nwp",
+    "contrib/Naiwa/assets-v2.5.1/sad.nwp",
+    "contrib/Naiwa/assets-v2.5.1/seq.nwp",
+    "contrib/Naiwa/assets-v2.5.1/walk.nwp",
+    "contrib/Naiwa/assets-v2.5.1/原版笑声.wav",
+    "contrib/Naiwa/assets-v2.5.1/素材.nwp"
+  ],
+  "excludedResourceReason": "Optional Naiwa animation and audio assets omitted; companion source and upstream MIT license retained. Default release manifest disables bundling."
 }

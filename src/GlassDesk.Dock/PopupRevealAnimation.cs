@@ -3,18 +3,22 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using GlassDesk.UI.Theming;
+using GlassDesk.UI.Controls;
+using GlassDesk.Platform;
+using System.Windows.Interop;
 
 namespace GlassDesk.Dock;
 
 /// <summary>Fade the panel/shadow together while its content settles into place.</summary>
 internal sealed class PopupRevealAnimation
 {
-    private readonly Window _window;
+    private readonly GlassWindow _window;
     private readonly TranslateTransform _shift = new();
     private readonly ThemeService? _theme;
     private long _generation;
+    private bool _hasPresented;
 
-    internal PopupRevealAnimation(Window window, FrameworkElement content)
+    internal PopupRevealAnimation(GlassWindow window, FrameworkElement content)
     {
         _window = window;
         content.RenderTransform = _shift;
@@ -32,19 +36,22 @@ internal sealed class PopupRevealAnimation
     {
         Finish();
         if (!AnimationsEnabled) return;
-        _window.Opacity = 0;
+        _window.PresentationOpacity = 0;
         _shift.Y = -8;
+        if (_hasPresented)
+            LayeredWindowPresentation.ClearHiddenPixels(new WindowInteropHelper(_window).Handle);
     }
 
     private void OnVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
+        if (_window.IsVisible) _hasPresented = true;
         if (!_window.IsVisible || !AnimationsEnabled) { Finish(); return; }
         var generation = ++_generation;
         var duration = TimeSpan.FromMilliseconds(200);
         var fade = new DoubleAnimation(0, 1, duration)
             { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
         fade.Completed += (_, _) => { if (generation == _generation) Finish(); };
-        _window.BeginAnimation(UIElement.OpacityProperty, fade);
+        _window.BeginAnimation(GlassWindow.PresentationOpacityProperty, fade);
         _shift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(-8, 0, duration)
             { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
         // Keep the prepared base values concealed until the first clock tick.
@@ -54,9 +61,9 @@ internal sealed class PopupRevealAnimation
     private void Finish()
     {
         ++_generation;
-        _window.Opacity = 1;
+        _window.PresentationOpacity = 1;
         _shift.Y = 0;
-        _window.BeginAnimation(UIElement.OpacityProperty, null);
+        _window.BeginAnimation(GlassWindow.PresentationOpacityProperty, null);
         _shift.BeginAnimation(TranslateTransform.YProperty, null);
     }
 

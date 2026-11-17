@@ -506,7 +506,7 @@ public partial class DockWindow : GlassWindow
             Icon = LoadTileIcon(entry),
             DotBrush = dotBrush,
             IconSize = DockSettings.FixedIconSize * DockScale,
-            TileMargin = new Thickness(DockSettings.FixedIconSpacing * DockScale / 2, 0, DockSettings.FixedIconSpacing * DockScale / 2, 0),
+            TileMargin = new Thickness(DockIconSpacing * DockScale / 2, 0, DockIconSpacing * DockScale / 2, 0),
             IsMissing = entry.IsTargetMissing,
             RunningVisibility = tracker.IsRunning(entry)
                 ? Visibility.Visible
@@ -544,8 +544,8 @@ public partial class DockWindow : GlassWindow
         {
             button.Width = (IsVertical ? 64 : 48) * scale;
             button.Height = (IsVertical ? 48 : 64) * scale;
-            button.Margin = IsVertical ? new Thickness(0, 0, 0, 8 * scale)
-                : new Thickness(0, 0, 8 * scale, 0);
+            button.Margin = IsVertical ? new Thickness(0, 0, 0, DockIconSpacing * scale)
+                : new Thickness(0, 0, DockIconSpacing * scale, 0);
         }
         LaunchpadTile.Width = LaunchpadTile.Height = ThisPcTile.Width = ThisPcTile.Height
             = DesktopIconsTile.Width = DesktopIconsTile.Height = 48 * scale;
@@ -561,7 +561,7 @@ public partial class DockWindow : GlassWindow
 
         _tileStrip.SetMetrics(
             DockSettings.FixedIconSize * scale,
-            DockSettings.FixedIconSpacing * scale,
+            DockIconSpacing * scale,
             DockSettings.FixedMagnificationPeak,
             8 * scale,
             contentLimit, IsVertical);
@@ -570,7 +570,11 @@ public partial class DockWindow : GlassWindow
     private double DockScale => double.IsFinite(Settings.SizeScale)
         ? Math.Clamp(Settings.SizeScale, DockSettings.MinimumSizeScale, DockSettings.MaximumSizeScale) : 1;
 
-    private double BuiltinEntryWidthDip => 56 * ((Settings.ShowLauncherEntry ? 1 : 0)
+    private double DockIconSpacing => double.IsFinite(Settings.IconSpacing)
+        ? Math.Clamp(Settings.IconSpacing, DockSettings.MinimumIconSpacing, DockSettings.MaximumIconSpacing)
+        : DockSettings.FixedIconSpacing;
+
+    private double BuiltinEntryWidthDip => (DockSettings.FixedIconSize + DockIconSpacing) * ((Settings.ShowLauncherEntry ? 1 : 0)
         + (Settings.ShowThisPcEntry ? 1 : 0) + (Settings.ShowDesktopIconsEntry ? 1 : 0));
 
     private double ResolveEffectiveFrameLengthDip(double requested, DisplayInfo? display)

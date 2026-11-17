@@ -6,6 +6,12 @@ public sealed class LauncherSettings
     /// <summary>使用平铺图标和具名筛选分组，关闭拖动创建文件夹。</summary>
     public bool GroupModeEnabled { get; set; } = true;
 
+    /// <summary>经用户预览确认后，自动收录桌面新增的顶层项目。</summary>
+    public bool AutoAddDesktopAppsEnabled { get; set; }
+
+    /// <summary>按文件类型为新项目分组；只在分组模式生效，可关闭后手动整理。</summary>
+    public bool SmartGroupingEnabled { get; set; } = true;
+
     /// <summary>每页的网格行数。</summary>
     public int Rows { get; set; } = 5;
 

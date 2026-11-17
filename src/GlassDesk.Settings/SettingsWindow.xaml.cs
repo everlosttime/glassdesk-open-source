@@ -214,6 +214,8 @@ public partial class SettingsWindow : GlassWindow
             StatusBarScaleReadout.Text = $"{dock.StatusBarSizeScale:P0} · {380 * dock.StatusBarSizeScale:0} × {54 * dock.StatusBarSizeScale:0} DIP";
             DockScaleSlider.Value = dock.SizeScale;
             DockScaleReadout.Text = $"{dock.SizeScale:P0} · 图标 {48 * dock.SizeScale:0} DIP";
+            DockSpacingSlider.Value = dock.IconSpacing;
+            DockSpacingReadout.Text = $"{dock.IconSpacing:0.##} DIP · 随整体大小缩放";
             DockPlacementCombo.SelectedIndex = (int)dock.Placement;
             var display = PrimaryDisplaySession is { IsAvailable: true } session
                 ? session.Display
@@ -231,7 +233,7 @@ public partial class SettingsWindow : GlassWindow
             var entryCount = (dock.ShowLauncherEntry ? 1 : 0) + (dock.ShowThisPcEntry ? 1 : 0)
                 + (dock.ShowDesktopIconsEntry ? 1 : 0);
             var minimum = Math.Min(Math.Max(DockSettings.MinimumFrameLengthDip,
-                22 + (DockSettings.FixedIconSize + DockSettings.FixedIconSpacing) * entryCount) * dock.SizeScale, maximum);
+                22 + (DockSettings.FixedIconSize + dock.IconSpacing) * entryCount) * dock.SizeScale, maximum);
             if (display is not null) minimum = Math.Min(maximum, display.ToDips((int)Math.Ceiling(minimum * display.ScaleFactor)));
             DockFrameLengthSlider.Minimum = minimum;
             DockFrameLengthSlider.Maximum = maximum;
@@ -251,7 +253,7 @@ public partial class SettingsWindow : GlassWindow
             DockOffsetYSlider.Value = Coerce(dock.OffsetY, -200, 200);
             DockSettingsStatus.Text = _dockValuesOutOfRange
                 ? "配置文件中有超出支持范围的数值，已显示为最近的可用值；请先恢复当前页默认，避免覆盖原数据。"
-                : "整体大小调整图标与栏高度；外框长度可独立调整。修改后立即保存并应用。";
+                : "整体大小调整图标与栏高度；图标间距、外框长度可独立调整。修改后立即保存并应用。";
         }
         finally { _loadingDockControls = false; }
     }
@@ -273,6 +275,9 @@ public partial class SettingsWindow : GlassWindow
             LauncherRememberPageCheck.IsChecked = settings.RememberLastPage;
             LauncherHighRefreshCheck.IsChecked = settings.HighRefreshAnimationsEnabled;
             LauncherModeCombo.SelectedIndex = settings.GroupModeEnabled ? 1 : 0;
+            LauncherAutoAddDesktopCheck.IsChecked = settings.AutoAddDesktopAppsEnabled;
+            LauncherSmartGroupingCheck.IsChecked = settings.SmartGroupingEnabled;
+            UpdateLauncherOrganizationControls();
             LauncherSettingsStatus.Text = _launcherValuesOutOfRange
                 ? "配置文件中的网格数值超出支持范围，已显示为最近的可用值；请先恢复当前页默认，避免覆盖原数据。"
                 : "修改后立即保存并应用到启动台。";
@@ -296,6 +301,8 @@ public partial class SettingsWindow : GlassWindow
             RememberLastPage = LauncherRememberPageCheck.IsChecked == true,
             HighRefreshAnimationsEnabled = LauncherHighRefreshCheck.IsChecked == true,
             GroupModeEnabled = LauncherModeCombo.SelectedIndex == 1,
+            AutoAddDesktopAppsEnabled = old.AutoAddDesktopAppsEnabled,
+            SmartGroupingEnabled = LauncherSmartGroupingCheck.IsChecked == true,
         };
         var candidate = SettingsPageEditor.Clone(current);
         candidate.Launcher = next;
@@ -309,12 +316,15 @@ public partial class SettingsWindow : GlassWindow
         if (old.Rows == next.Rows && old.Columns == next.Columns && old.FullscreenMode == next.FullscreenMode
             && old.FocusSearchOnOpen == next.FocusSearchOnOpen && old.RememberLastPage == next.RememberLastPage
             && old.HighRefreshAnimationsEnabled == next.HighRefreshAnimationsEnabled
-            && old.GroupModeEnabled == next.GroupModeEnabled) return;
+            && old.GroupModeEnabled == next.GroupModeEnabled
+            && old.AutoAddDesktopAppsEnabled == next.AutoAddDesktopAppsEnabled
+            && old.SmartGroupingEnabled == next.SmartGroupingEnabled) return;
         try
         {
             current.Launcher = next;
             _dataStore.Settings.Save();
             LauncherSettingsChanged?.Invoke(this, next);
+            UpdateLauncherOrganizationControls();
             LauncherSettingsStatus.Text = $"已保存：{next.Rows} 行 × {next.Columns} 列。";
         }
         catch (Exception ex)
@@ -409,7 +419,7 @@ public partial class SettingsWindow : GlassWindow
             ShowNearbyEntry = previousDock.ShowNearbyEntry,
             NearbyCustomIconPath = previousDock.NearbyCustomIconPath,
             IconSize = DockSettings.FixedIconSize,
-            IconSpacing = DockSettings.FixedIconSpacing,
+            IconSpacing = DockSpacingSlider.Value,
             MagnificationPeak = DockSettings.FixedMagnificationPeak,
             FrameLengthDip = ReferenceEquals(sender, DockFrameLengthSlider)
                 ? DockFrameLengthSlider.Value

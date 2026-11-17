@@ -55,6 +55,9 @@ public sealed class ImportService : IImportService
     /// <summary>本次会话里复用了已有图标文件的次数。</summary>
     public int IconsReused { get; private set; }
 
+    /// <summary>Only explicit user imports may clear automatic-discovery exclusions.</summary>
+    public Action<AppEntry>? ManualImported { get; set; }
+
     public ImportResult ImportItems(IReadOnlyList<ImportRequest> requests)
     {
         ArgumentNullException.ThrowIfNull(requests);
@@ -121,6 +124,7 @@ public sealed class ImportService : IImportService
             if (layoutChanged && !_layouts.CommitLauncher(draft, _layouts.LauncherVersion))
                 throw new StorageException("启动台布局已变化，请重试添加。", _layouts.LauncherFilePath);
         }
+        foreach (var entry in added.Concat(duplicates).DistinctBy(entry => entry.Id)) ManualImported?.Invoke(entry);
         if (added.Count > 0 || layoutChanged) _observer?.OnLibraryChanged();
 
         return new ImportResult
@@ -129,6 +133,42 @@ public sealed class ImportService : IImportService
             Duplicates = duplicates,
             Failures = failures,
         };
+    }
+
+    /// <summary>Commits detached, already resolved entries. Call only from the serialized host thread.</summary>
+    public ImportResult ImportPreparedItems(IReadOnlyList<AppEntry> entries, bool restoreExisting = false)
+    {
+        var added = new List<AppEntry>();
+        var duplicates = new List<AppEntry>();
+        foreach (var entry in entries)
+        {
+            var existing = _library.FindByKey(AppEntryKey.Compute(entry));
+            if (existing is not null) { duplicates.Add(existing); continue; }
+            if (_library.Add(entry) == AddEntryResult.Added) added.Add(entry);
+        }
+        if (added.Count > 0)
+        {
+            try { _library.Save(); }
+            catch
+            {
+                foreach (var entry in added) _library.Remove(entry.Id);
+                throw;
+            }
+        }
+        var changed = false;
+        if (_layouts is not null)
+        {
+            var capacity = Math.Max(1, _launcherCapacity());
+            var draft = LauncherLayoutRules.Reconcile(_layouts.Launcher,
+                _library.Items.Where(item => item is { IsUsable: true }).Select(item => item.Id), capacity);
+            draft = LauncherLayoutEditor.AddShortcuts(draft,
+                added.Concat(restoreExisting ? duplicates : []).Select(entry => entry.Id), capacity);
+            changed = !LauncherLayoutRules.Equivalent(draft, _layouts.Launcher);
+            if (changed && !_layouts.CommitLauncher(draft, _layouts.LauncherVersion))
+                throw new StorageException("启动台布局已变化，请重试添加。", _layouts.LauncherFilePath);
+        }
+        if (added.Count > 0 || changed) _observer?.OnLibraryChanged();
+        return new ImportResult { Added = added, Duplicates = duplicates };
     }
 
     /// <summary>导入单个来源，结果写进传进来的三个列表。</summary>
@@ -158,7 +198,9 @@ public sealed class ImportService : IImportService
         }
 
         // 先去重再提取图标：重复项不该为了一份不会被保存的图标而付出提取代价。
-        var existing = _library.FindByKey(AppEntryKey.Compute(entry));
+        var existing = _library.FindByKey(AppEntryKey.Compute(entry))
+            ?? (entry.AutomaticSourceKey is { } sourceKey
+                ? _library.Items.FirstOrDefault(item => item is not null && item.AutomaticSourceKey == sourceKey) : null);
         if (existing is not null)
         {
             duplicates.Add(existing);

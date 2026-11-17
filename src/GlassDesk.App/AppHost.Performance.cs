@@ -96,6 +96,7 @@ internal sealed partial class AppHost
     internal void SetManualGameSleep(bool sleeping)
     {
         _application.Dispatcher.VerifyAccess();
+        if (sleeping) _windowTopmostPicker?.Cancel();
         _performance?.SetManualSleep(sleeping, DateTimeOffset.UtcNow);
         ReconcilePerformance();
     }
@@ -109,10 +110,12 @@ internal sealed partial class AppHost
 
     private void SetPerformanceSessionSuspended(bool suspended)
     {
+        _windowTopmostSessionSuspended = suspended;
         if (_application.Dispatcher.HasShutdownStarted) return;
         _application.Dispatcher.BeginInvoke(new Action(() =>
         {
             if (_disposed || _performance is null) return;
+            if (suspended) _windowTopmostPicker?.Cancel();
             _performance.SetSessionSuspended(suspended, DateTimeOffset.UtcNow);
             if (!suspended) _performanceFullscreen?.Refresh();
             ReconcilePerformance();

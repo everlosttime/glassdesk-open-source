@@ -10,6 +10,47 @@ namespace GlassDesk.Dock.Tests;
 
 public class NaiwaSettingsWindowTests
 {
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData("内置奶蛙资源不完整，请重新安装完整版本。", false)]
+    public void EnablingChecksInstalledResourcesAndPersistsOnlyWhenReady(string? error, bool expectedEnabled)
+    {
+        StaTest.Run(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "GlassDesk-naiwa-enable-" + Guid.NewGuid().ToString("N"));
+            var window = new SettingsWindow { ShowActivated = false };
+            try
+            {
+                var data = new GlassDeskDataStore(new AppPaths(root));
+                data.LoadAll();
+                window.AttachDataStore(data, null);
+                var calls = 0;
+                window.PrepareNaiwaAsync = () => { calls++; return Task.FromResult(error); };
+                var enabled = Assert.IsType<CheckBox>(window.FindName("NaiwaEnabledCheck"));
+                enabled.IsChecked = true;
+                var deadline = DateTime.UtcNow.AddSeconds(5);
+                while (calls == 0 && DateTime.UtcNow < deadline)
+                {
+                    var frame = new DispatcherFrame();
+                    Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() => frame.Continue = false));
+                    Dispatcher.PushFrame(frame);
+                }
+                Assert.Equal(1, calls);
+                Assert.Equal(expectedEnabled, enabled.IsChecked);
+                Assert.Equal(expectedEnabled, data.Settings.Current.Appearance.NaiwaEnabled);
+                var settings = new SettingsStore(data.Paths.SettingsFile);
+                settings.Load();
+                Assert.Equal(expectedEnabled, settings.Current.Appearance.NaiwaEnabled);
+                if (error is not null) Assert.Equal(error, Assert.IsType<TextBlock>(window.FindName("NaiwaStatus")).Text);
+            }
+            finally
+            {
+                window.Close();
+                if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+            }
+        });
+    }
+
     [Fact]
     public void RecycleBinHasItsOwnSettingsSection()
     {

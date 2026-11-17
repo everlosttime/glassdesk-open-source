@@ -18,6 +18,11 @@ internal static class NaiwaAssets
     internal static bool AreReady(string directory)
         => RequiredFiles.All(name => new FileInfo(Path.Combine(directory, name)) is { Exists: true, Length: > 0 });
 
+    // Installed resources are read in place. Never copy them into or overwrite user state.
+    // Keep the previous import location as a fallback for older portable installations.
+    internal static string? ResolveDirectory(string bundledDirectory, string legacyDirectory)
+        => AreReady(bundledDirectory) ? bundledDirectory : AreReady(legacyDirectory) ? legacyDirectory : null;
+
     internal static async Task ImportAsync(string archivePath, string directory)
     {
         await using var input = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read,

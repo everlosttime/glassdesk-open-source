@@ -491,6 +491,13 @@ The same `b0` exchange as the other Nova headsets, asked for with report id `06`
 
 ## Mice
 
+
+### GlassDesk ATK receiver expansion, 2026-11-12
+
+ATK HUB 3.2.32 supplies 44 additional exact FF04:0002 receiver identities (ATK_COMPX_PIDS, excluding native 373B:1278) and 21 FF05:0001 identities (NANO_PIDS, including the existing 373B:1216). All remain verification C without ATK hardware testing. Only the existing battery getters are sent, with strict collection and per-report descriptor proof; FF05 charging remains unknown. The unchanged FF02 path remains available to separate physical receivers. The original NANO packet rules below apply to every exact FF05 receiver in that table.
+
+Complete URLs, SHA256 hashes, receiver rows, offsets, packet acceptance rules and test results are retained in GlassDesk docs/evidence/atk-receivers-20261112.md and the adjacent JSON manifest. Fixtures are in components-src/battery-engine/test_atk_receivers.py.
+
 ### ATK / VXE NANO receiver (373B:1216)
 
 **Verification C: static ATK Hub 3.2.31 evidence and synthetic tests only.**
@@ -3369,3 +3376,15 @@ executed and no hardware or network was accessed for this implementation.
 The provider reads HID++ 2.0 generically from the receiver's `ff00` vendor collections (slots 1-6), so most other HID++ 2.0 mice and keyboards on a Lightspeed, Unifying or Bolt receiver should answer the same `0x1004` unified battery request. The G-series headsets - G533, G535, G633, G635, G733, G933, G935, G PRO, G PRO X - are in the headset pid table and use feature `0x1F20` (the G535 on its consumer collection). Only the models listed in the support table above are confirmed so far.
 
 Devices with no feature table at all (the older HID++ 1.0 generation) are read through the old battery registers instead: a short report `10 <slot> 81 <register>` on the short collection reads register `0x0D` (a percentage with a charging status - `30` discharging, `50` recharging, `90` full) or register `0x07` (a discrete level - 7 full, 5 good, 3 low, 1 critical - beside a charging byte), the same registers and order Solaar uses. This was added for the M710 keyboard of the MK710 wireless desktop ([#159](https://github.com/HeyOkay/HaloBattery/issues/159)), built from Solaar's implementation; **confirmed on hardware** in the reporter's test-build run - the icon shows the keyboard's coarse level.
+
+### GlassDesk MCHOSE expansion — 2026-11-13
+
+Independent implementation of protocol facts from current official M HUB. The official JavaScript is not copied into this component. URL, SHA256, offsets and identity tables are recorded in GlassDesk docs/evidence/mchose-battery-20261113.json.
+
+G87 41E4:2001 uses output/input report 13 of 20 bytes on FF02:0002; FF04 on the tested receiver is feature-only. Its raw descriptor proves both byte-array sizes. Keep proven legacy FF04 channels, reject ambiguous output channels, and identify a known six-byte model code before 4A. Local replies: identity 03000000021c, battery 100%, not charging, matching the driver. This verifies the current full-battery state only; no discharge/charging/sleep claim. The official BY identification table contains 18 keyboard names.
+
+The newMouseFilters table supplies 19 exact 3837 USB identities using the existing 4D/64-byte 0900 getter and device-info layout. Four are receiver IDs and 15 device IDs; these counts are not individually validated models. Strict descriptor proof and link-state checks remain. Existing V2/RealTek, G7 and first-generation A5 paths are retained. Known audio identities do not receive mouse probes.
+
+Wireless headset records additionally prove V9 Turbo 3837:600D and X9 3837:6045 share report 55, 64 bytes, getter 65/01; states 02/03/04 denote discharge/charging/full, 1A asleep. V9 PRO 2 3837:6011 and R9 3837:6013 use MC report 55, 63-byte payload: AA 01 00 01 00 01 0B 00, padded. Only readBattery is sent. Replies require AA/version 1, flags 0/1, type 00/01, subcommand 0B, declared body >=2 and valid checksum (zero if disabled; otherwise XOR over flags,length,type,subcommand,body). Body[0]==0 is asleep; body[1]&7F is percentage and bit7 charging. Exact request echoes, settings replies and notifications cannot become battery measurements. New wireless headset paths require one proven vendor collection and sole input/output ID55 of 64 bytes. No hardware validation for the new headsets. The prior V9 PRO/Turbo+ external-power semantics are retained. The official shared 291D:385D names are V9, V9 PRO, S9 PRO and G9 PRO; a USB ID alone does not distinguish them. Wired-only audio and dock/lighting IDs are not battery targets.
+
+All additions retain verification C until broader hardware states are checked. No DPI, lighting, EQ, reset, pairing or firmware commands are added.

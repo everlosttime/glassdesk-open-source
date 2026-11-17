@@ -125,6 +125,22 @@ class MchoseByKeyboardProvider(H.BatteryHidProvider):
 
     def _pick(self, infos):
         self._aula = False
+        self.collection = (0xFF04, 0x0002)
+        if self.vid == 0x41E4:
+            # G87 hardware exposes BY output 13 on FF02; its FF04 sibling is
+            # feature-only. Retain proven legacy FF04 endpoints, but never pick
+            # by enumeration order when two output channels are eligible.
+            eligible = [info for info in infos
+                        if (info.get("vendor_id"), info.get("product_id")) == (0x41E4, 0x2001)
+                        and info.get("product_string") in RECEIVER_NAMES
+                        and (info.get("usage_page"), info.get("usage")) in ((0xFF02, 2), (0xFF04, 2))
+                        and all(info.get(d + "_report_length") == 20
+                                and info.get(d + "_report_sizes") == {"19": 20}
+                                for d in ("input", "output"))]
+            if len(eligible) != 1:
+                self._diag.append("missing or ambiguous proven MCHOSE BY channel: nothing sent")
+                return None
+            self.collection = (eligible[0]["usage_page"], 2)
         candidates = [info for info in infos
                       if info.get("vendor_id") == self.vid
                       and info.get("product_id") in self.pids

@@ -64,8 +64,8 @@
     },
     {
       "relativePath": "engine/compatibility.json",
-      "length": 25223,
-      "sha256": "d0e30506a11f134763c55aae559f21e7565ca3ee8331a45bf614ed3c3a316f7e"
+      "length": 25679,
+      "sha256": "c7f2a6a8dd47c44b8b3acbba4a355075e360ff4ce3c22d03abab5eb5c99eefdc"
     },
     {
       "relativePath": "engine/dependencies.lock.json",
@@ -89,8 +89,8 @@
     },
     {
       "relativePath": "engine/known_ids.py",
-      "length": 15121,
-      "sha256": "02cd23363855ef78b4941cca04038b33a5301c5f9aa33b7f14554cfebdc1ac5b"
+      "length": 15159,
+      "sha256": "bad3a875b1a5ae12b02819368e1d7c6616b5e4a8f0ad48d84cca0325ca2982ba"
     },
     {
       "relativePath": "engine/licenses/HaloBattery-MIT.txt",
@@ -254,8 +254,8 @@
     },
     {
       "relativePath": "engine/providers/mchose_by_keyboard.py",
-      "length": 11504,
-      "sha256": "85055f1302da72f0ff31bd6bbe1fc2cd409b9154a80e07b2828157a57f705034"
+      "length": 12575,
+      "sha256": "cb11caca7b52071894d00055c29a561e65cd19691a78e08e16f97ad127b86ab8"
     },
     {
       "relativePath": "engine/providers/mchose_glw_keyboard.py",
@@ -264,8 +264,8 @@
     },
     {
       "relativePath": "engine/providers/mchose_headset.py",
-      "length": 5535,
-      "sha256": "c7445ce58cbdfbcde68468e7b73599415740adf52a7c2fe5b00dcedbe2da1f55"
+      "length": 8838,
+      "sha256": "00cd25d455af57bc544b9e054fdcdd2677ac15faf17d7c3ab283a6af6b21187b"
     },
     {
       "relativePath": "engine/providers/mchose_qhw_keyboard.py",
@@ -274,8 +274,8 @@
     },
     {
       "relativePath": "engine/providers/mchose.py",
-      "length": 31790,
-      "sha256": "bc508df3f394d81272f6d46a896b848332dee6056404608583fb5b06e91b5fa8"
+      "length": 32651,
+      "sha256": "6c85a97a03ba08f6b099e568c39f3e4f7eafbb9708adae2b1909b7c972cd9aaa"
     },
     {
       "relativePath": "engine/providers/moondrop.py",
@@ -299,8 +299,8 @@
     },
     {
       "relativePath": "engine/providers/pulsar.py",
-      "length": 37803,
-      "sha256": "04e553c43eaa9596ab0efc3ad065d4f34038bf6dd585be0775bde79c0fe0aa12"
+      "length": 43487,
+      "sha256": "b484321e4e28b1cb8e6287834b8fa14a95ca3f81b13720e264b6bbec11fa0840"
     },
     {
       "relativePath": "engine/providers/rapoo.py",
@@ -379,8 +379,8 @@
     },
     {
       "relativePath": "engine/server.py",
-      "length": 76737,
-      "sha256": "1d550fd249e58d5cb50856f209c656a8bf0fd08b443e95dc86141ae570fd0be5"
+      "length": 76821,
+      "sha256": "ab6ec170e4e063925b616a82eae06dc77120fc9a786e4256e766d8615886b156"
     },
     {
       "relativePath": "engine/standardhid.py",
@@ -389,8 +389,8 @@
     },
     {
       "relativePath": "engine/topology.py",
-      "length": 20460,
-      "sha256": "e51dc0ef1c34b1220f573b34470751a425ea2d95fc76a4cb319a9f16f3601a7d"
+      "length": 21868,
+      "sha256": "76ba76b8e5b9320ea2c958b3f507037ccf1b40dda5533fa612c17452d2fd0e63"
     },
     {
       "relativePath": "engine/upstream-credits.md",
@@ -404,8 +404,8 @@
     },
     {
       "relativePath": "engine/upstream-protocols.md",
-      "length": 255281,
-      "sha256": "55a9d5bfbd29f66e4ae9d43dd2e8c68568ed10977dcf4f01aa117914f5e7e31b"
+      "length": 258536,
+      "sha256": "9787b59af79ffe20862d1306fb8794e9ebdf48006ee80238ae1f56dac75ecad5"
     },
     {
       "relativePath": "LICENSE",
@@ -451,13 +451,23 @@
     },
     {
       "relativePath": "README.md",
-      "length": 2292,
-      "sha256": "6b20fe20e348bea23a3ea1b96c782e3a3d199c6a7131c1fb5a2a8232f5576b55"
+      "length": 3047,
+      "sha256": "2630996ec1de395c58a77ddd0f951bed7d264b64b1051d27be528ebf917bdadf"
+    },
+    {
+      "relativePath": "test_atk_receivers.py",
+      "length": 9410,
+      "sha256": "c7b96fc8830fb73129229b0357c85007eae97b6c39c687bbd2c47881859c94d7"
     },
     {
       "relativePath": "test_bridge.py",
       "length": 9697,
       "sha256": "6433df9b412431598e025f128de8588e51ac54b1d57e1e7810c3930f44ff4c4f"
+    },
+    {
+      "relativePath": "test_mchose_compat.py",
+      "length": 7924,
+      "sha256": "0a878513de518b98b62b87b23de1dc9afcd2a7f9facf38a60835f021a269160d"
     },
     {
       "relativePath": "test_native_profiles.py",
@@ -473,8 +483,8 @@
   "payloadFiles": [
     {
       "relativePath": "corresponding-source/glassdesk-battery-engine.zip",
-      "length": 112043,
-      "sha256": "a56b8415d2dadf830a295630588c27e8849f962eb203be7b255129d33a69a67c"
+      "length": 130368,
+      "sha256": "fa6f5c6f913089bd0115d12ebe07e3e0f0854754171121a20dcb98d2020e450f"
     },
     {
       "relativePath": "corresponding-source/hidapi-0.15.0.tar.gz",
@@ -523,8 +533,8 @@
     },
     {
       "relativePath": "engine/compatibility.json",
-      "length": 25223,
-      "sha256": "d0e30506a11f134763c55aae559f21e7565ca3ee8331a45bf614ed3c3a316f7e"
+      "length": 25679,
+      "sha256": "c7f2a6a8dd47c44b8b3acbba4a355075e360ff4ce3c22d03abab5eb5c99eefdc"
     },
     {
       "relativePath": "engine/dependencies.lock.json",
@@ -548,8 +558,8 @@
     },
     {
       "relativePath": "engine/known_ids.py",
-      "length": 15121,
-      "sha256": "02cd23363855ef78b4941cca04038b33a5301c5f9aa33b7f14554cfebdc1ac5b"
+      "length": 15159,
+      "sha256": "bad3a875b1a5ae12b02819368e1d7c6616b5e4a8f0ad48d84cca0325ca2982ba"
     },
     {
       "relativePath": "engine/licenses/HaloBattery-MIT.txt",
@@ -713,8 +723,8 @@
     },
     {
       "relativePath": "engine/providers/mchose_by_keyboard.py",
-      "length": 11504,
-      "sha256": "85055f1302da72f0ff31bd6bbe1fc2cd409b9154a80e07b2828157a57f705034"
+      "length": 12575,
+      "sha256": "cb11caca7b52071894d00055c29a561e65cd19691a78e08e16f97ad127b86ab8"
     },
     {
       "relativePath": "engine/providers/mchose_glw_keyboard.py",
@@ -723,8 +733,8 @@
     },
     {
       "relativePath": "engine/providers/mchose_headset.py",
-      "length": 5535,
-      "sha256": "c7445ce58cbdfbcde68468e7b73599415740adf52a7c2fe5b00dcedbe2da1f55"
+      "length": 8838,
+      "sha256": "00cd25d455af57bc544b9e054fdcdd2677ac15faf17d7c3ab283a6af6b21187b"
     },
     {
       "relativePath": "engine/providers/mchose_qhw_keyboard.py",
@@ -733,8 +743,8 @@
     },
     {
       "relativePath": "engine/providers/mchose.py",
-      "length": 31790,
-      "sha256": "bc508df3f394d81272f6d46a896b848332dee6056404608583fb5b06e91b5fa8"
+      "length": 32651,
+      "sha256": "6c85a97a03ba08f6b099e568c39f3e4f7eafbb9708adae2b1909b7c972cd9aaa"
     },
     {
       "relativePath": "engine/providers/moondrop.py",
@@ -758,8 +768,8 @@
     },
     {
       "relativePath": "engine/providers/pulsar.py",
-      "length": 37803,
-      "sha256": "04e553c43eaa9596ab0efc3ad065d4f34038bf6dd585be0775bde79c0fe0aa12"
+      "length": 43487,
+      "sha256": "b484321e4e28b1cb8e6287834b8fa14a95ca3f81b13720e264b6bbec11fa0840"
     },
     {
       "relativePath": "engine/providers/rapoo.py",
@@ -838,8 +848,8 @@
     },
     {
       "relativePath": "engine/server.py",
-      "length": 76737,
-      "sha256": "1d550fd249e58d5cb50856f209c656a8bf0fd08b443e95dc86141ae570fd0be5"
+      "length": 76821,
+      "sha256": "ab6ec170e4e063925b616a82eae06dc77120fc9a786e4256e766d8615886b156"
     },
     {
       "relativePath": "engine/standardhid.py",
@@ -848,8 +858,8 @@
     },
     {
       "relativePath": "engine/topology.py",
-      "length": 20460,
-      "sha256": "e51dc0ef1c34b1220f573b34470751a425ea2d95fc76a4cb319a9f16f3601a7d"
+      "length": 21868,
+      "sha256": "76ba76b8e5b9320ea2c958b3f507037ccf1b40dda5533fa612c17452d2fd0e63"
     },
     {
       "relativePath": "engine/upstream-credits.md",
@@ -863,8 +873,8 @@
     },
     {
       "relativePath": "engine/upstream-protocols.md",
-      "length": 255281,
-      "sha256": "55a9d5bfbd29f66e4ae9d43dd2e8c68568ed10977dcf4f01aa117914f5e7e31b"
+      "length": 258536,
+      "sha256": "9787b59af79ffe20862d1306fb8794e9ebdf48006ee80238ae1f56dac75ecad5"
     },
     {
       "relativePath": "glassdesk_bridge.py",

@@ -20,6 +20,8 @@ internal sealed class PerformanceCoordinator
     public long Generation { get; private set; }
     public bool AutoSuspend { get; private set; } = true;
     public bool ManualSleep { get; private set; }
+    // An explicit window-picker hotkey still works while background rendering sleeps.
+    public bool AllowsWindowSelection => !ManualSleep && !_sessionSuspended;
     public bool IsSuppressionRequested => ManualSleep || _sessionSuspended
         || AutoSuspend && _stableFullscreen && !_desktopLayerPinned;
     public bool IsTemporaryActivation => _temporaryActivation;

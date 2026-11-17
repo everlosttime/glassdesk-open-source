@@ -576,7 +576,8 @@ def recognized_candidate_count(name, inventory, device_pack=EMPTY_PACK):
     nano_candidates = set()
     if name == "pulsar":
         nano_candidates = {(d.get("vendor_id"), d.get("product_id")) for d in inventory
-                           if d.get("product_id") in module.NANO_PIDS.get(d.get("vendor_id"), {})}
+                           if any(d.get("product_id") in table.get(d.get("vendor_id"), {})
+                                  for table in (module.NANO_PIDS, module.ATK_COMPX_PIDS))}
     for field in ("PIDS", "KNOWN", "DONGLES", "RECEIVERS", "HEADSETS", "WIRED", "BRAGI_PIDS", "MOUSE_MODELS", "MODELS", "CLASSIC_MODELS"):
         value = getattr(module, field, ())
         if name == "pulsar" and field == "PIDS":

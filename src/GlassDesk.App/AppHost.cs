@@ -143,6 +143,7 @@ internal sealed partial class AppHost : IDisposable
 
         var theme = ThemeService.Initialize(_application.Dispatcher);
 
+        if (!InitializeLibraryCommandBroker()) return StartupOutcome.UserDataLeaseUnavailable;
         _data = new GlassDeskDataStore(AppPaths.ForCurrentUser());
         _loadReport = _data.LoadAll();
         LoadNaiwaOptions();
@@ -181,6 +182,7 @@ internal sealed partial class AppHost : IDisposable
         InitializePerformanceCoordinator();
         InitializeInteractionController();
         InitializeNearby();
+        InitializeLauncherAutoOrganization();
         InitializeNativeRenderTest();
 
         // 首次点击启动台之前先在空闲帧采样并过滤一次背景；不会抢占 Dock 的首帧。
@@ -248,6 +250,7 @@ internal sealed partial class AppHost : IDisposable
         }
 
         _deferredCommandGate.Close();
+        DisposeLauncherAutoOrganization();
         _desktopRecoveryTimer?.Stop();
 
         // Restore the desktop before stopping services that can fail during teardown.
@@ -277,6 +280,8 @@ internal sealed partial class AppHost : IDisposable
 
         _services?.Dispose();
         _services = null;
+
+        StopLibraryCommandBroker();
 
         _messageWindow?.Dispose();
         _messageWindow = null;
@@ -460,7 +465,8 @@ internal sealed partial class AppHost : IDisposable
             {
                 var key = (uint)((lParam.ToInt64() >> 16) & 0xFFFF);
                 if (_performance?.IsSuppressionRequested == true && _launcher?.IsVisible != true
-                    && (key is 5 or 6 or 0x100 or 0x101) && _interaction?.IsGameSleepHotkey(wParam.ToInt32()) != true)
+                    && (key is 5 or 6 or 0x100 or 0x101) && _interaction?.IsGameSleepHotkey(wParam.ToInt32()) != true
+                    && _interaction?.IsWindowTopmostHotkey(wParam.ToInt32()) != true)
                 { handled = true; return 0; }
                 _interaction?.HandleHotkey(wParam.ToInt32());
             }

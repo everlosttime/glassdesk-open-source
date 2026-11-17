@@ -214,6 +214,15 @@ public sealed class BackupService
             // 归档里的引用指着备份时的那个数据目录。文件已经复制到位，
             // 但引用不跟着改的话，换台机器或换个目录恢复，图标照样失效——
             // 这正是把文件复制过去解决不了的那一半。
+            if (!File.Exists(Path.Combine(sourceDirectory, "desktop-sync.json")))
+            {
+                if (File.Exists(_paths.DesktopSyncFile)) File.Delete(_paths.DesktopSyncFile);
+                if (File.Exists(_paths.DesktopSyncFile + AtomicFile.BackupSuffix)) File.Delete(_paths.DesktopSyncFile + AtomicFile.BackupSuffix);
+                var settings = new SettingsStore(_paths.SettingsFile);
+                settings.Load();
+                settings.Current.Launcher.AutoAddDesktopAppsEnabled = false;
+                settings.Save();
+            }
             var repaired = RepairManagedIconReferences();
 
             return new TransferResult
@@ -254,6 +263,7 @@ public sealed class BackupService
             ["apps.json"] = text => CanDeserialize(text, GlassDeskJsonContext.Default.AppLibraryData),
             ["dock-layout.json"] = text => CanDeserialize(text, GlassDeskJsonContext.Default.DockLayout),
             ["launcher-layout.json"] = text => CanDeserialize(text, GlassDeskJsonContext.Default.LauncherLayout),
+            ["desktop-sync.json"] = DesktopSyncDocumentValidator.IsValid,
         };
 
         var unreadable = new List<string>();
@@ -360,7 +370,7 @@ public sealed class BackupService
             var store = new AppLibraryStore(_paths.AppLibraryFile);
             store.Load();
 
-            if (store.RepairedIconReferenceCount == 0)
+            if (store.RepairedIconReferenceCount == 0 && store.RepairedManagedShortcutReferenceCount == 0)
             {
                 return 0;
             }
@@ -380,6 +390,7 @@ public sealed class BackupService
     /// </summary>
     private IEnumerable<string> SourcesToArchive()
     {
+        foreach (var relativePath in AppPaths.ManagedShortcutRelativePaths(_paths.RootDirectory)) yield return relativePath;
         foreach (var relativePath in AppPaths.BackupDocumentRelativePaths())
         {
             // 这份文档还没有保存过；文件不存在不算失败。
@@ -404,6 +415,7 @@ public sealed class BackupService
     /// </remarks>
     private static IEnumerable<string> RestoreCandidates(string sourceDirectory)
     {
+        foreach (var relativePath in AppPaths.ManagedShortcutRelativePaths(sourceDirectory)) yield return relativePath;
         foreach (var relativePath in AppPaths.BackupDocumentRelativePaths())
         {
             if (File.Exists(Path.Combine(sourceDirectory, relativePath)))

@@ -100,6 +100,17 @@ public sealed class GlassDeskDataStore
     /// </remarks>
     public bool DeleteFromLibrary(string? itemId)
     {
+        var entry = Library.Find(itemId);
+        if (entry is not null)
+        {
+            var key = !string.IsNullOrWhiteSpace(entry.AutomaticSourceKey) ? entry.AutomaticSourceKey
+                : entry.Kind == AppItemKind.Shortcut && !string.IsNullOrWhiteSpace(entry.AppUserModelId)
+                    ? "aumid:" + entry.AppUserModelId.ToLowerInvariant() + "\0" + (entry.Arguments ?? string.Empty).Trim()
+                    : AppEntryKey.Compute(entry);
+            var draft = LauncherLayoutRules.DeepClone(Layouts.Launcher);
+            if (!draft.SuppressedAutoAddKeys.Contains(key, StringComparer.Ordinal)) draft.SuppressedAutoAddKeys.Add(key);
+            if (!Layouts.CommitLauncher(draft, Layouts.LauncherVersion)) return false;
+        }
         if (!Library.Remove(itemId))
         {
             return false;

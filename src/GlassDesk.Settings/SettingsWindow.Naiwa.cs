@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using Microsoft.Win32;
 using GlassDesk.Core.Models.Settings;
 using GlassDesk.UI.Theming;
 
@@ -11,7 +10,7 @@ public partial class SettingsWindow
     private bool _loadingNaiwaControls;
     private int _lastAudibleNaiwaVolume = 100;
 
-    public Func<Func<string?>, Task<string?>>? PrepareNaiwaAsync { get; set; }
+    public Func<Task<string?>>? PrepareNaiwaAsync { get; set; }
     public Func<string, string?>? RunNaiwaAction { get; set; }
     public event EventHandler? NaiwaSettingsChanged;
 
@@ -51,10 +50,10 @@ public partial class SettingsWindow
             string? error;
             try
             {
-                // Let automation and input callers return before opening the modal file picker.
+                // Let input callers return before validating the installed component.
                 await System.Windows.Threading.Dispatcher.Yield();
                 if (!ReferenceEquals(_dataStore, data) || Dispatcher.HasShutdownStarted) return;
-                error = PrepareNaiwaAsync is { } prepare ? await prepare(SelectNaiwaArchive) : "奶蛙组件不可用。";
+                error = PrepareNaiwaAsync is { } prepare ? await prepare() : "奶蛙组件不可用。";
             }
             finally
             {
@@ -129,16 +128,4 @@ public partial class SettingsWindow
             : "回收站运行服务未连接。";
     }
 
-    private string? SelectNaiwaArchive()
-    {
-        ShowNaiwaStatus("首次启用需要导入官方 naiwa-pet-v2.5.1-portable.zip。");
-        var dialog = new OpenFileDialog
-        {
-            Title = "导入奶蛙 v2.5.1 官方素材包",
-            Filter = "ZIP 压缩包 (*.zip)|*.zip",
-            FileName = "naiwa-pet-v2.5.1-portable.zip",
-            CheckFileExists = true,
-        };
-        return dialog.ShowDialog(this) == true ? dialog.FileName : null;
-    }
 }

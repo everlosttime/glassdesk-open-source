@@ -46,6 +46,22 @@ public enum GlassSurfaceMode
     Justification = "WPF window resources are acquired in OnSourceInitialized and released in OnClosed.")]
 public abstract class GlassWindow : Window
 {
+    /// <summary>Fades rendered content and its shadow without changing layered HWND opacity.</summary>
+    public static readonly DependencyProperty PresentationOpacityProperty = DependencyProperty.Register(
+        nameof(PresentationOpacity), typeof(double), typeof(GlassWindow), new PropertyMetadata(1d, (owner, args) =>
+        {
+            var window = (GlassWindow)owner;
+            var opacity = (double)args.NewValue;
+            if (window.Content is UIElement content) content.Opacity = opacity;
+            window._shadow?.SetTransitionShape(null, window.PanelCornerRadius.TopLeft, opacity);
+        }));
+
+    public double PresentationOpacity
+    {
+        get => (double)GetValue(PresentationOpacityProperty);
+        set => SetValue(PresentationOpacityProperty, value);
+    }
+
     public GlassMaterialTarget MaterialTarget { get; set; }
     private CaptureExclusionSession? _captureExclusion;
     private GlassShadow? _shadow;

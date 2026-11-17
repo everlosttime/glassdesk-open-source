@@ -79,6 +79,11 @@ public sealed class ShortcutSettings
 
     private static HotkeyDefinition DefaultGameSleepHotkey() => new() { Enabled = true, Control = true, Alt = true, Key = "G" };
 
+    /// <summary>选择窗口并切换其置顶状态；再次选择同一窗口可取消置顶。</summary>
+    public HotkeyDefinition SelectWindowTopmost { get; set; } = DefaultWindowTopmostHotkey();
+
+    private static HotkeyDefinition DefaultWindowTopmostHotkey() => new() { Enabled = true, Control = true, Alt = true, Key = "T" };
+
     /// <summary>
     /// 热区默认关闭。它很容易被误触发，因此需要用户显式
     /// 开启才会生效。
@@ -109,6 +114,7 @@ public sealed class ShortcutSettings
         ToggleDesktopIcons ??= new HotkeyDefinition();
         ToggleDockRevealLock ??= new HotkeyDefinition();
         ToggleGameSleep ??= DefaultGameSleepHotkey();
+        SelectWindowTopmost ??= DefaultWindowTopmostHotkey();
         MouseBackButton ??= new HotkeyDefinition();
         MouseForwardButton ??= new HotkeyDefinition();
     }

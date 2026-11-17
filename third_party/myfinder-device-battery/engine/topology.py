@@ -285,12 +285,18 @@ def discover(paths, excluded=(), *, full=False):
             if caps_complete and (attrs.vendor, attrs.product, caps.page, caps.usage) in (
                     (0x3837, 0x1018, 0xFF01, 0x0001),
                     (0x3837, 0x1014, 0xFF01, 0x0001),
+                    (0x3837, 0x1016, 0xFF01, 0x0001),
+                    (0x3837, 0x101D, 0xFF01, 0x0001),
+                    *((0x3837, pid, 0xFF01, 1) for pid in (
+                        0x4026, 0x4027, 0x4028, 0x402A, 0x4030, 0x4031, 0x4032, 0x4033,
+                        0x4034, 0x4035, 0x4037, 0x4038, 0x403A, 0x403D, 0x403E)),
                     (0x373B, 0x1262, 0xFF90, 0x0001),
                     (0x373B, 0x12D6, 0xFF90, 0x0001),
                     (0x373B, 0x1216, 0xFF05, 0x0001),
                     (0x35D8, 0x0133, 0xFF02, 0x0002),
                     (0x3710, 0x5501, 0xFF02, 0x0002),
                     (0x41E4, 0x2001, 0xFF04, 0x0002),
+                    (0x41E4, 0x2001, 0xFF02, 0x0002),
                     (0x320F, 0x706E, 0xFF1C, 0x0092),
                     (0x320F, 0x5088, 0xFF1C, 0x0092),
                     (0x391D, 0x1A01, 0xFF01, 0x0010),
@@ -299,8 +305,21 @@ def discover(paths, excluded=(), *, full=False):
                 from battery_hid import battery_caps
                 info.update(battery_caps(hid, data, caps))
                 if (attrs.vendor, attrs.product) in (
-                        (0x35D8, 0x0133), (0x3837, 0x1018), (0x3837, 0x1014)):
+                        (0x35D8, 0x0133), *((0x3837, pid) for pid in (
+                            0x1014, 0x1016, 0x1018, 0x101D, 0x4026, 0x4027, 0x4028, 0x402A,
+                            0x4030, 0x4031, 0x4032, 0x4033, 0x4034, 0x4035, 0x4037, 0x4038,
+                            0x403A, 0x403D, 0x403E))) or (
+                        attrs.vendor, attrs.product, caps.page, caps.usage) == (0x41E4, 0x2001, 0xFF02, 2):
                     _descriptor_fallback(info, caps, ("input", "output"))
+                caps_complete = all(info.get(key) is not None
+                                    for key in ("input_report_sizes", "output_report_sizes"))
+            if caps_complete and attrs.vendor == 0x3837 and attrs.product in (
+                    0x600D, 0x6045, 0x6011, 0x6013) and caps.page >= 0xFF00:
+                # Official wireless headset identities; report 55/64 must be
+                # proven before opening a telemetry handle. No generic audio scan.
+                from battery_hid import battery_caps
+                info.update(battery_caps(hid, data, caps))
+                _descriptor_fallback(info, caps, ("input", "output"))
                 caps_complete = all(info.get(key) is not None
                                     for key in ("input_report_sizes", "output_report_sizes"))
             if caps_complete and (attrs.vendor, attrs.product, caps.page, caps.usage) == (

@@ -76,6 +76,7 @@ public sealed class AppLibraryStore
     /// <see cref="GlassDeskDataStore.LoadAll"/> 转成一条提示。
     /// </remarks>
     public int RepairedIconReferenceCount { get; private set; }
+    public int RepairedManagedShortcutReferenceCount { get; private set; }
 
     private AppLibraryData Data { get; set; } = new();
 
@@ -87,6 +88,17 @@ public sealed class AppLibraryStore
         Data.Items ??= [];
         RebuildIndexes();
         RepairManagedIconReferences();
+        var dataRoot = Path.GetDirectoryName(FilePath)!;
+        RepairedManagedShortcutReferenceCount = 0;
+        foreach (var entry in Data.Items.Where(item => item is not null && !string.IsNullOrWhiteSpace(item.AutomaticSourceKey)))
+        {
+            var target = AppPaths.RebaseManagedShortcut(entry.Target, dataRoot)!;
+            var icon = AppPaths.RebaseManagedShortcut(entry.IconSource, dataRoot);
+            if (target != entry.Target || icon != entry.IconSource) RepairedManagedShortcutReferenceCount++;
+            entry.Target = target;
+            entry.IconSource = icon;
+        }
+        RebuildIndexes();
         Version++;
 
         return outcome;

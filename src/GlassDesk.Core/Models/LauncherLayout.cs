@@ -21,6 +21,15 @@ public sealed class LauncherLayout
     /// <summary>搜索框下方的筛选分组，成员可重复属于不同分组。</summary>
     public List<LauncherGroup> FilterGroups { get; set; } = [];
 
+    /// <summary>Tracks ownership of automatic memberships independently of manual groups.</summary>
+    public List<LauncherAutoClassification> AutoClassifications { get; set; } = [];
+
+    /// <summary>Categories explicitly deleted by the user stay disabled until restored.</summary>
+    public List<string> DisabledAutomaticCategoryIds { get; set; } = [];
+
+    /// <summary>Logical launch identities explicitly removed from the launcher; persisted with that removal.</summary>
+    public List<string> SuppressedAutoAddKeys { get; set; } = [];
+
     /// <summary>Version 2 records explicit launcher membership, independently of Dock.</summary>
     public int SchemaVersion { get; set; }
 
@@ -73,8 +82,20 @@ public sealed class LauncherGroup
 
     public string Name { get; set; } = string.Empty;
 
+    /// <summary>Stable built-in category identity; null for ordinary user groups.</summary>
+    public string? CategoryId { get; set; }
+
     /// <summary>
     /// 成员应用的应用库 id。只有 id——分组不能再包含分组。
     /// </summary>
     public List<string> ItemIds { get; set; } = [];
+}
+
+public sealed class LauncherAutoClassification
+{
+    public string ItemId { get; set; } = string.Empty;
+    public string? CategoryId { get; set; }
+    public string? AutomaticGroupId { get; set; }
+    public bool IsManualOverride { get; set; }
+    public int RuleVersion { get; set; }
 }

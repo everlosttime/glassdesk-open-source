@@ -92,14 +92,19 @@ public static class LauncherFilterRules
         var group = result.FilterGroups.FirstOrDefault(group => group.Id == id)
             ?? throw new InvalidOperationException("分组已不存在，请重试。");
         var members = LauncherLayoutRules.AppIds(source).ToHashSet(StringComparer.Ordinal);
+        var before = group.ItemIds.ToList();
         group.ItemIds = itemIds.Where(members.Contains).Distinct(StringComparer.Ordinal).ToList();
-        return result;
+        return LauncherAutoGroupingRules.MarkManualGroupEdit(result, before, group.ItemIds);
     }
 
     public static LauncherLayout RemoveGroup(LauncherLayout source, string id)
     {
         var result = LauncherLayoutRules.DeepClone(source);
+        var group = result.FilterGroups.FirstOrDefault(group => group.Id == id);
+        if (group?.CategoryId is { } categoryId && !result.DisabledAutomaticCategoryIds.Contains(categoryId))
+            result.DisabledAutomaticCategoryIds.Add(categoryId);
         result.FilterGroups.RemoveAll(group => group.Id == id);
+        LauncherAutoGroupingRules.Normalize(result);
         return result;
     }
 
@@ -120,5 +125,6 @@ public static class LauncherFilterRules
             .Where(group => !string.IsNullOrWhiteSpace(group.Id) && seen.Add(group.Id)).ToList();
         foreach (var group in layout.FilterGroups)
             group.ItemIds = (group.ItemIds ?? []).Where(members.Contains).Distinct(StringComparer.Ordinal).ToList();
+        LauncherAutoGroupingRules.Normalize(layout);
     }
 }

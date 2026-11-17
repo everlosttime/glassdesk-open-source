@@ -10,7 +10,9 @@ internal sealed partial class AppHost
 {
     private static string NaiwaExecutable => Path.Combine(AppContext.BaseDirectory, "components", "Naiwa", "GlassDesk.Naiwa.exe");
     private string NaiwaRoot => Path.Combine(_data!.Paths.RootDirectory, "naiwa");
-    private string NaiwaAssetDirectory => Path.Combine(NaiwaRoot, "assets-v2.5.1");
+    private string? NaiwaAssetDirectory => NaiwaAssets.ResolveDirectory(
+        Path.Combine(AppContext.BaseDirectory, "components", "Naiwa", "assets-v2.5.1"),
+        Path.Combine(NaiwaRoot, "assets-v2.5.1"));
     private string NaiwaStateDirectory => Path.Combine(NaiwaRoot, "state");
     private NaiwaSession? _naiwa;
     private bool _naiwaExitedThisSession, _naiwaWasEnabled;
@@ -43,24 +45,12 @@ internal sealed partial class AppHost
         return null;
     }
 
-    private async Task<string?> PrepareNaiwaAsync(Func<string?> selectArchive)
+    private Task<string?> PrepareNaiwaAsync()
     {
-        if (!File.Exists(NaiwaExecutable)) return "当前安装缺少奶蛙组件。";
-        if (NaiwaAssets.AreReady(NaiwaAssetDirectory)) return null;
-        var selected = selectArchive();
-        if (selected is null) return "已取消导入。首次启用需要奶蛙 v2.5.1 官方素材包。";
-
-        SetNaiwaStatus("正在校验并导入奶蛙素材…");
-        try
-        {
-            await NaiwaAssets.ImportAsync(selected, NaiwaAssetDirectory);
-            SetNaiwaStatus(null);
-            return null;
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
-        {
-            return "导入素材失败：" + ex.Message;
-        }
+        var error = !File.Exists(NaiwaExecutable) ? "当前安装缺少奶蛙组件，请重新安装完整版本。"
+            : NaiwaAssetDirectory is null ? "内置奶蛙资源不完整，请重新安装完整版本。" : null;
+        if (error is null) SetNaiwaStatus(null);
+        return Task.FromResult(error);
     }
 
     private void ReconcileNaiwa()
@@ -86,16 +76,17 @@ internal sealed partial class AppHost
         }
         if (_naiwaExitedThisSession || sleeping) return;
 
-        if (!File.Exists(NaiwaExecutable) || !NaiwaAssets.AreReady(NaiwaAssetDirectory))
+        var assets = NaiwaAssetDirectory;
+        if (!File.Exists(NaiwaExecutable) || assets is null)
         {
             _naiwaExitedThisSession = true;
-            SetNaiwaStatus("奶蛙组件或素材不完整。请关闭后重新启用奶蛙以导入素材。");
+            SetNaiwaStatus("内置奶蛙组件或资源不完整，请重新安装完整版本。");
             return;
         }
 
         try
         {
-            _naiwa = new NaiwaSession(NaiwaExecutable, NaiwaAssetDirectory, NaiwaStateDirectory, options,
+            _naiwa = new NaiwaSession(NaiwaExecutable, assets, NaiwaStateDirectory, options,
                 (session, error) => _application.Dispatcher.BeginInvoke(() => OnNaiwaEnded(session, error)));
             SetNaiwaStatus(null);
         }

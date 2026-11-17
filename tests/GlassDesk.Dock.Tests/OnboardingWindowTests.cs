@@ -116,7 +116,7 @@ public sealed class OnboardingWindowTests
                 w.Show(); w.NavigateToPage("快捷操作");
                 System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.SystemIdle);
                 w.UpdateLayout();
-                string[] names = ["ToggleLauncher", "NextPage", "PreviousPage", "ToggleDesktopIcons", "ToggleDockRevealLock", "ToggleGameSleep"];
+                string[] names = ["ToggleLauncher", "NextPage", "PreviousPage", "ToggleDesktopIcons", "ToggleDockRevealLock", "ToggleGameSleep", "SelectWindowTopmost"];
                 foreach (var name in names)
                 {
                     var help = Assert.IsAssignableFrom<Button>(w.FindName(name + "Help"));
