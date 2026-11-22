@@ -4,11 +4,12 @@ Source: https://github.com/LIN4RUN/naiwa-desktop-pet
 Release: https://github.com/LIN4RUN/naiwa-desktop-pet/releases/tag/v2.5.1
 License: MIT (see LICENSE.txt)
 
-GlassDesk includes the original animation and audio runtime resources from
-naiwa-pet-v2.5.1-portable.zip. Their source archive SHA-256 and each resource's
-size and SHA-256 are recorded in assets-manifest.json. The upstream executable,
-scripts and manuals are not included; GlassDesk builds its managed companion
-from the attributed source.
+GlassDesk builds the managed companion from the attributed source. The
+animation and audio resources come from naiwa-pet-v2.5.1-portable.zip.
+Runtime-only builds use resources imported by the user from that ZIP.
+Builds with bundled resources record their sizes and SHA-256 hashes in
+assets-manifest.json. The upstream executable, scripts and manuals are
+not included in either build.
 
 Upstream resource notice (README, Artwork/Assets): .nwp files are generated
 from PNG/GIF/WebP frames, and audio is locally converted/processed. Where the

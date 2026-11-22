@@ -8,11 +8,12 @@ namespace GlassDesk.App;
 
 internal sealed partial class AppHost
 {
+    private const string NaiwaComponentMissing = "当前安装缺少黄色回收站组件，请安装支持素材导入的新版 GlassDesk。";
+    private const string NaiwaAssetsMissing = "请先点击「导入素材包」，选择官方 naiwa-pet-v2.5.1-portable.zip，无需解压。";
+
     private static string NaiwaExecutable => Path.Combine(AppContext.BaseDirectory, "components", "Naiwa", "GlassDesk.Naiwa.exe");
     private string NaiwaRoot => Path.Combine(_data!.Paths.RootDirectory, "naiwa");
-    private string? NaiwaAssetDirectory => NaiwaAssets.ResolveDirectory(
-        Path.Combine(AppContext.BaseDirectory, "components", "Naiwa", "assets-v2.5.1"),
-        Path.Combine(NaiwaRoot, "assets-v2.5.1"));
+    private string NaiwaImportedAssets => Path.Combine(NaiwaRoot, "assets-v2.5.1");
     private string NaiwaStateDirectory => Path.Combine(NaiwaRoot, "state");
     private NaiwaSession? _naiwa;
     private bool _naiwaExitedThisSession, _naiwaWasEnabled;
@@ -45,12 +46,62 @@ internal sealed partial class AppHost
         return null;
     }
 
+    private string? GetNaiwaSetupIssue() => !File.Exists(NaiwaExecutable) ? NaiwaComponentMissing
+        : !NaiwaAssets.AreReady(NaiwaImportedAssets) ? NaiwaAssetsMissing : null;
+
     private Task<string?> PrepareNaiwaAsync()
     {
-        var error = !File.Exists(NaiwaExecutable) ? "当前安装缺少奶蛙组件，请重新安装完整版本。"
-            : NaiwaAssetDirectory is null ? "内置奶蛙资源不完整，请重新安装完整版本。" : null;
+        var error = GetNaiwaSetupIssue();
         if (error is null) SetNaiwaStatus(null);
         return Task.FromResult(error);
+    }
+
+    private async Task<string?> ImportNaiwaAssetsAsync(string archivePath)
+    {
+        try
+        {
+            await NaiwaAssets.ImportAsync(archivePath, NaiwaImportedAssets);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            return "导入素材包失败：" + ex.Message;
+        }
+
+        if (!File.Exists(NaiwaExecutable)) return "素材包已导入。" + NaiwaComponentMissing;
+        SetNaiwaStatus(null);
+        if (_data?.Settings.Current.Appearance.NaiwaEnabled == true && _naiwa is null)
+        {
+            _naiwaExitedThisSession = false;
+            ReconcileNaiwa();
+        }
+        return _naiwaStatus;
+    }
+
+    private async Task<(bool AssetsReady, string Status)> RemoveNaiwaAssetsAsync()
+    {
+        var directory = NaiwaImportedAssets;
+        var wasExited = _naiwaExitedThisSession;
+        string? error = null;
+        try
+        {
+            // Keep reconciliation from reopening the imported files during removal.
+            _naiwaExitedThisSession = true;
+            StopNaiwa();
+            await Task.Run(() => NaiwaAssets.RemoveImportedFiles(directory));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        {
+            error = "移除素材包失败：" + ex.Message;
+        }
+
+        var assetsReady = NaiwaAssets.AreReady(directory);
+        if (assetsReady)
+        {
+            _naiwaExitedThisSession = wasExited;
+            ReconcileNaiwa();
+        }
+
+        return (assetsReady, error ?? "素材包已移除，重新启用前请先导入素材包。");
     }
 
     private void ReconcileNaiwa()
@@ -76,11 +127,12 @@ internal sealed partial class AppHost
         }
         if (_naiwaExitedThisSession || sleeping) return;
 
-        var assets = NaiwaAssetDirectory;
-        if (!File.Exists(NaiwaExecutable) || assets is null)
+        var assets = NaiwaImportedAssets;
+        var componentAvailable = File.Exists(NaiwaExecutable);
+        if (!componentAvailable || !NaiwaAssets.AreReady(assets))
         {
             _naiwaExitedThisSession = true;
-            SetNaiwaStatus("内置奶蛙组件或资源不完整，请重新安装完整版本。");
+            SetNaiwaStatus(componentAvailable ? NaiwaAssetsMissing : NaiwaComponentMissing);
             return;
         }
 

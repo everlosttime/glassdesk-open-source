@@ -55,7 +55,6 @@ public partial class SettingsWindow : GlassWindow
         {
             InitializeComponent();
             AutostartCheck.IsEnabled = false;
-            Title = "GlassDesk - Capture Acceptance 20261007";
         }
         finally
         {
@@ -80,8 +79,8 @@ public partial class SettingsWindow : GlassWindow
             "关于",
         ];
         ResetPageButton.IsEnabled = false;
-        LoadSponsorshipCodes();
         InitializeStatusBarSecondaryControls();
+        InitializeSliderPreviews();
     }
 
     private void OnSettingsWindowLoaded(object sender, RoutedEventArgs e) => SyncCategoryFromScroll();
@@ -273,7 +272,6 @@ public partial class SettingsWindow : GlassWindow
             LauncherColumnsSlider.Value = Math.Clamp(settings.Columns, 2, 12);
             LauncherFocusSearchCheck.IsChecked = settings.FocusSearchOnOpen;
             LauncherRememberPageCheck.IsChecked = settings.RememberLastPage;
-            LauncherHighRefreshCheck.IsChecked = settings.HighRefreshAnimationsEnabled;
             LauncherModeCombo.SelectedIndex = settings.GroupModeEnabled ? 1 : 0;
             LauncherAutoAddDesktopCheck.IsChecked = settings.AutoAddDesktopAppsEnabled;
             LauncherSmartGroupingCheck.IsChecked = settings.SmartGroupingEnabled;
@@ -299,7 +297,6 @@ public partial class SettingsWindow : GlassWindow
             FullscreenMode = false,
             FocusSearchOnOpen = LauncherFocusSearchCheck.IsChecked == true,
             RememberLastPage = LauncherRememberPageCheck.IsChecked == true,
-            HighRefreshAnimationsEnabled = LauncherHighRefreshCheck.IsChecked == true,
             GroupModeEnabled = LauncherModeCombo.SelectedIndex == 1,
             AutoAddDesktopAppsEnabled = old.AutoAddDesktopAppsEnabled,
             SmartGroupingEnabled = LauncherSmartGroupingCheck.IsChecked == true,
@@ -315,7 +312,6 @@ public partial class SettingsWindow : GlassWindow
         }
         if (old.Rows == next.Rows && old.Columns == next.Columns && old.FullscreenMode == next.FullscreenMode
             && old.FocusSearchOnOpen == next.FocusSearchOnOpen && old.RememberLastPage == next.RememberLastPage
-            && old.HighRefreshAnimationsEnabled == next.HighRefreshAnimationsEnabled
             && old.GroupModeEnabled == next.GroupModeEnabled
             && old.AutoAddDesktopAppsEnabled == next.AutoAddDesktopAppsEnabled
             && old.SmartGroupingEnabled == next.SmartGroupingEnabled) return;
@@ -393,12 +389,19 @@ public partial class SettingsWindow : GlassWindow
             || StatusBarEdgeCombo.SelectedIndex < 0
             || DockDisplayModeCombo.SelectedIndex < 0) return;
         if (_dockValuesOutOfRange) { LoadDockControls(); return; }
+        if (QueueSliderPreview(sender, () => ApplyDockControls(sender, preview: true),
+                () => ApplyDockControls(sender, preview: false))) return;
+        ApplyDockControls(sender, preview: false);
+    }
+
+    private void ApplyDockControls(object sender, bool preview)
+    {
         var status = ReferenceEquals(sender, ShowStatusBarCheckBox) || ReferenceEquals(sender, StatusBarEdgeCombo)
             || ReferenceEquals(sender, ShowStatusBarNetworkSpeedCheckBox)
             || ReferenceEquals(sender, StatusBarScaleSlider) || ReferenceEquals(sender, StatusBarOffsetXSlider)
             ? InformationBarSettingsStatus : DockSettingsStatus;
 
-        var current = _dataStore.Settings.Current;
+        var current = _dataStore!.Settings.Current;
         var previousDock = current.Dock;
         var previousCorner = current.Appearance.DockCornerRadius;
         var next = new DockSettings
@@ -441,12 +444,20 @@ public partial class SettingsWindow : GlassWindow
             ShowRunningIndicator = previousDock.ShowRunningIndicator,
         };
 
+        if (preview)
+        {
+            DockSettingsHost.Current?.Update(next);
+            UpdateFrameLengthReadout(next);
+            return;
+        }
+
         var candidate = SettingsPageEditor.Clone(current);
         candidate.Dock = next;
         candidate.Appearance.DockCornerRadius = 40;
         var validationError = SettingsPageEditor.Validate(candidate);
         if (validationError is not null)
         {
+            DockSettingsHost.Current?.Update(previousDock);
             LoadDockControls();
             status.Text = "设置无效，未保存：" + validationError;
             return;
@@ -460,9 +471,7 @@ public partial class SettingsWindow : GlassWindow
             DockSettingsHost.Current?.Update(next);
             if (Math.Abs(previousCorner - current.Appearance.DockCornerRadius) > 0.001)
                 ThemeService.Current?.Update(current.Appearance);
-            DockFrameLengthReadout.Text = next.FrameLengthDip > 0
-                ? $"固定外框：{DockFrameLengthSlider.Value:0} DIP"
-                : "当前随图标内容自动调整；拖动滑块后固定外框长度。";
+            UpdateFrameLengthReadout(next);
             LoadDockControls();
             status.Text = $"已保存；Dock {next.SizeScale:P0}，信息栏 {next.StatusBarSizeScale:P0}。";
         }
@@ -470,10 +479,16 @@ public partial class SettingsWindow : GlassWindow
         {
             current.Dock = previousDock;
             current.Appearance.DockCornerRadius = previousCorner;
+            DockSettingsHost.Current?.Update(previousDock);
             LoadDockControls();
             status.Text = "保存失败，已恢复原设置：" + ex.Message;
         }
     }
+
+    private void UpdateFrameLengthReadout(DockSettings settings) =>
+        DockFrameLengthReadout.Text = settings.FrameLengthDip > 0
+            ? $"固定外框：{settings.FrameLengthDip:0} DIP"
+            : "当前随图标内容自动调整；拖动滑块后固定外框长度。";
 
     private void OnDockAutoLengthClick(object sender, RoutedEventArgs e)
     {

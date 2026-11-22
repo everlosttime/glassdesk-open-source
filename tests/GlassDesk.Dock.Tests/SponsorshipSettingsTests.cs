@@ -13,6 +13,33 @@ namespace GlassDesk.Dock.Tests;
 
 public class SponsorshipSettingsTests
 {
+    [Fact]
+    public void SettingsWindowUsesItsPublicTitle()
+    {
+        StaTest.Run(() =>
+        {
+            var window = CreateWindow();
+            try { Assert.Equal("GlassDesk 设置", window.Title); }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void ConstructingSettingsDoesNotHoldDecodedPaymentArtwork()
+    {
+        StaTest.Run(() =>
+        {
+            var window = CreateWindow();
+            try
+            {
+                const System.Reflection.BindingFlags fields = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                Assert.Null(typeof(SettingsWindow).GetField("_alipaySponsorCode", fields)!.GetValue(window));
+                Assert.Null(typeof(SettingsWindow).GetField("_wechatSponsorCode", fields)!.GetValue(window));
+            }
+            finally { window.Close(); }
+        });
+    }
+
     [Theory]
     [InlineData(false, "alipay.jpg", "17A5DF70E82F659D288A8981D85B59C04595C9314EC35B73EFF6F4BB195D05E3")]
     [InlineData(true, "wechat.png", "60B353A958A6D85D28B50AD38A64F98078A7C9B16F8AF525AE55D47B7522CB00")]

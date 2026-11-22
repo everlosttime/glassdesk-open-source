@@ -107,6 +107,27 @@ public sealed class PackageVerificationTests : IDisposable
         Assert.Contains("naiwa", result.Output, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RuntimeOnlyNaiwaPackageAcceptsTheCompanionAndRejectsBundledMedia(bool withMedia)
+    {
+        var fixture = CandidateFixture.Create(_root);
+        foreach (var name in new[] { "GlassDesk.Naiwa.exe", "GlassDesk.Naiwa.exe.config", "LICENSE.txt", "NOTICE.txt" })
+            fixture.AddPayloadFile("components/Naiwa/" + name, Encoding.UTF8.GetBytes("fixture"));
+        if (withMedia)
+            fixture.AddPayloadFile("components/Naiwa/assets-v2.5.1/dance.mp3", Encoding.UTF8.GetBytes("fixture"));
+        var manifest = JsonNode.Parse(File.ReadAllText(fixture.ReleaseManifest))!;
+        manifest["naiwaCompanion"] = true;
+        manifest["naiwaRuntimeOnly"] = true;
+        File.WriteAllText(fixture.ReleaseManifest, manifest.ToJsonString());
+
+        var result = RunVerifier(fixture);
+
+        Assert.True((result.ExitCode != 0) == withMedia, result.Output);
+        if (withMedia) Assert.Contains("Unexpected companion payload", result.Output, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public void 有效的未签名候选包通过且校验不改动输入()
     {

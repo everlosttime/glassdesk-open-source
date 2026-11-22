@@ -1,6 +1,6 @@
 namespace GlassDesk.Core.Models;
 
-/// <summary>Owns one automatic membership per app, leaving all other memberships and ordering intact.</summary>
+/// <summary>Classifies ungrouped apps and manages their automatic group membership.</summary>
 public static class LauncherAutoGroupingRules
 {
     public static LauncherLayout ApplyClassification(LauncherLayout source, string itemId,
@@ -11,6 +11,8 @@ public static class LauncherAutoGroupingRules
         if (!LauncherLayoutRules.AppIds(result).Contains(itemId)) return result;
         var state = result.AutoClassifications.FirstOrDefault(item => item.ItemId == itemId);
         if (state is { IsManualOverride: true } || (state is not null && !replaceExisting)) return result;
+        if (result.FilterGroups.Any(group => group.Id != state?.AutomaticGroupId && group.ItemIds.Contains(itemId)))
+            return result;
         state = GetState(result, itemId);
         RemoveOwnedMembership(result, state);
         var categoryId = LauncherCategoryCatalog.Find(classification.CategoryId)?.Id ?? LauncherCategoryCatalog.Uncategorized;
@@ -28,11 +30,7 @@ public static class LauncherAutoGroupingRules
     {
         if (LauncherCategoryCatalog.Find(categoryId) is null) throw new ArgumentException("分类不存在。", nameof(categoryId));
         var result = LockManual(source, itemId);
-        var group = EnsureCategoryGroup(result, categoryId);
-        if (!group.ItemIds.Contains(itemId)) group.ItemIds.Add(itemId);
-        var state = GetState(result, itemId);
-        state.CategoryId = categoryId;
-        state.AutomaticGroupId = group.Id;
+        AssignManualGroup(result, itemId, EnsureCategoryGroup(result, categoryId));
         return result;
     }
 
@@ -41,11 +39,18 @@ public static class LauncherAutoGroupingRules
         var result = LockManual(source, itemId);
         var group = result.FilterGroups.FirstOrDefault(item => item.Id == groupId)
             ?? throw new InvalidOperationException("分组已不存在，请重试。");
+        AssignManualGroup(result, itemId, group);
+        return result;
+    }
+
+    private static void AssignManualGroup(LauncherLayout layout, string itemId, LauncherGroup group)
+    {
+        foreach (var other in layout.FilterGroups.Where(other => other != group))
+            other.ItemIds.RemoveAll(id => id == itemId);
         if (!group.ItemIds.Contains(itemId)) group.ItemIds.Add(itemId);
-        var state = GetState(result, itemId);
+        var state = GetState(layout, itemId);
         state.CategoryId = group.CategoryId;
         state.AutomaticGroupId = group.CategoryId is null ? null : group.Id;
-        return result;
     }
 
     public static LauncherLayout LockManual(LauncherLayout source, string itemId)

@@ -46,6 +46,73 @@ public sealed class StatusBarRevealTests
         });
     }
 
+    [Theory]
+    [InlineData(GlassDesk.Core.Models.Settings.StatusBarEdge.Top, .75, -1)]
+    [InlineData(GlassDesk.Core.Models.Settings.StatusBarEdge.Bottom, 1.5, 1)]
+    public void InFlightRevealMovesTowardItsOwnEdgeWithTheScaledRadius(
+        GlassDesk.Core.Models.Settings.StatusBarEdge edge, double scale, int direction)
+    {
+        StaTest.Run(() =>
+        {
+            var window = new StatusBarWindow();
+            try
+            {
+                window.BindPrimaryDisplay(new PrimaryDisplaySession(DisplayService.Primary()!));
+                window.ConfigurePlacement(() => (0, edge));
+                window.ConfigureSizeScale(() => scale);
+                window.RefreshDisplayPlacement();
+                window.Show();
+                window.UpdateLayout();
+
+                var progress = (DependencyProperty)typeof(StatusBarWindow)
+                    .GetField("RevealProgressProperty", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!;
+                window.SetValue(progress, .5);
+                var slide = Assert.IsType<System.Windows.Media.TranslateTransform>(window.FindName("StatusSlideTransform"));
+                Assert.Equal(direction * window.ActualHeight * .5, slide.Y);
+                Assert.Equal(25 * scale, window.PanelCornerRadius.TopLeft);
+                var surface = Assert.IsType<LiquidGlassSurface>(window.FindName("GlassSurface"));
+                var materialRadius = (double)typeof(LiquidGlassSurface).GetField("_panelRadius", Private)!.GetValue(surface)!;
+                Assert.Equal(25 * scale, materialRadius);
+                window.SetValue(progress, 1d);
+                Assert.Equal(0, slide.Y);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void ClockTickDoesNotQueueSystemWorkWithoutAMetricOrRefreshDue()
+    {
+        StaTest.Run(() =>
+        {
+            var window = new StatusBarWindow();
+            try
+            {
+                var settings = GlassDesk.UI.Settings.DockSettingsHost.Initialize(Dispatcher.CurrentDispatcher);
+                settings.Update(new GlassDesk.Core.Models.Settings.DockSettings
+                {
+                    ShowStatusBar = true,
+                    ShowStatusBarNetworkSpeed = false,
+                    StatusBarSecondaryItems = ["music"]
+                });
+                window.BindPrimaryDisplay(new PrimaryDisplaySession(DisplayService.Primary()!));
+                window.AttachSettings(settings);
+
+                // Settle only the visibility and sampling state. Tick synchronously so
+                // the dispatcher cannot complete a background query behind the assertion.
+                typeof(StatusBarWindow).GetField("_started", Private)!.SetValue(window, true);
+                typeof(StatusBarWindow).GetField("_targetVisible", Private)!.SetValue(window, true);
+                typeof(StatusBarWindow).GetField("_lastSystemRefresh", Private)!.SetValue(window, DateTimeOffset.UtcNow);
+                typeof(StatusBarWindow).GetMethod("RefreshClockAndStatus", Private)!.Invoke(window, null);
+
+                var clock = Assert.IsType<System.Windows.Controls.TextBlock>(window.FindName("TimeText"));
+                Assert.NotEmpty(clock.Text);
+                Assert.False((bool)typeof(StatusBarWindow).GetField("_sampling", Private)!.GetValue(window)!);
+            }
+            finally { window.Close(); }
+        });
+    }
+
     [Fact]
     public void CaptureWorkerCanCompleteGuiStartupWithoutWaitingForCapturePipeInput()
     {

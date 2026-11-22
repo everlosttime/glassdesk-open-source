@@ -429,6 +429,7 @@ try {
             -AssemblyVersion ([string]$release.assemblyVersion) `
             -FileVersion ([string]$release.fileVersion) `
             -IncludeNaiwa:($release.PSObject.Properties['naiwaCompanion'] -and $release.naiwaCompanion -eq $true) `
+            -NaiwaRuntimeOnly:($release.PSObject.Properties['naiwaRuntimeOnly'] -and $release.naiwaRuntimeOnly -eq $true) `
             -AcceptanceDataRoot $acceptanceDataRoot *>&1
     }
     finally {

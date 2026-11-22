@@ -84,6 +84,23 @@ public sealed class WallpaperFrameFanoutTests
     }
 
     [Fact]
+    public void SharedReadbackDefersEarlyRequestsButNeverDefersAFreshnessBarrier()
+    {
+        using var producer = new SharedWallpaperBuffer(Guid.NewGuid().ToString("N"), 77, 16, 16);
+        Assert.True(producer.Enter());
+        try
+        {
+            const long started = 100;
+            var frame = producer.Publish(started, started + 20);
+            Assert.False(SharedWallpaperBuffer.IsReadbackDue(frame, started + 30, started, 33));
+            Assert.True(SharedWallpaperBuffer.IsReadbackDue(frame, started + 33, started, 33));
+            Assert.True(SharedWallpaperBuffer.IsReadbackDue(frame, started + 30, started + 1, 33));
+            Assert.True(SharedWallpaperBuffer.IsReadbackDue(default, started + 30, started, 33));
+        }
+        finally { producer.Exit(); }
+    }
+
+    [Fact]
     public void ANewSourceTimeBarrierForcesAFreshReadAndFutureBarriersAreRejected()
     {
         var scope = Guid.NewGuid().ToString("N"); var reads = 0;

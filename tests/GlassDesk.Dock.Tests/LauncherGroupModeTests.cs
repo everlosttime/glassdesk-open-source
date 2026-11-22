@@ -21,14 +21,11 @@ namespace GlassDesk.Dock.Tests;
 public sealed class LauncherGroupModeTests
 {
     [Fact]
-    public void SmartCategoryMenuReplacesOwnedMembershipAndKeepsManualGroups()
+    public void SmartCategoryMenuMovesIconFromItsCurrentGroup()
     {
         StaTest.Run(() =>
         {
-            using var f = new Fixture(); AddSortingGroups(f);
-            var classified = LauncherAutoGroupingRules.ApplyClassification(f.Host.Layouts.Launcher, "a0", new("development", "known app"));
-            Assert.True(f.Host.Layouts.CommitLauncher(classified, f.Host.Layouts.LauncherVersion));
-            Call(f.Window, "RenderTiles", false, false);
+            using var f = new Fixture();
             var tile = f.Grid.Children.OfType<Button>().Single(item => Equals(item.Tag, "a0"));
             var menu = tile.ContextMenu!;
             menu.RaiseEvent(new RoutedEventArgs(ContextMenu.OpenedEvent));
@@ -40,8 +37,7 @@ public sealed class LauncherGroupModeTests
             var reloaded = new GlassDeskDataStore(f.Data.Paths); reloaded.LoadAll();
             var layout = reloaded.Layouts.Launcher;
             Assert.Equal(["a0"], layout.FilterGroups.Single(group => group.CategoryId == "word").ItemIds);
-            Assert.Empty(layout.FilterGroups.Single(group => group.CategoryId == "development").ItemIds);
-            Assert.Contains("a0", layout.FilterGroups.Single(group => group.Id == "work").ItemIds);
+            Assert.Equal(["a3"], layout.FilterGroups.Single(group => group.Id == "work").ItemIds);
             Assert.True(Assert.Single(layout.AutoClassifications).IsManualOverride);
         });
     }
@@ -52,7 +48,7 @@ public sealed class LauncherGroupModeTests
         StaTest.Run(() =>
         {
             using var f = new Fixture();
-            var classified = LauncherAutoGroupingRules.ApplyClassification(f.Host.Layouts.Launcher, "a0", new("development", "known app"));
+            var classified = LauncherAutoGroupingRules.ApplyClassification(f.Host.Layouts.Launcher, "a1", new("development", "known app"));
             var groupId = classified.FilterGroups.Single(group => group.CategoryId == "development").Id;
             var deleted = LauncherFilterRules.RemoveGroup(classified, groupId);
             Assert.True(f.Host.Layouts.CommitLauncher(deleted, f.Host.Layouts.LauncherVersion));
@@ -70,16 +66,20 @@ public sealed class LauncherGroupModeTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void TileMenuAddsToAnotherFilterWithoutMovingTheIcon(bool searching)
+    public void TileMenuOffersAddOnlyForUngroupedIcons(bool searching)
     {
         StaTest.Run(() =>
         {
             using var f = new Fixture();
             AddSortingGroups(f);
-            Call(f.Window, "ToggleFilterGroup", "work");
+            var groupedMenu = f.Grid.Children.OfType<Button>().Single(b => Equals(b.Tag, "a0")).ContextMenu!;
+            groupedMenu.RaiseEvent(new RoutedEventArgs(ContextMenu.OpenedEvent));
+            Assert.DoesNotContain(groupedMenu.Items.OfType<MenuItem>(), item => Equals(item.Header, "添加到已有分组"));
+            groupedMenu.RaiseEvent(new RoutedEventArgs(ContextMenu.ClosedEvent));
+
             if (searching)
-                ((TextBox)f.Window.FindName("SearchBox")).Text = "应用 1";
-            var tile = f.Grid.Children.OfType<Button>().Single(b => Equals(b.Tag, "a0"));
+                ((TextBox)f.Window.FindName("SearchBox")).Text = "应用 2";
+            var tile = f.Grid.Children.OfType<Button>().Single(b => Equals(b.Tag, "a1"));
             var menu = tile.ContextMenu!;
             var order = f.Host.Layouts.Launcher.FlatOrder.ToArray();
             menu.Resources.MergedDictionaries.Add(f.Window.Resources.MergedDictionaries[0]);
@@ -87,27 +87,25 @@ public sealed class LauncherGroupModeTests
             menu.IsOpen = true;
             Pump(50);
             var add = Assert.Single(menu.Items.OfType<MenuItem>(), item => Equals(item.Header, "添加到已有分组"));
-            Assert.Equal(new[] { "游戏", "媒体" }, add.Items.OfType<MenuItem>().Select(item => (string)item.Header));
+            Assert.Equal(new[] { "工作", "游戏", "媒体" }, add.Items.OfType<MenuItem>().Select(item => (string)item.Header));
             add.IsSubmenuOpen = true;
             Pump(50);
             Assert.True(Assert.IsType<Popup>(add.Template.FindName("PART_Popup", add)).IsOpen);
-            var target = Assert.IsType<MenuItem>(add.Items[0]);
+            var target = Assert.IsType<MenuItem>(add.Items[1]);
             Assert.True(target.IsVisible);
             target.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             menu.IsOpen = false;
 
             var reloaded = new GlassDeskDataStore(f.Data.Paths); reloaded.LoadAll();
             Assert.Equal(new[] { "a0", "a3" }, reloaded.Layouts.Launcher.FilterGroups.Single(group => group.Id == "work").ItemIds);
-            Assert.Equal(new[] { "a5", "a6", "a0" }, reloaded.Layouts.Launcher.FilterGroups.Single(group => group.Id == "games").ItemIds);
+            Assert.Equal(new[] { "a5", "a6", "a1" }, reloaded.Layouts.Launcher.FilterGroups.Single(group => group.Id == "games").ItemIds);
             Assert.Equal(order, reloaded.Layouts.Launcher.FlatOrder);
             Assert.Equal(new[] { "a0", "a1" }, f.Folder.ItemIds);
-            Assert.Equal("work", Assert.Single(GroupChips(f), chip => chip.IsChecked == true).Tag);
-            Assert.Contains("a0", f.VisibleIds());
+            Assert.Contains("a1", f.VisibleIds());
 
-            menu = f.Grid.Children.OfType<Button>().Single(b => Equals(b.Tag, "a0")).ContextMenu!;
+            menu = f.Grid.Children.OfType<Button>().Single(b => Equals(b.Tag, "a1")).ContextMenu!;
             menu.RaiseEvent(new RoutedEventArgs(ContextMenu.OpenedEvent));
-            add = Assert.Single(menu.Items.OfType<MenuItem>(), item => Equals(item.Header, "添加到已有分组"));
-            Assert.Equal("媒体", Assert.Single(add.Items.OfType<MenuItem>()).Header);
+            Assert.DoesNotContain(menu.Items.OfType<MenuItem>(), item => Equals(item.Header, "添加到已有分组"));
             menu.RaiseEvent(new RoutedEventArgs(ContextMenu.ClosedEvent));
         });
     }
@@ -546,6 +544,8 @@ public sealed class LauncherGroupModeTests
         StaTest.Run(() =>
         {
             using var f = new Fixture();
+            Call(f.Window, "CommitFilterEdit", (Func<LauncherLayout, LauncherLayout>)(layout =>
+                LauncherFilterRules.AddGroup(layout, "games", "游戏", ["a5", "a6"])));
             Exception? failure = null;
             var edited = false;
             var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(20) };
@@ -558,7 +558,14 @@ public sealed class LauncherGroupModeTests
                 {
                     Assert.False(f.Window.CanNavigatePages);
                     var choices = Descendants(dialog).OfType<CheckBox>().ToList();
-                    Assert.Equal(8, choices.Count);
+                    if (edited)
+                    {
+                        Assert.Equal(save, choices.Any(choice => Equals(choice.Tag, "a0")));
+                        Assert.Equal(new[] { "a5", "a6" }, choices.Where(c => c.IsChecked == true).Select(c => (string)c.Tag));
+                        dialog.DialogResult = false;
+                        return;
+                    }
+                    Assert.Equal(new[] { "a0", "a1", "a2", "a3", "a4", "a7" }, choices.Select(c => (string)c.Tag));
                     Assert.Equal(new[] { "a0", "a3" }, choices.Where(c => c.IsChecked == true).Select(c => (string)c.Tag));
                     foreach (var choice in choices) choice.IsChecked = false;
                     if (!clearAll)
@@ -577,15 +584,24 @@ public sealed class LauncherGroupModeTests
                 catch (Exception ex) { failure = ex; dialog.DialogResult = false; }
             };
             timer.Start();
-            try { Call(f.Window, "EditFilterGroup", "work"); }
+            try
+            {
+                Call(f.Window, "EditFilterGroup", "work");
+                if (failure is null && edited)
+                {
+                    timer.Start();
+                    Call(f.Window, "EditFilterGroup", "games");
+                }
+            }
             finally { timer.Stop(); }
             if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
             Assert.True(edited);
-            Assert.Equal(!save ? new[] { "a0", "a3" } : clearAll ? Array.Empty<string>() : new[] { "a1", "a7" }, f.Host.Layouts.Launcher.FilterGroups.Single().ItemIds);
+            var workMembers = f.Host.Layouts.Launcher.FilterGroups.Single(g => g.Id == "work").ItemIds;
+            Assert.Equal(!save ? new[] { "a0", "a3" } : clearAll ? Array.Empty<string>() : new[] { "a1", "a7" }, workMembers);
             Assert.Equal(8, LauncherLayoutRules.AppIds(f.Host.Layouts.Launcher).Count);
             Assert.Equal(new[] { "a0", "a1" }, f.Folder.ItemIds);
             var persisted = new GlassDeskDataStore(f.Data.Paths); persisted.LoadAll();
-            Assert.Equal(f.Host.Layouts.Launcher.FilterGroups.Single().ItemIds, persisted.Layouts.Launcher.FilterGroups.Single().ItemIds);
+            Assert.Equal(workMembers, persisted.Layouts.Launcher.FilterGroups.Single(g => g.Id == "work").ItemIds);
         });
     }
 
@@ -615,12 +631,12 @@ public sealed class LauncherGroupModeTests
     }
 
     [Fact]
-    public void AddFlowNamesFirstThenOffersAllIconsAndKeepsSelectionWhenFiltering()
+    public void AddFlowNamesFirstThenOffersUngroupedIconsAndKeepsSelectionWhenFiltering()
     {
         StaTest.Run(() =>
         {
             using var f = new Fixture();
-            // Start with an active filter to prove the picker still offers the full launcher.
+            // The active filter's icons are already assigned.
             Call(f.Window, "ToggleFilterGroup", "work");
             var stage = 0;
             Exception? failure = null;
@@ -645,7 +661,7 @@ public sealed class LauncherGroupModeTests
                     {
                         AssertMenuBackground(f.Window, dialog);
                         var choices = Descendants(dialog).OfType<CheckBox>().ToList();
-                        Assert.Equal(8, choices.Count);
+                        Assert.Equal(new[] { "a1", "a2", "a4", "a5", "a6", "a7" }, choices.Select(b => (string)b.Tag));
                         var create = Descendants(dialog).OfType<Button>().Single(b => Equals(b.Content, "创建分组"));
                         Assert.False(create.IsEnabled);
                         choices.Single(b => Equals(b.Tag, "a1")).IsChecked = true;

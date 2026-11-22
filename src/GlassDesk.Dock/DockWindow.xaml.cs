@@ -484,7 +484,7 @@ public partial class DockWindow : GlassWindow
     /// <summary>Refreshes this visible surface after a foreign foreground change.</summary>
     public void RequestGlassRefresh()
     {
-        if (IsVisible && IsOpticalSurfaceVisible) GlassSurface.RequestBackdropRefresh();
+        if (!IsFixedDesktopLayer && IsVisible && IsOpticalSurfaceVisible) GlassSurface.RequestBackdropRefresh();
     }
 
     private DockTileModel CreateTile(AppEntry entry, DockSettings settings, RunningAppTracker tracker, Brush? dotBrush)
@@ -1480,8 +1480,9 @@ public partial class DockWindow : GlassWindow
 
         var now = DateTime.UtcNow;
         var cursor = DisplayService.GetCursorPixelPoint();
-        var fullscreen = FullscreenDetector.IsFullscreenActive();
-        var covered = ForegroundCoverage.IsCovered(_restingRect);
+        var fixedDesktopLayer = IsFixedDesktopLayer;
+        var fullscreen = !fixedDesktopLayer && FullscreenDetector.IsFullscreenActive();
+        var covered = !fixedDesktopLayer && ForegroundCoverage.IsCovered(_restingRect);
         var suppressed = fullscreen || covered;
         var pointerOverDock = cursor is { } currentPoint
             && Inflate(GetVisibleDockRect(), 2).Contains(currentPoint.X, currentPoint.Y);
@@ -1515,6 +1516,8 @@ public partial class DockWindow : GlassWindow
         {
             _slideOffsetPixels = target;
             ApplySlide(_restingRect,target);
+            if (_frameTimer is not null)
+                _frameTimer.Interval = TimeSpan.FromMilliseconds(100);
             NotifyPerformanceSurfaceVisibility();
             return;
         }

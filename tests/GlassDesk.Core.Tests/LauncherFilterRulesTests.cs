@@ -80,11 +80,11 @@ public sealed class LauncherFilterRulesTests
     }
 
     [Fact]
-    public void CreateRenameAndDeleteDoNotRemoveIconsOrDisallowOverlappingMembership()
+    public void CreateRenameAndDeletePreserveExistingMembershipAndLauncherIcons()
     {
         var source = Layout();
         var added = LauncherFilterRules.AddGroup(source, "games", "  游戏  ", new[] { "b", "c", "b", "not-in-launcher" });
-        Assert.Equal(new[] { "b", "c" }, added.FilterGroups[1].ItemIds);
+        Assert.Equal(new[] { "c" }, added.FilterGroups[1].ItemIds);
         Assert.Equal("游戏", added.FilterGroups[1].Name);
         Assert.Equal(new[] { "b", "d" }, added.FilterGroups[0].ItemIds);
         var renamed = LauncherFilterRules.RenameGroup(added, "games", "娱乐");
@@ -93,6 +93,21 @@ public sealed class LauncherFilterRulesTests
         Assert.Equal("games", Assert.Single(removed.FilterGroups).Id);
         Assert.Equal(new[] { "a", "b", "c", "d" }, LauncherLayoutRules.AppIds(removed));
         Assert.Single(source.FilterGroups);
+    }
+
+    [Fact]
+    public void EditingCannotClaimAnotherGroupsIconUntilItIsRemoved()
+    {
+        var source = Layout();
+        var added = LauncherFilterRules.AddGroup(source, "games", "游戏", ["c"]);
+        var blocked = LauncherFilterRules.UpdateGroupMembers(added, "games", ["b", "c"]);
+        Assert.Equal(["c"], blocked.FilterGroups[1].ItemIds);
+        Assert.Equal(["b", "d"], blocked.FilterGroups[0].ItemIds);
+
+        var released = LauncherFilterRules.UpdateGroupMembers(blocked, "work", ["d"]);
+        var reassigned = LauncherFilterRules.UpdateGroupMembers(released, "games", ["b", "c"]);
+        Assert.Equal(["b", "c"], reassigned.FilterGroups[1].ItemIds);
+        Assert.Equal(["d"], reassigned.FilterGroups[0].ItemIds);
     }
 
     [Theory]

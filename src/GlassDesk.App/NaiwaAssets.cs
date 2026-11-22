@@ -18,10 +18,20 @@ internal static class NaiwaAssets
     internal static bool AreReady(string directory)
         => RequiredFiles.All(name => new FileInfo(Path.Combine(directory, name)) is { Exists: true, Length: > 0 });
 
-    // Installed resources are read in place. Never copy them into or overwrite user state.
-    // Keep the previous import location as a fallback for older portable installations.
-    internal static string? ResolveDirectory(string bundledDirectory, string legacyDirectory)
-        => AreReady(bundledDirectory) ? bundledDirectory : AreReady(legacyDirectory) ? legacyDirectory : null;
+    internal static bool HasImportedFiles(string directory)
+        => RequiredFiles.Any(name => File.Exists(Path.Combine(directory, name)));
+
+    internal static void RemoveImportedFiles(string directory)
+    {
+        var assets = new DirectoryInfo(directory);
+        if (!assets.Exists) return;
+        if ((assets.Attributes & FileAttributes.ReparsePoint) != 0
+            || assets.Parent is { } parent && (parent.Attributes & FileAttributes.ReparsePoint) != 0)
+            throw new IOException("素材目录指向其他位置，无法安全移除。");
+
+        foreach (var name in RequiredFiles)
+            File.Delete(Path.Combine(directory, name));
+    }
 
     internal static async Task ImportAsync(string archivePath, string directory)
     {

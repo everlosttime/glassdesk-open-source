@@ -150,7 +150,7 @@ public sealed class LauncherAutoOrganizationService
     {
         var state = layout.AutoClassifications.FirstOrDefault(item => item.ItemId == appId);
         if (state is { IsManualOverride: true }) return true;
-        return state is null && layout.FilterGroups.Any(group => group.ItemIds.Contains(appId));
+        return layout.FilterGroups.Any(group => group.Id != state?.AutomaticGroupId && group.ItemIds.Contains(appId));
     }
 
     internal static AppEntry Clone(AppEntry entry) => new()

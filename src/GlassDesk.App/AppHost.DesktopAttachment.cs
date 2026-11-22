@@ -27,8 +27,8 @@ internal sealed partial class AppHost
         _statusBar.ConfigureSettings(ShowSettings);
         _statusBar.ConfigureCalendar(_data.Settings);
         _statusBar.ConfigurePlacement(() =>
-            (_data!.Settings.Current.Dock.StatusBarOffsetX, _data.Settings.Current.Dock.StatusBarEdge));
-        _statusBar.ConfigureSizeScale(() => _data!.Settings.Current.Dock.StatusBarSizeScale);
+            (_dockSettings!.Settings.StatusBarOffsetX, _dockSettings.Settings.StatusBarEdge));
+        _statusBar.ConfigureSizeScale(() => _dockSettings!.Settings.StatusBarSizeScale);
         _statusBar.ConfigureNearby(() => ShowNearbyPanel(null, toggle: true),
             () => _services?.DockIcons.GetIconPath("entry:nearby"));
         _dock.AttachServices(_services!, _dockSettings!, (PixelRect? source) =>

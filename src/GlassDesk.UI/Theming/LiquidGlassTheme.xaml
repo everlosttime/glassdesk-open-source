@@ -147,6 +147,8 @@
                       <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="18" /></Grid.ColumnDefinitions>
                       <ContentPresenter Grid.Column="0" Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}"
                                         ContentTemplate="{Binding SelectionBoxItemTemplate, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}"
+                                        ContentTemplateSelector="{Binding ItemTemplateSelector, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}"
+                                        ContentStringFormat="{Binding SelectionBoxItemStringFormat, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}"
                                         VerticalAlignment="Center" />
                       <Path Grid.Column="1" Data="M 1,2 L 5,6 L 9,2" Stroke="{StaticResource LiquidControlText}"
                             StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"

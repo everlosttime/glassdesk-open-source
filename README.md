@@ -1,24 +1,25 @@
-# GlassDesk 1.7.1（完整功能源码）
+# GlassDesk 1.7.7（完整功能源码）
 
-从 GlassDesk 1.7.1 产品代码同步完整功能源码：玻璃 Dock、启动台、信息栏、农历日历、控制中心、设备与媒体控制、外设电量、附近传输和统一设置中心。同步至 1.7.1，包含信息栏等完整功能，保留现有许可及第三方授权。
+从 GlassDesk 1.7.7 产品代码同步完整功能源码：玻璃 Dock、启动台、信息栏、农历日历、控制中心、设备与媒体控制、外设电量、附近传输和统一设置中心。同步至 1.7.7，包含信息栏等完整功能，保留现有许可及第三方授权。
 
-[下载源码 ZIP](https://github.com/everlosttime/glassdesk-open-source/archive/refs/heads/main.zip) · [源码版变更说明](docs/Release-notes-v1.7.1-public.md) · [参与贡献](CONTRIBUTING.md)
+[下载源码 ZIP](https://github.com/everlosttime/glassdesk-open-source/releases/download/v1.7.7/GlassDesk-1.7.7-public-source.zip) · [源码版变更说明](docs/Release-notes-v1.7.7-public.md) · [参与贡献](CONTRIBUTING.md)
 
 ## 公开范围
 
-- 包含 1.7.1 的全部产品功能源码：Dock、启动台及分组、桌面入口、信息栏、日历与公历/农历切换、控制中心、设备选择、媒体控制、系统状态与外设电量读取。
+- 包含 1.7.7 的全部产品功能源码：Dock、启动台及分组、桌面入口、信息栏、日历与公历/农历切换、控制中心、设备选择、媒体控制、系统状态与外设电量读取。
 - 包含完整 AppHost、设置与新手教学集成、原生渲染、背景优化、快捷键焦点框修复、官网二维码下载入口、附近传输和可选奶蛙组件。
-- 包含全部 src / native / tests / tools / build / packaging 源码，以及 components-src 电量桥接源码、third_party 固定依赖与对应来源归档。产品源码直接从 1.7.1 提交导出，未删减信息栏或其他功能。奶蛙动画与声音资源不包含在源码包中。
+- 包含全部 src / native / tests / tools / build / packaging 源码，以及 components-src 电量桥接源码、third_party 固定依赖与对应来源归档。产品源码直接从 1.7.7 提交导出，未删减信息栏或其他功能。奶蛙动画与声音资源不包含在源码包中。
 - 来源及逐文件哈希见 [SOURCE-PROVENANCE.json](SOURCE-PROVENANCE.json) 和 [逐文件记录](docs/licensing/FILE-LICENSES.json)。公开仓库保留自身历史，不导入私有 Git 开发历史、个人 Data、日志或验收截图。
 
-[1.7.1 完整功能源码 Release](https://github.com/everlosttime/glassdesk-open-source/releases/tag/v1.7.1) 提供带固定依赖与逐文件来源记录的源码包；此前 Release 保留为历史快照。软件安装包与客户端更新通知见 [1.7.1 软件发布页](https://github.com/everlosttime/glassdesk-updates/releases/tag/v1.7.1)。
+[1.7.7 完整功能源码 Release](https://github.com/everlosttime/glassdesk-open-source/releases/tag/v1.7.7) 提供带固定依赖与逐文件来源记录的源码包；此前 Release 保留为历史快照。软件安装包与客户端更新通知见 [1.7.7 软件发布页](https://github.com/everlosttime/glassdesk-updates/releases/tag/v1.7.7)。
 
-## 1.7.1 更新
+## 1.7.7 更新
 
-- 修复固定桌面层时 Dock、信息栏的动态壁纸背景采集，兼容独立及嵌套的 Wallpaper Engine 宿主；采集失败时使用半透明背景，恢复后重新启用玻璃效果。
-- 同步 1.6.0 之后的窗口置顶快捷键、外设电量兼容、桌面同步、启动台自动分组、Steam 图标修复与 Dock 图标间距设置。
-- 默认发行不捆绑奶蛙运行组件、动画和声音；可选组件源码及其 MIT 许可仍保留。
-- 详细范围与验证限制见 [本次源码说明](docs/Release-notes-v1.7.1-public.md)。
+- 液态玻璃和磨砂玻璃的动态背景按显示器与画面活动调整采集节奏，静止时减少重复处理。
+- 改善固定桌面层下拖动普通窗口的流畅度。启动台开合动画由显示时钟驱动，玻璃背景独立更新，设置中移除了「启动台高刷新模式（120Hz 目标）」。
+- 启动台图标仅归属一个分组，移动时自动从原分组移出。
+- 「设置 → 回收站」支持导入和移除官方 ZIP 素材包，用于启用黄色奶蛙回收站。
+- 详细范围见 [本次源码说明](docs/Release-notes-v1.7.7-public.md)。
 
 ## 许可
 
@@ -54,7 +55,7 @@ dotnet test tests/GlassDesk.Dock.Tests/GlassDesk.Dock.Tests.csproj -c Release --
 ## 从源码生成便携版
 
 ```powershell
-dotnet publish src/GlassDesk.App/GlassDesk.App.csproj -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -p:InformationalVersion=1.7.1 -p:IncludeSourceRevisionInInformationalVersion=false -o artifacts/publish
+dotnet publish src/GlassDesk.App/GlassDesk.App.csproj -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -p:InformationalVersion=1.7.7 -p:IncludeSourceRevisionInInformationalVersion=false -o artifacts/publish
 pwsh -File build/Copy-BatteryEngine.ps1 -OutputDirectory artifacts/publish
 pwsh -File build/Copy-HeadsetControl.ps1 -OutputDirectory artifacts/publish
 Copy-Item LICENSE artifacts/publish/LICENSE.txt
@@ -68,7 +69,7 @@ Copy-Item docs/third-party artifacts/publish/third-party -Recurse
 
 不要把个人 Data 放入分发包。原生渲染 C++ 源码位于 native；重建原生渲染 DLL 使用 `build/Build-NativeRendering.ps1`，需要配置相应 MSVC / Windows SDK 工具链路径，并通过 `NativeRenderingDllPath` 传入 App 的 publish。
 
-奶蛙是默认不捆绑的可选独立组件，源码在 `contrib/Naiwa`。本仓库不包含 `contrib/Naiwa/assets-v2.5.1` 的动画与声音，默认打包配置 `naiwaCompanion: false`。如需自行启用，请按 `build/Copy-NaiwaAssets.ps1` 和 `contrib/Naiwa/assets-manifest.json` 的来源与校验要求准备官方资源；缺少资源时不要启用该组件。构建组件本身需要 .NET Framework 4.8 开发环境：
+奶蛙是可选独立组件，源码在 `contrib/Naiwa`。1.7.7 打包配置使用 `naiwaRuntimeOnly: true`，包含运行组件；动画与声音由用户在「设置 → 回收站」导入官方 ZIP。构建组件本身需要 .NET Framework 4.8 开发环境：
 
 ```powershell
 dotnet build contrib/Naiwa/GlassDesk.Naiwa.csproj -c Release -o artifacts/publish/components/Naiwa
@@ -79,7 +80,7 @@ Copy-Item contrib/Naiwa/LICENSE artifacts/publish/components/Naiwa/LICENSE.txt
 
 ```powershell
 $env:GLASSDESK_PACKAGE_STAGE = (Resolve-Path artifacts/publish).Path
-ISCC /DAppIdValue=GlassDesk.Independent /DProductVersion=1.7.1 /DFileVersion=1.7.1.0 /DPackageBaseName=GlassDesk-1.7.1-public-win-x64 /Oartifacts packaging/GlassDesk.iss
+ISCC /DAppIdValue=GlassDesk.Independent /DProductVersion=1.7.7 /DFileVersion=1.7.7.0 /DPackageBaseName=GlassDesk-1.7.7-public-win-x64 /Oartifacts packaging/GlassDesk.iss
 ```
 
 安装标识仍为 GlassDesk.Independent，安装自己编译的包会影响相同标识的现有安装，请在测试环境核对。修改着色器后使用 `build/compile-transition-shader.ps1` 重建对应着色器资源。

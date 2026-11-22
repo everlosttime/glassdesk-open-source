@@ -31,7 +31,7 @@ public sealed class StatusBarBrightnessTests
                 {
                     slider.Value = value;
                     Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.SystemIdle);
-                    foreach (var name in new[] { "TimeText", "DateText", "BatteryText", "NetworkText", "VolumeGlyph", "CpuText", "MemoryText", "MusicTitleText", "ControlCenterArrowGlyph" })
+                    foreach (var name in new[] { "TimeText", "DateText", "BatteryText", "NetworkText", "DownloadSpeedText", "UploadSpeedText", "VolumeGlyph", "CpuText", "MemoryText", "MusicTitleText", "ControlCenterArrowGlyph" })
                         Assert.Equal(color, Assert.IsType<SolidColorBrush>(((TextBlock)bar.FindName(name)).Foreground).Color);
                     Assert.Equal(color, Assert.IsType<SolidColorBrush>(((Border)bar.FindName("BatteryFill")).Background).Color);
                     var reload = new SettingsStore(data.Settings.FilePath); reload.Load();

@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using GlassDesk.Platform.Displays;
 
 // Used on unverified Windows 11 builds only inside a recoverable helper process.
 // The private DWM ABI is probed at runtime; failures fall back to documented capture.
@@ -146,7 +147,12 @@ internal sealed unsafe class SharedDesktopSceneCapture : IDesktopSceneCapture
             Check(((delegate* unmanaged[Stdcall]<nint,int>)(*(nint**)composition)[3])(composition));
             ShowWindow(carrier,4);
             Check(DwmFlush());
-            _capture=new PersistentWindowCapture(carrier,trace,device,context);
+            // The carrier is intentionally offscreen. Use the captured region's
+            // monitor for the WGC request and let the feed enforce its own budget.
+            var hertz = desktopOnly || isolatedParentProcess == 0 ? null
+                : DisplayService.RefreshForPoint(region.X + region.Width / 2, region.Y + region.Height / 2)?.Hertz;
+            var updateInterval = hertz is > 60 and <= 1000 ? TimeSpan.FromMilliseconds(900 / hertz.Value) : (TimeSpan?)null;
+            _capture=new PersistentWindowCapture(carrier,trace,device,context,updateInterval);
             // CreateForWindow requires a visible, activation-eligible window. Once
             // the persistent session owns its item, exclude the carrier from shell
             // activation/task switching without rebuilding that capture item.
@@ -185,6 +191,11 @@ internal sealed unsafe class SharedDesktopSceneCapture : IDesktopSceneCapture
     private CapturePixels? TryReadCore(TimeSpan waitForFrame,CancellationToken cancellation,long sourceNotBeforeTicks,bool reusePixels,PixelBounds? crop)
     {
         UpdateExclusions();
+        if (!_desktopOnly && _excludedParentProcess > 0)
+        {
+            var moving = ExternalWindowMove.ProcessId();
+            _capture!.SetMotionThrottled(moving != 0 && moving != _excludedParentProcess);
+        }
         var barrier=_exclusionBarrier;
         var notBefore=Math.Max(Math.Max(barrier,_motionBarrier),sourceNotBeforeTicks);
         var frame=crop is {} area ? _capture!.TryReadCropped(area,notBefore,waitForFrame,cancellation,reusePixels)

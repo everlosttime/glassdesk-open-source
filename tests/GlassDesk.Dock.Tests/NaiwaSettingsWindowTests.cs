@@ -12,8 +12,8 @@ public class NaiwaSettingsWindowTests
 {
     [Theory]
     [InlineData(null, true)]
-    [InlineData("内置奶蛙资源不完整，请重新安装完整版本。", false)]
-    public void EnablingChecksInstalledResourcesAndPersistsOnlyWhenReady(string? error, bool expectedEnabled)
+    [InlineData("请先点击「导入素材包」。", false)]
+    public void EnablingRechecksImportedResourcesAndPersistsOnlyWhenReady(string? error, bool expectedEnabled)
     {
         StaTest.Run(() =>
         {
@@ -23,6 +23,7 @@ public class NaiwaSettingsWindowTests
             {
                 var data = new GlassDeskDataStore(new AppPaths(root));
                 data.LoadAll();
+                window.CanEnableNaiwa = () => true;
                 window.AttachDataStore(data, null);
                 var calls = 0;
                 window.PrepareNaiwaAsync = () => { calls++; return Task.FromResult(error); };
@@ -52,7 +53,7 @@ public class NaiwaSettingsWindowTests
     }
 
     [Fact]
-    public void RecycleBinHasItsOwnSettingsSection()
+    public void RecycleBinOffersAssetImportNextToTheEnableSwitch()
     {
         StaTest.Run(() =>
         {
@@ -62,11 +63,48 @@ public class NaiwaSettingsWindowTests
                 Assert.Contains("回收站", window.PlannedPages);
                 Assert.Null(window.FindName("NaiwaManualButton"));
                 Assert.Equal("回收站", Assert.IsType<TextBlock>(window.FindName("NaiwaSectionHeading")).Text);
-                Assert.Equal("启用黄色回收站", Assert.IsType<CheckBox>(window.FindName("NaiwaEnabledCheck")).Content);
+                var enabled = Assert.IsType<CheckBox>(window.FindName("NaiwaEnabledCheck"));
+                var import = Assert.IsType<Button>(window.FindName("NaiwaImportButton"));
+                var remove = Assert.IsType<Button>(window.FindName("NaiwaRemoveButton"));
+                Assert.Equal("启用黄色回收站", enabled.Content);
+                Assert.Equal("导入素材包", import.Content);
+                Assert.Same(enabled.Parent, import.Parent);
+                Assert.Same(import.Parent, remove.Parent);
+                Assert.False(enabled.IsChecked);
+                Assert.False(enabled.IsEnabled);
+                Assert.True(import.IsEnabled);
+                Assert.False(remove.IsEnabled);
             }
             finally
             {
                 window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void AStoredEnablePreferenceCannotCheckTheSwitchWithoutImportedAssets()
+    {
+        StaTest.Run(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "GlassDesk-naiwa-import-required-" + Guid.NewGuid().ToString("N"));
+            var window = new SettingsWindow { ShowActivated = false };
+            try
+            {
+                var data = new GlassDeskDataStore(new AppPaths(root));
+                data.LoadAll();
+                data.Settings.Current.Appearance.NaiwaEnabled = true;
+                window.AttachDataStore(data, null);
+
+                var enabled = Assert.IsType<CheckBox>(window.FindName("NaiwaEnabledCheck"));
+                Assert.False(enabled.IsChecked);
+                Assert.False(enabled.IsEnabled);
+                Assert.True(Assert.IsType<Button>(window.FindName("NaiwaImportButton")).IsEnabled);
+            }
+            finally
+            {
+                window.Close();
+                if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
             }
         });
     }
@@ -94,6 +132,57 @@ public class NaiwaSettingsWindowTests
     }
 
     [Fact]
+    public void RemovingImportedAssetsDisablesTheRecycleBinUntilReimport()
+    {
+        StaTest.Run(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "GlassDesk-naiwa-remove-" + Guid.NewGuid().ToString("N"));
+            var window = new SettingsWindow { ShowActivated = false };
+            try
+            {
+                var data = new GlassDeskDataStore(new AppPaths(root));
+                data.LoadAll();
+                data.Settings.Current.Appearance.NaiwaEnabled = true;
+                data.Settings.Current.NaiwaOptions = new NaiwaOptions { Scale = 120, Volume = 42 };
+                data.Settings.Save();
+                var imported = true;
+                window.CanEnableNaiwa = () => imported;
+                window.HasImportedNaiwaAssets = () => imported;
+                window.RemoveNaiwaAssetsAsync = () =>
+                {
+                    imported = false;
+                    return Task.FromResult((false, "素材包已移除。"));
+                };
+                window.AttachDataStore(data, null);
+                var remove = Assert.IsType<Button>(window.FindName("NaiwaRemoveButton"));
+                Assert.True(remove.IsEnabled);
+
+                Click(remove);
+
+                Assert.False(remove.IsEnabled);
+                var enabled = Assert.IsType<CheckBox>(window.FindName("NaiwaEnabledCheck"));
+                Assert.False(enabled.IsChecked);
+                Assert.False(enabled.IsEnabled);
+                var reloaded = new SettingsStore(data.Paths.SettingsFile);
+                reloaded.Load();
+                Assert.False(reloaded.Current.Appearance.NaiwaEnabled);
+                var options = Assert.IsType<NaiwaOptions>(reloaded.Current.NaiwaOptions);
+                Assert.Equal(120, options.Scale);
+                Assert.Equal(42, options.Volume);
+                imported = true;
+                window.RefreshNaiwaAssetControls();
+                Assert.True(enabled.IsEnabled);
+                Assert.False(enabled.IsChecked);
+            }
+            finally
+            {
+                window.Close();
+                if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+            }
+        });
+    }
+
+    [Fact]
     public void PreferencesPersistAndMuteRestoresThePreviousVolume()
     {
         StaTest.Run(() =>
@@ -105,6 +194,7 @@ public class NaiwaSettingsWindowTests
                 var data = new GlassDeskDataStore(new AppPaths(root));
                 data.LoadAll();
                 data.Settings.Current.Appearance.NaiwaEnabled = true;
+                window.CanEnableNaiwa = () => true;
                 window.AttachDataStore(data, null);
                 Assert.True(Assert.IsType<CheckBox>(window.FindName("NaiwaEnabledCheck")).IsChecked);
 

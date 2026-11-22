@@ -102,6 +102,8 @@ public sealed class AppearanceSettings
 
     public bool LiveBackdrop { get; set; } = true;
 
+    public AppearanceSettings Copy() => (AppearanceSettings)MemberwiseClone();
+
     /// <summary>
     /// 为觉得半透明难以辨读的用户降低面板不透明度，也覆盖系统层面
     /// 关闭了透明效果的情况。

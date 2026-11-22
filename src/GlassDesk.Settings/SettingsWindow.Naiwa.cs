@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using GlassDesk.Core.Models.Settings;
 using GlassDesk.UI.Theming;
+using Microsoft.Win32;
 
 namespace GlassDesk.Settings;
 
@@ -11,10 +12,42 @@ public partial class SettingsWindow
     private int _lastAudibleNaiwaVolume = 100;
 
     public Func<Task<string?>>? PrepareNaiwaAsync { get; set; }
+    public Func<bool>? CanEnableNaiwa { get; set; }
+    public Func<string, Task<string?>>? ImportNaiwaAssetsAsync { get; set; }
+    public Func<bool>? HasImportedNaiwaAssets { get; set; }
+    public Func<Task<(bool AssetsReady, string Status)>>? RemoveNaiwaAssetsAsync { get; set; }
     public Func<string, string?>? RunNaiwaAction { get; set; }
     public event EventHandler? NaiwaSettingsChanged;
 
-    public void ShowNaiwaStatus(string? status) => NaiwaStatus.Text = status ?? string.Empty;
+    public void ShowNaiwaStatus(string? status)
+    {
+        NaiwaStatus.Text = status ?? string.Empty;
+        NaiwaStatus.Visibility = string.IsNullOrEmpty(status) ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    public void RefreshNaiwaAssetControls()
+    {
+        var canEnable = CanEnableNaiwa?.Invoke() == true;
+        var wasLoading = _loadingNaiwaControls;
+        _loadingNaiwaControls = true;
+        try
+        {
+            NaiwaEnabledCheck.IsEnabled = canEnable;
+            NaiwaEnabledCheck.IsChecked = canEnable && _dataStore?.Settings.Current.Appearance.NaiwaEnabled == true;
+            NaiwaRemoveButton.IsEnabled = RemoveNaiwaAssetsAsync is not null && HasImportedNaiwaAssets?.Invoke() == true;
+        }
+        finally
+        {
+            _loadingNaiwaControls = wasLoading;
+        }
+    }
+
+    private void SetNaiwaControlsBusy(bool busy)
+    {
+        SettingsScroll.IsEnabled = SettingsPageList.IsEnabled = !busy;
+        if (busy) ResetPageButton.IsEnabled = false;
+        else UpdateResetPageButton();
+    }
 
     private void LoadNaiwaControls()
     {
@@ -24,7 +57,7 @@ public partial class SettingsWindow
         {
             var current = data.Settings.Current;
             var options = current.NaiwaOptions ?? new NaiwaOptions();
-            NaiwaEnabledCheck.IsChecked = current.Appearance.NaiwaEnabled;
+            RefreshNaiwaAssetControls();
             NaiwaScaleSlider.Value = options.Scale;
             NaiwaVolumeSlider.Value = options.Volume;
             NaiwaSoundCheck.IsChecked = options.Sound;
@@ -46,7 +79,7 @@ public partial class SettingsWindow
         if (enabled == data.Settings.Current.Appearance.NaiwaEnabled) return;
         if (enabled)
         {
-            SettingsScroll.IsEnabled = SettingsPageList.IsEnabled = ResetPageButton.IsEnabled = false;
+            SetNaiwaControlsBusy(true);
             string? error;
             try
             {
@@ -57,11 +90,7 @@ public partial class SettingsWindow
             }
             finally
             {
-                if (ReferenceEquals(_dataStore, data))
-                {
-                    SettingsScroll.IsEnabled = SettingsPageList.IsEnabled = true;
-                    UpdateResetPageButton();
-                }
+                if (ReferenceEquals(_dataStore, data)) SetNaiwaControlsBusy(false);
             }
             if (!ReferenceEquals(_dataStore, data) || Dispatcher.HasShutdownStarted) return;
             if (error is not null)
@@ -75,6 +104,65 @@ public partial class SettingsWindow
         var snapshot = SettingsPageEditor.Clone(data.Settings.Current);
         data.Settings.Current.Appearance.NaiwaEnabled = enabled;
         SaveNaiwaPageSnapshot(snapshot);
+    }
+
+    private async void OnNaiwaImportClick(object sender, RoutedEventArgs e)
+    {
+        if (_dataStore is not { } data || ImportNaiwaAssetsAsync is not { } import) return;
+        var picker = new OpenFileDialog
+        {
+            Title = "选择官方奶蛙素材包",
+            Filter = "奶蛙素材包 (*.zip)|*.zip",
+        };
+        if (picker.ShowDialog(this) != true) return;
+
+        SetNaiwaControlsBusy(true);
+        ShowNaiwaStatus("正在校验并导入素材包…");
+        try
+        {
+            var status = await import(picker.FileName);
+            if (!ReferenceEquals(_dataStore, data) || Dispatcher.HasShutdownStarted) return;
+            ShowNaiwaStatus(status ?? (data.Settings.Current.Appearance.NaiwaEnabled
+                ? "素材包已导入。" : "素材包已导入。现在可以启用黄色回收站。"));
+        }
+        finally
+        {
+            if (ReferenceEquals(_dataStore, data))
+            {
+                RefreshNaiwaAssetControls();
+                SetNaiwaControlsBusy(false);
+            }
+        }
+    }
+
+    private async void OnNaiwaRemoveClick(object sender, RoutedEventArgs e)
+    {
+        if (_dataStore is not { } data || RemoveNaiwaAssetsAsync is not { } remove
+            || HasImportedNaiwaAssets?.Invoke() != true) return;
+
+        SetNaiwaControlsBusy(true);
+        ShowNaiwaStatus("正在移除素材包…");
+        try
+        {
+            var (assetsReady, status) = await remove();
+            if (!ReferenceEquals(_dataStore, data) || Dispatcher.HasShutdownStarted) return;
+            if (!assetsReady && data.Settings.Current.Appearance.NaiwaEnabled)
+            {
+                var snapshot = SettingsPageEditor.Clone(data.Settings.Current);
+                data.Settings.Current.Appearance.NaiwaEnabled = false;
+                SaveNaiwaPageSnapshot(snapshot);
+                LoadNaiwaControls();
+            }
+            ShowNaiwaStatus(status);
+        }
+        finally
+        {
+            if (ReferenceEquals(_dataStore, data))
+            {
+                RefreshNaiwaAssetControls();
+                SetNaiwaControlsBusy(false);
+            }
+        }
     }
 
     private void OnNaiwaOptionsChanged(object sender, RoutedEventArgs e)

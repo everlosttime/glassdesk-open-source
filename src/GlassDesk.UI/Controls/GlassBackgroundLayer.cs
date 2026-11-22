@@ -1,6 +1,8 @@
 using System.Buffers;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows;
+using GlassDesk.Core.Models;
 using GlassDesk.Platform;
 using GlassDesk.Platform.Displays;
 
@@ -68,6 +70,13 @@ internal sealed class GlassBackgroundLayer : IDisposable
         DesktopSceneCaptureFactory.CreateDesktopOnly(region, trace));
     private bool _desktopOnly;
     private long _pendingSince;
+    private long _neutralFillSince;
+    private byte[]? _backdropLuma;
+    private long _brightFrameSince;
+    private const uint NeutralDesktopFill = 0x00b2b2b2;
+    private static readonly TimeSpan NeutralFillConfirmation = TimeSpan.FromMilliseconds(150);
+    private static readonly TimeSpan StatusBarBrightnessConfirmation = TimeSpan.FromMilliseconds(110);
+    private static readonly TimeSpan LauncherBrightnessConfirmation = TimeSpan.FromMilliseconds(240);
     private GlassBackgroundFrame? _basic;
     private SamplePixelPool _extensionPool = new();
     private bool _sleeping;
@@ -89,18 +98,18 @@ internal sealed class GlassBackgroundLayer : IDisposable
     { live = _compatible.InspectPerformance(), wallpaper = _wallpaperFeed.InspectPerformance(),
         desktopOnly = _desktopOnlyFeed.InspectPerformance(), desktopOnlySelected = _desktopOnly };
 
-    internal void SetAnimationActive(bool active, double? targetHertz = null)
+    internal void SetDisplayCadence(double? targetHertz)
     {
-        _compatible.SetAnimationActive(active, targetHertz);
-        _wallpaperFeed.SetAnimationActive(active, targetHertz);
-        _desktopOnlyFeed.SetAnimationActive(active, targetHertz);
+        _compatible.SetDisplayCadence(targetHertz);
+        _wallpaperFeed.SetDisplayCadence(targetHertz);
+        _desktopOnlyFeed.SetDisplayCadence(targetHertz);
     }
 
-    internal void SetInteractionActive(bool active)
+    internal void ObserveContentChanges(Action changed)
     {
-        _compatible.SetInteractionActive(active);
-        _wallpaperFeed.SetInteractionActive(active);
-        _desktopOnlyFeed.SetInteractionActive(active);
+        _compatible.ContentChanged = changed;
+        _wallpaperFeed.ContentChanged = changed;
+        _desktopOnlyFeed.ContentChanged = changed;
     }
 
     public GlassBackgroundFrame? Capture(PixelRect region, int width, int height, double radius, bool allowDesktop,
@@ -224,8 +233,8 @@ internal sealed class GlassBackgroundLayer : IDisposable
 
     public void Suspend()
     {
+        ResetBackdropConfirmation();
         _rejectedWallpaper=false;
-        SetAnimationActive(false);
         _compatible.Suspend();
         _wallpaperFeed.Suspend();
         _desktopOnlyFeed.Suspend();
@@ -235,6 +244,7 @@ internal sealed class GlassBackgroundLayer : IDisposable
 
     public void SetPerformanceSleeping(bool sleeping)
     {
+        ResetBackdropConfirmation();
         _rejectedWallpaper=false;
         _sleeping = sleeping;
         if (sleeping) { _extensionPool.Dispose(); _extensionPool = new(); }
@@ -248,6 +258,7 @@ internal sealed class GlassBackgroundLayer : IDisposable
 
     public void Dispose()
     {
+        ResetBackdropConfirmation();
         _extensionPool.Dispose();
         _compatible.Dispose();
         _wallpaperFeed.Dispose();
@@ -273,15 +284,105 @@ internal sealed class GlassBackgroundLayer : IDisposable
         PixelRect capturedRegion, PixelRect requestedRegion, int width, int height)
     {
         if (_sleeping) return null;
-        if (capturedRegion == requestedRegion && frame.Width == width && frame.Height == height) return frame;
+        if (capturedRegion == requestedRegion && frame.Width == width && frame.Height == height)
+            return ShouldHoldNeutralFill(frame.Source, frame.Pixels) ? null : frame;
         var lease = _extensionPool.TryRent(checked(width * height * 4));
         if (lease is null) return null;
         try
         {
             CopyExtendedPixels(frame, capturedRegion, requestedRegion, width, height, lease.Pixels);
-            return GlassBackgroundFrame.FromExtensionLease(lease, frame, width, height);
+            if (!ShouldHoldNeutralFill(frame.Source, lease.Pixels))
+                return GlassBackgroundFrame.FromExtensionLease(lease, frame, width, height);
+            lease.Dispose();
+            return null;
         }
         catch { lease.Dispose(); throw; }
+    }
+
+    private void ResetBackdropConfirmation()
+    {
+        _neutralFillSince = 0;
+        _backdropLuma = null;
+        _brightFrameSince = 0;
+    }
+
+    internal bool ShouldHoldBrightBackdropFrame(GlassMaterialTarget target, GlassBackgroundFrame frame,
+        GlassCaptureGeometry geometry, long now, bool samePose)
+    {
+        if (frame.Source is not (GlassBackdropSource.LiveDesktop or GlassBackdropSource.CompatibleScene))
+        {
+            _backdropLuma = null;
+            _brightFrameSince = 0;
+            return false;
+        }
+
+        const int columns = 16, rows = 8;
+        Span<byte> sample = stackalloc byte[columns * rows];
+        var bounds = geometry.GlassBoundsDip;
+        var scaleX = frame.Width / geometry.SampleSizeDip.Width;
+        var scaleY = frame.Height / geometry.SampleSizeDip.Height;
+        var baseline = samePose ? _backdropLuma : null;
+        var brighter = 0;
+        for (var row = 0; row < rows; row++)
+        {
+            var y = Math.Clamp((int)((bounds.Y + (row + .5) * bounds.Height / rows) * scaleY), 0, frame.Height - 1);
+            for (var column = 0; column < columns; column++)
+            {
+                var x = Math.Clamp((int)((bounds.X + (column + .5) * bounds.Width / columns) * scaleX), 0, frame.Width - 1);
+                var pixel = (y * frame.Width + x) * 4;
+                var luma = (54 * frame.Pixels[pixel + 2] + 183 * frame.Pixels[pixel + 1] + 19 * frame.Pixels[pixel]) >> 8;
+                var index = row * columns + column;
+                sample[index] = (byte)luma;
+                if (baseline is not null && luma - baseline[index] >= 18) brighter++;
+            }
+        }
+
+        // Readback can briefly brighten only the area under a glass panel.
+        // Keep the previous frame while checking that the change persists.
+        if (brighter >= sample.Length / 4)
+        {
+            if (_brightFrameSince == 0) _brightFrameSince = now;
+            var launcher = target == GlassMaterialTarget.Launcher;
+            var confirmation = launcher ? LauncherBrightnessConfirmation : StatusBarBrightnessConfirmation;
+            if (Stopwatch.GetElapsedTime(_brightFrameSince, now) < confirmation)
+            {
+                var reason = launcher
+                    ? "TransientLauncherBrightFrameHeld" : "TransientStatusBarBrightFrameHeld";
+                BackdropRecovery.Record(new("BackgroundCapture", reason, now));
+                return true;
+            }
+        }
+
+        _brightFrameSince = 0;
+        sample.CopyTo(_backdropLuma ??= new byte[sample.Length]);
+        return false;
+    }
+
+    private bool ShouldHoldNeutralFill(GlassBackdropSource source, byte[] bytes)
+    {
+        var pixels = MemoryMarshal.Cast<byte, uint>(bytes.AsSpan());
+        var step = Math.Max(1, pixels.Length / 701);
+        var sampled = (pixels.Length - 1) / step + 1;
+        var fill = 0;
+        if (source is GlassBackdropSource.LiveDesktop or GlassBackdropSource.CompatibleScene)
+            for (var index = 0; index < pixels.Length; index += step)
+                if ((pixels[index] & 0x00ffffff) == NeutralDesktopFill) fill++;
+        // A partial compositor fill can cover 38% of the input for a panel
+        // while the remaining crop, including its overscan, still has detail.
+        if (fill * 10 < sampled * 3)
+        {
+            _neutralFillSince = 0;
+            return false;
+        }
+
+        // Keep the current material across a transient RGB 178 desktop fill.
+        // Accept persistent colors after the confirmation window.
+        var now = Stopwatch.GetTimestamp();
+        if (_neutralFillSince == 0) _neutralFillSince = now;
+        if (Stopwatch.GetElapsedTime(_neutralFillSince, now) >= NeutralFillConfirmation) return false;
+        var reason = fill == sampled ? "TransientNeutralFillHeld" : "TransientPartialNeutralFillHeld";
+        BackdropRecovery.Record(new("BackgroundCapture", reason, now));
+        return true;
     }
 
     private static void CopyExtendedPixels(GlassBackgroundFrame frame,

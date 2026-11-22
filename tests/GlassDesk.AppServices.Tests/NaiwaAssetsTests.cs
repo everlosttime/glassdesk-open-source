@@ -5,24 +5,15 @@ namespace GlassDesk.AppServices.Tests;
 public sealed class NaiwaAssetsTests
 {
     [Theory]
-    [InlineData(true, false, "bundled")]
-    [InlineData(true, true, "bundled")]
-    [InlineData(false, true, "legacy")]
-    [InlineData(false, false, null)]
-    public void ResolvesCompleteBundledAssetsWithoutImportingOrChangingLegacyData(bool bundleReady, bool legacyReady, string? expected)
+    [InlineData(true)]
+    [InlineData(false)]
+    public void AnImportedPackIsReadyOnlyWhenAllAssetsHaveContent(bool complete)
     {
-        var root = Path.Combine(Path.GetTempPath(), "GlassDesk-Naiwa-Resolve-" + Guid.NewGuid().ToString("N"));
-        var bundled = Path.Combine(root, "bundled");
-        var legacy = Path.Combine(root, "legacy");
+        var root = Path.Combine(Path.GetTempPath(), "GlassDesk-Naiwa-Ready-" + Guid.NewGuid().ToString("N"));
         try
         {
-            CreateAssets(bundled, bundleReady);
-            CreateAssets(legacy, legacyReady);
-            var before = Directory.GetFiles(root, "*", SearchOption.AllDirectories)
-                .ToDictionary(path => path, File.ReadAllText);
-            var actual = NaiwaAssets.ResolveDirectory(bundled, legacy);
-            Assert.Equal(expected is null ? null : Path.Combine(root, expected), actual);
-            Assert.Equal(before, Directory.GetFiles(root, "*", SearchOption.AllDirectories).ToDictionary(path => path, File.ReadAllText));
+            CreateAssets(root, complete);
+            Assert.Equal(complete, NaiwaAssets.AreReady(root));
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); }
     }
@@ -34,6 +25,37 @@ public sealed class NaiwaAssetsTests
             "head.nwp", "hold.nwp", "hunger.nwp", "rest.nwp", "rest2.nwp", "sad.nwp", "seq.nwp", "walk.nwp",
             "dance.mp3", "原版笑声.wav", "cry.wav" })
             File.WriteAllText(Path.Combine(directory, name), !complete && name == "素材.nwp" ? "" : name);
+    }
+
+    [Fact]
+    public void RemovingImportedFilesLeavesBundledAssetsAndOtherUserFilesIntact()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "GlassDesk-Naiwa-Remove-" + Guid.NewGuid().ToString("N"));
+        var bundled = Path.Combine(root, "installed", "assets");
+        var imported = Path.Combine(root, "naiwa", "assets");
+        var preferences = Path.Combine(root, "naiwa", "settings.ini");
+        var originalZip = Path.Combine(root, "素材包.zip");
+        var unrelated = Path.Combine(imported, "说明.txt");
+        try
+        {
+            CreateAssets(bundled, complete: true);
+            CreateAssets(imported, complete: true);
+            File.WriteAllText(preferences, "original preferences");
+            File.WriteAllText(originalZip, "original ZIP");
+            File.WriteAllText(unrelated, "unrelated file");
+
+            Assert.True(NaiwaAssets.HasImportedFiles(imported));
+            NaiwaAssets.RemoveImportedFiles(imported);
+
+            Assert.False(NaiwaAssets.HasImportedFiles(imported));
+            Assert.Equal([unrelated], Directory.GetFiles(imported));
+            Assert.Equal("unrelated file", File.ReadAllText(unrelated));
+            Assert.Equal("original ZIP", File.ReadAllText(originalZip));
+            Assert.Equal("original preferences", File.ReadAllText(preferences));
+            Assert.True(NaiwaAssets.AreReady(bundled));
+            Assert.False(NaiwaAssets.AreReady(imported));
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); }
     }
 
     [Fact]

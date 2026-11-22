@@ -4,7 +4,8 @@ param(
     [Parameter(Mandatory=$true)][string]$PhaseFile,
     [Parameter(Mandatory=$true)][string]$OutputPath,
     [int]$MaximumSeconds = 2700,
-    [switch]$CollectGpu
+    [switch]$CollectGpu,
+    [switch]$IncludeAllDescendants
 )
 $ErrorActionPreference = 'Stop'
 $output = [IO.Path]::GetFullPath($OutputPath)
@@ -23,7 +24,8 @@ function Write-Samples {
     [ordered]@{
         rootProcessId=$RootProcessId; fileVersion=$version; logicalProcessors=[Environment]::ProcessorCount
         measurement='Process tree including live/retiring capture helpers. CIM private working set; Process private commit/total working set; CPU time delta normalized by logical processor count. No forced GC or working set trimming.'
-        intervalTargetSeconds=1; gpuRequested=[bool]$CollectGpu; samples=$samples.ToArray()
+        intervalTargetSeconds=1; gpuRequested=[bool]$CollectGpu
+        includeAllDescendants=[bool]$IncludeAllDescendants; samples=$samples.ToArray()
     } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $output -Encoding utf8
 }
 try {
@@ -50,7 +52,10 @@ try {
         do {
             $added = $false
             foreach ($item in $processes) {
-                if ($item.ExecutablePath -ieq $productPath -and $item.CommandLine -match '(?:^|\s)--glass-backdrop-worker\s' -and $known.Contains([int]$item.ParentProcessId) -and -not $known.Contains([int]$item.ProcessId)) {
+                $isCaptureWorker = $item.ExecutablePath -ieq $productPath -and $item.CommandLine -match '(?:^|\s)--glass-backdrop-worker\s'
+                $parentId = [int]$item.ParentProcessId
+                if (($IncludeAllDescendants -or $isCaptureWorker) -and $known.Contains($parentId) -and
+                    $item.CreationDate -ge $creationTimes[$parentId] -and -not $known.Contains([int]$item.ProcessId)) {
                     $null = $known.Add([int]$item.ProcessId); $creationTimes[[int]$item.ProcessId] = $item.CreationDate; $added = $true
                 }
             }
@@ -88,6 +93,7 @@ try {
             finally { if ($member) { $member.Dispose() } }
         }
         $gpu = $null
+        $gpuMemory = $null
         if ($members.Count -eq 0) { break }
         if ($CollectGpu) {
             try {
@@ -96,6 +102,11 @@ try {
                     Select-Object Name,UtilizationPercentage)
                 $gpu = $engines
             } catch { $gpu = $null }
+            try {
+                $gpuMemory = @(Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUProcessMemory -ErrorAction Stop |
+                    Where-Object { $_.Name -match 'pid_(\d+)_' -and $known.Contains([int]$Matches[1]) } |
+                    Select-Object Name,DedicatedUsage,SharedUsage)
+            } catch { $gpuMemory = $null }
         }
         $missingPrivate = @($members | Where-Object { $null -eq $_.privateWorkingBytes }).Count
         $samples.Add([pscustomobject][ordered]@{
@@ -105,7 +116,10 @@ try {
             privateCommitBytes=($members.privateCommitBytes | Measure-Object -Sum).Sum
             workingBytes=($members.workingBytes | Measure-Object -Sum).Sum
             cpuPercent=if ($lastAt -gt 0 -and $interval -gt 0) { 100*$cpuMilliseconds/($interval*1000)/[Environment]::ProcessorCount } else { $null }
-            gpuEngines=$gpu; members=$members.ToArray()
+            gpuEngines=$gpu
+            gpuDedicatedBytes=if ($gpuMemory) { ($gpuMemory.DedicatedUsage | Measure-Object -Sum).Sum } else { $null }
+            gpuSharedBytes=if ($gpuMemory) { ($gpuMemory.SharedUsage | Measure-Object -Sum).Sum } else { $null }
+            members=$members.ToArray()
         })
         $lastAt = $at
         if ($samples.Count % 10 -eq 0) { Write-Samples }

@@ -37,12 +37,18 @@ public sealed class IdleGlassCadenceTests
         Assert.True(Volatile.Read(ref native.Reads) - before >= 3, "Changed content must restore live capture cadence.");
     }
 
-    [Fact]
-    public void DynamicBackgroundUsesBoundedRefreshUntilAnInteractionStarts()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DynamicBackgroundMaintainsLiveCaptureWithoutHovering(bool frosted)
     {
         StaTest.Run(() =>
         {
-            using var surface = new LiquidGlassSurface { ReadBackdropScene = () => new GlassBackdropScene() };
+            using var surface = new LiquidGlassSurface
+            {
+                ReadBackdropScene = () => new GlassBackdropScene(),
+                UseFrostedMaterial = frosted,
+            };
             var background = (GlassBackgroundLayer)Field(surface, "_background");
             StaticCapture? native = null;
             var feed = new SharedBackdropFeed((bounds, _, _) => native = new StaticCapture(bounds) { Continuous = true });
@@ -53,8 +59,9 @@ public sealed class IdleGlassCadenceTests
                 window.Show(); Pump(500);
                 var before = Volatile.Read(ref native!.Reads);
                 Pump(1000);
-                Assert.InRange(Volatile.Read(ref native.Reads) - before, 15, 40);
-                Assert.False((bool)Field(surface, "_renderClockAttached"));
+                Assert.True(Volatile.Read(ref native.Reads) - before > 40,
+                    "Changing pixels must sustain live capture without mouse input or animation.");
+                Assert.True((bool)Field(surface, "_renderClockAttached"));
                 surface.SetContainerAnimationActive(true);
                 Assert.True((bool)Field(surface, "_renderClockAttached"));
                 before = Volatile.Read(ref native.Reads);

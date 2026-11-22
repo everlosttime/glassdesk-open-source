@@ -17,6 +17,15 @@ public static partial class DisplayService
     {
         if(window==0 || !Display32.GetWindowRect(window,out _))return null;
         var monitor=Display32.MonitorFromWindow(window,Display32.MonitorDefaultToNearest);
+        return RefreshForMonitor(monitor);
+    }
+
+    /// <summary>Read the configured refresh rate at physical screen coordinates.</summary>
+    public static DisplayRefreshInfo? RefreshForPoint(int x, int y) =>
+        RefreshForMonitor(Display32.MonitorFromPoint(new Point { X = x, Y = y }, 0));
+
+    private static DisplayRefreshInfo? RefreshForMonitor(nint monitor)
+    {
         var info=new MonitorInfoEx{Size=Marshal.SizeOf<MonitorInfoEx>(),DeviceName=string.Empty};
         if(monitor==0 || !Display32.GetMonitorInfo(monitor,ref info))return null;
         try

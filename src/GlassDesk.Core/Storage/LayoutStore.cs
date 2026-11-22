@@ -58,6 +58,7 @@ public sealed class LayoutStore
         var outcome = _launcherStore.Load(static () => new LauncherLayout());
         Launcher = outcome.Value;
         Launcher.Pages ??= [];
+        if (Launcher.SchemaVersion >= 2) LauncherFilterRules.Normalize(Launcher);
         _lastSavedLauncher = LauncherLayoutRules.DeepClone(Launcher);
         LauncherVersion++;
         return outcome;
@@ -85,6 +86,7 @@ public sealed class LayoutStore
     {
         try
         {
+            if (Launcher.SchemaVersion >= 2) LauncherFilterRules.Normalize(Launcher);
             _launcherStore.Save(Launcher);
             _lastSavedLauncher = LauncherLayoutRules.DeepClone(Launcher);
             LauncherVersion++;

@@ -6,8 +6,6 @@ namespace GlassDesk.Launcher;
 
 public partial class LauncherWindow
 {
-    private readonly bool _experimentalHighRefreshCapture = Environment.GetEnvironmentVariable("GLASSDESK_EXPERIMENTAL_120HZ") == "1";
-    private bool UseHighRefreshCapture => _settings.HighRefreshAnimationsEnabled || _experimentalHighRefreshCapture;
     private readonly string? _animationTraceDirectory = Environment.GetEnvironmentVariable("GLASSDESK_ANIMATION_TRACE_DIR");
     private AnimationTrace? _animationTrace;
     private long _showRequestedAt;
@@ -42,7 +40,7 @@ public partial class LauncherWindow
     private void BeginAnimationTrace(bool opening)
     {
         if (string.IsNullOrWhiteSpace(_animationTraceDirectory)) return;
-        _animationTrace = new AnimationTrace(_animationTraceDirectory, opening, UseHighRefreshCapture,
+        _animationTrace = new AnimationTrace(_animationTraceDirectory, opening,
             opening && _showRequestedAt != 0 ? Stopwatch.GetElapsedTime(_showRequestedAt).TotalMilliseconds : 0,
             opening ? _lastRevealPreparationMilliseconds : 0,
             _preparationTimings?.ToArray() ?? [], _animationRequestId, _animationRequestStartedAt,
@@ -56,7 +54,7 @@ public partial class LauncherWindow
         trace?.Finish(GlassSurface.InspectPerformance(), outcome);
     }
 
-    private sealed class AnimationTrace(string directory, bool opening, bool highRefresh,
+    private sealed class AnimationTrace(string directory, bool opening,
         double requestPreparationMilliseconds, double revealPreparationMilliseconds, PreparationTiming[] preparationStages,
         long requestId, long requestStarted, long hwnd, bool reversesAnimation)
     {
@@ -113,7 +111,6 @@ public partial class LauncherWindow
                         reversesAnimation, outcome, finalizationMilliseconds, displayEvidence = "unmeasured",
                         firstCallbackMilliseconds = samples.Length == 0 ? (double?)null
                             : Stopwatch.GetElapsedTime(requestStarted, samples[0].qpc).TotalMilliseconds,
-                        experimentalHighRefreshCapture = highRefresh,
                         note = "UI rendering callbacks and CPU stage durations; not displayed GPU FPS. No screenshots or application titles.",
                         uiThreadId = _uiThread, writerThreadId = Environment.CurrentManagedThreadId,
                         requestPreparationMilliseconds, revealPreparationMilliseconds, preparationStages,

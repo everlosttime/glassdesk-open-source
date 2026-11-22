@@ -78,10 +78,9 @@ try {
     if ($PortableRegressions) {
         if (-not $AcceptanceDirectory -or -not $CaptureExecutable) { throw 'Portable regressions need explicit staged binaries.' }
         $env:GLASSDESK_LAUNCHER_NATIVE_SHADOW='1'
-        foreach ($mode in @('plain','high-refresh-off')) {
+        foreach ($mode in @('plain','frosted')) {
             $arguments=@('--launcher-open-close','--cycles','3','--material',$(if($mode -eq 'plain'){'PlainGlass'}else{'FrostedGlass'}),
                 '--capture-exe',([IO.Path]::GetFullPath($CaptureExecutable)),'--report',(Join-Path $output ($mode+'/report.json')))
-            if ($mode -eq 'high-refresh-off') { $arguments+='--high-refresh-off' }
             & (Join-Path $AcceptanceDirectory 'GlassDesk.LauncherAcceptance.exe') @arguments
             if ($LASTEXITCODE -ne 0) { throw "Portable regression failed: $mode" }
         }

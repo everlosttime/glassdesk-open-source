@@ -27,6 +27,11 @@ internal static class CompatibilityProbe
             SetThreadDpiAwarenessContext(-4);
             return WallpaperGpuReport.Run((nint)long.Parse(sourceWindow), gpuReport);
         }
+        if (args is ["--wallpaper-direct-window-report", var wallpaperWindow, var windowReport])
+        {
+            SetThreadDpiAwarenessContext(-4);
+            return WallpaperGpuReport.RunDirectWindow((nint)long.Parse(wallpaperWindow), windowReport);
+        }
         if (args.Length == 3 && args[0] == "--trace-desktop-flash")
         {
             SetThreadDpiAwarenessContext(-4);
@@ -93,6 +98,14 @@ internal static class CompatibilityProbe
                     fileExists=File.Exists(m.Path),extension=Path.GetExtension(m.Path),bytes=File.Exists(m.Path)?new FileInfo(m.Path).Length:0})
             }));
             return 0;
+        }
+        if (args is ["--coded-backdrop-fixture", var codedReady])
+            return MovingBackdropFixture.Run(codedReady, coded: true);
+        if (args is ["--coded-backdrop-fixture", var displayReady, var deviceName])
+        {
+            if (SetThreadDpiAwarenessContext(-4) == 0)
+                throw new InvalidOperationException("Unable to read the selected display in physical pixels.");
+            return MovingBackdropFixture.Run(displayReady, coded: true, deviceName: deviceName);
         }
         if (args.Length == 2 && args[0] == "--moving-backdrop-fixture")
             return MovingBackdropFixture.Run(args[1]);

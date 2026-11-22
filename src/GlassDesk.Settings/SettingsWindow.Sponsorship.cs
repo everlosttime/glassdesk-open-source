@@ -9,9 +9,7 @@ public partial class SettingsWindow
 {
     private ImageSource? _alipaySponsorCode;
     private ImageSource? _wechatSponsorCode;
-
-    private void LoadSponsorshipCodes() => SetSponsorshipCodes(
-        LoadSponsorshipCode("alipay.jpg") ?? LoadSponsorshipCode("alipay.png"), LoadSponsorshipCode("wechat.png"));
+    private bool _hasSponsorCodeOverrides;
 
     private static BitmapFrame? LoadSponsorshipCode(string fileName)
     {
@@ -35,6 +33,7 @@ public partial class SettingsWindow
     /// <summary>设置作者提供的原始收款码；未提供的渠道不会显示其它渠道的二维码。</summary>
     public void SetSponsorshipCodes(ImageSource? alipay, ImageSource? wechat)
     {
+        _hasSponsorCodeOverrides = true;
         _alipaySponsorCode = alipay;
         _wechatSponsorCode = wechat;
     }
@@ -42,7 +41,10 @@ public partial class SettingsWindow
     private void OnSponsorClick(object sender, RoutedEventArgs e)
     {
         var useWechat = SponsorWechatOption.IsChecked == true;
-        var dialog = new SponsorshipWindow(useWechat, useWechat ? _wechatSponsorCode : _alipaySponsorCode)
+        var code = _hasSponsorCodeOverrides
+            ? useWechat ? _wechatSponsorCode : _alipaySponsorCode
+            : useWechat ? LoadSponsorshipCode("wechat.png") : LoadSponsorshipCode("alipay.jpg") ?? LoadSponsorshipCode("alipay.png");
+        var dialog = new SponsorshipWindow(useWechat, code)
         { Owner = this };
         dialog.ShowDialog();
     }

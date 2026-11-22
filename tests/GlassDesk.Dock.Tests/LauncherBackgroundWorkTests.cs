@@ -140,6 +140,46 @@ public sealed class LauncherBackgroundWorkTests
         });
     }
 
+    [Fact]
+    public void RefreshingTheLibraryDropsQueuedDecodesFromThePreviousLibrary()
+    {
+        StaTest.Run(() =>
+        {
+            var window = new LauncherWindow();
+            using var entered = new ManualResetEventSlim();
+            using var release = new ManualResetEventSlim();
+            var loader = typeof(LauncherWindow).GetField("_iconLoader", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(window)!;
+            var load = loader.GetType().GetMethod("LoadAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+            var clear = loader.GetType().GetMethod("Clear", BindingFlags.NonPublic | BindingFlags.Instance)!;
+            Task<BitmapImage?> Queue(string key, Func<BitmapImage?> resolve) =>
+                (Task<BitmapImage?>)load.Invoke(loader, [key, resolve])!;
+            var obsoleteDecodes = 0;
+            try
+            {
+                var running = Queue("running", () =>
+                {
+                    entered.Set();
+                    release.Wait(TimeSpan.FromSeconds(5));
+                    return null;
+                });
+                Assert.True(entered.Wait(TimeSpan.FromSeconds(2)));
+                var stale = Queue("unchanged-key", () =>
+                {
+                    Interlocked.Increment(ref obsoleteDecodes);
+                    return null;
+                });
+                clear.Invoke(loader, null);
+                Assert.True(stale.IsCompletedSuccessfully, "A stale queued request should not wait for an in-flight shell decode.");
+                Assert.Null(stale.Result);
+                var current = Queue("unchanged-key", () => null);
+                release.Set();
+                Assert.True(Task.WaitAll([running, current], TimeSpan.FromSeconds(2)));
+                Assert.Equal(0, obsoleteDecodes);
+            }
+            finally { release.Set(); window.Close(); }
+        });
+    }
+
     private static bool HasImage(DependencyObject root)
     {
         if (root is Image { Source: BitmapSource }) return true;

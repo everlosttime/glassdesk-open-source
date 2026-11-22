@@ -9,6 +9,7 @@ internal sealed class IsolatedDesktopSceneCapture : IDesktopSceneCapture
 {
     private readonly Process _process;
     private readonly Stream _input, _output;
+    private readonly MemoryStream _request = new(128);
     private readonly ScreenRect _region;
     private readonly GlassBackdropSource _source;
     private readonly string? _wallpaperSourceScope;
@@ -207,11 +208,13 @@ internal sealed class IsolatedDesktopSceneCapture : IDesktopSceneCapture
     }
     private void Send(Action<BinaryWriter> write, CancellationToken token, CancellationToken caller = default)
     {
-        using var message = new MemoryStream();
-        using (var writer = new BinaryWriter(message, Encoding.UTF8, true)) write(writer);
+        // Transactions are serialized by the capture owner. Reuse its command
+        // buffer instead of allocating a backing array for every frame.
+        _request.SetLength(0);
+        using (var writer = new BinaryWriter(_request, Encoding.UTF8, true)) write(writer);
         try
         {
-            _input.WriteAsync(message.GetBuffer().AsMemory(0, (int)message.Length), token).AsTask().GetAwaiter().GetResult();
+            _input.WriteAsync(_request.GetBuffer().AsMemory(0, (int)_request.Length), token).AsTask().GetAwaiter().GetResult();
             _input.FlushAsync(token).GetAwaiter().GetResult();
         }
         catch (OperationCanceledException) when (!caller.IsCancellationRequested)
@@ -254,6 +257,7 @@ internal sealed class IsolatedDesktopSceneCapture : IDesktopSceneCapture
     {
         if (_disposed) return;
         _disposed = true;
+        _request.Dispose();
         // Runs on the feed's worker, never the Dispatcher. Exit precedes mapping retirement.
         try
         {

@@ -6,6 +6,27 @@ namespace GlassDesk.Dock.Tests;
 
 public sealed class GlassFrameBufferTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BufferedFrostedRendererPreservesOutputAcrossGeometryChanges(bool squircle)
+    {
+        const int width = 31;
+        const int height = 17;
+        var source = Enumerable.Range(0, width * height * 4).Select(i => (byte)(i * 11)).ToArray();
+        var output = new byte[source.Length];
+        var scratch = new byte[source.Length];
+        var size = new System.Windows.Size(width, height);
+        var cache = new FrostedGlassRenderer.ClipCache();
+        foreach (var radius in new[] { 4.75, 4.75, 7.25 })
+        {
+            var bounds = new System.Windows.Rect(.25, .5, width - 2, height - 1);
+            var expected = FrostedGlassRenderer.Render(source, width, height, size, bounds, radius, squircle, true, .9, .25);
+            FrostedGlassRenderer.RenderInto(source, output, scratch, width, height, size, bounds, radius, squircle, true, .9, .25, cache);
+            Assert.Equal(expected, output);
+        }
+    }
+
     private static Task<GlassFrameResult?> Render(GlassFrameWorker worker, int length, Action<byte[], byte[]> render)
         => worker.RenderBufferedAsync(length, render);
 

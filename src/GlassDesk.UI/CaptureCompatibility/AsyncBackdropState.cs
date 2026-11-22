@@ -49,6 +49,7 @@ internal sealed class LatestBackdropState : IDisposable
 {
     private static long nextGeneration;
     internal Action<CaptureTrace>? TraceObserved {get;init;}
+    internal Action? ContentChanged { get; init; }
     private readonly object gate = new();
     private BackdropRequest? current;
     private BackdropFrame? latest;
@@ -116,6 +117,7 @@ internal sealed class LatestBackdropState : IDisposable
     }
     internal bool Publish(BackdropFrame frame)
     {
+        bool unchanged;
         lock(gate)
         {
             var reason=disposed ? "WorkerStopped" : frame.Request!=current ? "GenerationChanged"
@@ -124,13 +126,15 @@ internal sealed class LatestBackdropState : IDisposable
             TraceObserved?.Invoke(new("Publish",reason,System.Diagnostics.Stopwatch.GetTimestamp(),frame.SourceTicks,
                 frame.EndTicks,Generation:frame.Request.Generation));
             if(reason!="Delivered") {if(!ReferenceEquals(latest,frame)) frame.Dispose();return false;}
-            var unchanged=latest is not null && latest.Source==frame.Source && latest.Request==frame.Request
+            unchanged=latest is not null && latest.Source==frame.Source && latest.Request==frame.Request
                 && latest.Pixels.Span.SequenceEqual(frame.Pixels.Span);
             frame.ContentRevision=unchanged ? latest!.ContentRevision : ++contentRevision;
             if(!unchanged) contentChangedAt=System.Diagnostics.Stopwatch.GetTimestamp();
             if(!ReferenceEquals(latest,frame)) ClearLatest();
-            latest=frame; return true;
+            latest=frame;
         }
+        if (!unchanged) ContentChanged?.Invoke();
+        return true;
     }
     internal bool TryRead(long now, long maximumAgeTicks, out BackdropFrame? frame)
     {

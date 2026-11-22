@@ -36,49 +36,55 @@ public sealed class LauncherAutomaticGroupingTests
     }
 
     [Fact]
-    public void ClassificationCreatesDistinctAutomaticGroupAndPreservesManualMembershipAndOrder()
+    public void ClassificationPreservesManualMembershipAndOnlyClassifiesUngroupedIcons()
     {
         var source = Apps();
         var result = LauncherAutoGroupingRules.ApplyClassification(source, "editor", new("development", "known executable"));
+        Assert.True(LauncherLayoutRules.Equivalent(source, result));
+
+        result = LauncherAutoGroupingRules.ApplyClassification(result, "chat", new("development", "known executable"));
         var automatic = Assert.Single(result.FilterGroups, group => group.CategoryId == "development");
         Assert.Equal("开发工具（自动）", automatic.Name);
-        Assert.Equal(["editor"], automatic.ItemIds);
+        Assert.Equal(["chat"], automatic.ItemIds);
         Assert.Equal(["editor"], result.FilterGroups.Single(group => group.Id == "manual").ItemIds);
         Assert.Equal(["chat", "editor"], result.FlatOrder);
         Assert.Single(source.FilterGroups);
         Assert.True(LauncherLayoutRules.Equivalent(result,
-            LauncherAutoGroupingRules.ApplyClassification(result, "editor", new("games", "new rules"))));
+            LauncherAutoGroupingRules.ApplyClassification(result, "chat", new("games", "new rules"))));
     }
 
     [Fact]
-    public void ExplicitManualChoiceReplacesOnlyOwnedMembershipAndSurvivesReclassification()
+    public void ExplicitManualChoiceMovesTheIconToOneGroupAndSurvivesReclassification()
     {
-        var classified = LauncherAutoGroupingRules.ApplyClassification(Apps(), "editor", new("development", "code"));
-        var manual = LauncherAutoGroupingRules.SetManualCategory(classified, "editor", "office-study");
-        Assert.Empty(manual.FilterGroups.Single(group => group.CategoryId == "development").ItemIds);
+        var manual = LauncherAutoGroupingRules.SetManualCategory(Apps(), "editor", "office-study");
         Assert.Equal(["editor"], manual.FilterGroups.Single(group => group.CategoryId == "office-study").ItemIds);
-        Assert.Equal(["editor"], manual.FilterGroups.Single(group => group.Id == "manual").ItemIds);
+        Assert.Empty(manual.FilterGroups.Single(group => group.Id == "manual").ItemIds);
         Assert.True(Assert.Single(manual.AutoClassifications).IsManualOverride);
         var reapplied = LauncherAutoGroupingRules.ApplyClassification(manual, "editor", new("games", "rules"), true);
         Assert.True(LauncherLayoutRules.Equivalent(manual, reapplied));
+
+        var movedBack = LauncherAutoGroupingRules.SetManualGroup(manual, "editor", "manual");
+        Assert.Empty(movedBack.FilterGroups.Single(group => group.CategoryId == "office-study").ItemIds);
+        Assert.Equal(["editor"], movedBack.FilterGroups.Single(group => group.Id == "manual").ItemIds);
     }
 
     [Fact]
     public void EditingAutomaticGroupLocksRemovedMembersAndDoesNotReAddThem()
     {
-        var classified = LauncherAutoGroupingRules.ApplyClassification(Apps(), "editor", new("development", "code"));
+        var classified = LauncherAutoGroupingRules.ApplyClassification(Apps(), "chat", new("development", "chat"));
         var group = classified.FilterGroups.Single(item => item.CategoryId == "development");
         var edited = LauncherFilterRules.UpdateGroupMembers(classified, group.Id, []);
         Assert.True(Assert.Single(edited.AutoClassifications).IsManualOverride);
         Assert.Null(Assert.Single(edited.AutoClassifications).AutomaticGroupId);
         Assert.True(LauncherLayoutRules.Equivalent(edited,
-            LauncherAutoGroupingRules.ApplyClassification(edited, "editor", new("development", "code"), true)));
+            LauncherAutoGroupingRules.ApplyClassification(edited, "chat", new("development", "chat"), true)));
     }
 
     [Fact]
     public void DeletedCategoryFallsBackWithoutResurrectionAndRestoreOnlyEnablesFutureAssignments()
     {
-        var classified = LauncherAutoGroupingRules.ApplyClassification(Apps(), "editor", new("development", "code"));
+        var source = LauncherFilterRules.RemoveGroup(Apps(), "manual");
+        var classified = LauncherAutoGroupingRules.ApplyClassification(source, "editor", new("development", "code"));
         var group = classified.FilterGroups.Single(item => item.CategoryId == "development");
         var deleted = LauncherFilterRules.RemoveGroup(classified, group.Id);
         Assert.Contains("development", deleted.DisabledAutomaticCategoryIds);
@@ -100,7 +106,7 @@ public sealed class LauncherAutomaticGroupingTests
         var old = JsonSerializer.Deserialize<LauncherLayout>("{\"SchemaVersion\":2,\"Pages\":[]}")!;
         Assert.Empty(old.AutoClassifications);
         Assert.Empty(old.DisabledAutomaticCategoryIds);
-        var classified = LauncherAutoGroupingRules.ApplyClassification(Apps(), "editor", new("development", "code"));
+        var classified = LauncherAutoGroupingRules.ApplyClassification(Apps(), "chat", new("development", "chat"));
         var clone = LauncherLayoutRules.DeepClone(classified);
         clone.AutoClassifications[0].IsManualOverride = true;
         clone.DisabledAutomaticCategoryIds.Add("games");
@@ -129,7 +135,7 @@ public sealed class LauncherAutomaticGroupingTests
     {
         using var temp = new TempDataDirectory();
         var data = new GlassDeskDataStore(temp.Paths); data.LoadAll();
-        var original = LauncherAutoGroupingRules.ApplyClassification(Apps(), "editor", new("development", "code"));
+        var original = LauncherAutoGroupingRules.ApplyClassification(Apps(), "chat", new("development", "chat"));
         original.SuppressedAutoAddKeys.Add("old-identity");
         Assert.True(data.Layouts.CommitLauncher(original, data.Layouts.LauncherVersion));
         var before = File.ReadAllBytes(temp.Paths.LauncherLayoutFile);

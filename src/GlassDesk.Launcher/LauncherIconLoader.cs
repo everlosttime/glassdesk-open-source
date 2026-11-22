@@ -61,7 +61,15 @@ internal sealed class LauncherIconLoader : IDisposable
         (int)Math.Clamp(_budget / (Math.Max(1L, maximumPixels) * Math.Max(1L, maximumPixels) * 4), 1, 256);
     internal void Clear()
     {
-        lock (_gate) { _cache.Clear(); _lru.Clear(); _decodedBytes = 0; }
+        lock (_gate)
+        {
+            if (_disposed) return;
+            _cache.Clear();
+            _lru.Clear();
+            _decodedBytes = 0;
+            while (_queue.TryTake(out var obsolete)) obsolete.Entry.Completion.TrySetResult(null);
+            Monitor.PulseAll(_gate);
+        }
     }
     private void Touch(Entry entry)
     {
@@ -84,8 +92,12 @@ internal sealed class LauncherIconLoader : IDisposable
         {
             lock (_gate)
             {
-                while (_suspended && !_disposed) Monitor.Wait(_gate);
-                if (_disposed) { work.Entry.Completion.TrySetResult(null); continue; }
+                while (_suspended && !_disposed && IsCurrent(work)) Monitor.Wait(_gate);
+                if (_disposed || !IsCurrent(work))
+                {
+                    work.Entry.Completion.TrySetResult(null);
+                    continue;
+                }
             }
             BitmapImage? image = null;
             try { image = work.Resolve(); }
@@ -95,7 +107,7 @@ internal sealed class LauncherIconLoader : IDisposable
             }
             lock (_gate)
             {
-                if (_disposed) image = null;
+                if (_disposed || !IsCurrent(work)) image = null;
                 if (_cache.TryGetValue(work.Key, out var current) && ReferenceEquals(current, work.Entry))
                 {
                     // Missing files and transient Shell failures must be retried on
@@ -114,6 +126,9 @@ internal sealed class LauncherIconLoader : IDisposable
         }
         lock (_gate) _queue.Dispose();
     }
+    private bool IsCurrent(Work work) =>
+        _cache.TryGetValue(work.Key, out var entry) && ReferenceEquals(entry, work.Entry);
+
     public void Dispose()
     {
         lock (_gate)

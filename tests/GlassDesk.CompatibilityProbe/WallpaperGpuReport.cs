@@ -9,6 +9,30 @@ using System.Windows.Media;
 
 internal static class WallpaperGpuReport
 {
+    internal static int RunDirectWindow(nint source, string path)
+    {
+        var frames = new List<object>();
+        string? failure = null;
+        var bounds = GlassDesk.Platform.Displays.DisplayService.GetWindowPixelBounds(source);
+        try
+        {
+            using var capture = new PersistentWindowCapture(source);
+            var watch = Stopwatch.StartNew();
+            while (watch.Elapsed < TimeSpan.FromSeconds(3))
+            {
+                var started = Stopwatch.GetTimestamp();
+                var frame = capture.TryReadCropped(new(0, 0, 160, 96), waitForFrame: TimeSpan.FromMilliseconds(20), reusePixels: true);
+                if (frame is not null)
+                    frames.Add(new { frame.SourceQpcTicks, readMilliseconds = Stopwatch.GetElapsedTime(started).TotalMilliseconds,
+                        sha256 = Convert.ToHexString(SHA256.HashData(frame.Pixels)) });
+            }
+        }
+        catch (Exception error) { failure = error.ToString(); }
+        File.WriteAllText(path, JsonSerializer.Serialize(new { source = source.ToInt64(), bounds, frames, failure },
+            new JsonSerializerOptions { WriteIndented = true }));
+        return failure is null && frames.Count > 0 ? 0 : 1;
+    }
+
     internal static int Run(nint source, string path)
     {
         if (File.Exists(path)) throw new IOException("Use a fresh GPU wallpaper report.");

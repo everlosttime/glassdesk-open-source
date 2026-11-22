@@ -168,7 +168,7 @@ internal sealed partial class AppHost
         // Generation invalidation does not start capture. Sleeping feeds remain
         // stopped and reject their previous wallpaper on the next explicit wake.
         if (e.Category == UserPreferenceCategory.Desktop)
-            GlassDesk.UI.BackdropRecovery.RetryBackground("DesktopSettingsChanged");
+            GlassDesk.UI.BackdropRecovery.RefreshDesktopWallpaper();
         if (e.Category is UserPreferenceCategory.General or UserPreferenceCategory.VisualStyle or UserPreferenceCategory.Window)
             QueueDisplayRefresh();
     }

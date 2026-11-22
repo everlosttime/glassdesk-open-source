@@ -36,6 +36,7 @@ internal sealed class LiveWallpaperSurface : IDisposable
     private readonly ScreenRect[] _displays;
     private long _lastSharedSequence;
     internal long LastSourceQpcTicks {get;private set;}
+    internal bool ReadbackDeferred { get; private set; }
 
     private nint _sourceDc, _sourceBitmap, _sourceOld, _sourceBits;
     private nint _targetDc, _targetBitmap, _targetOld, _targetBits;
@@ -126,8 +127,10 @@ internal sealed class LiveWallpaperSurface : IDisposable
     /// 壁纸窗口没有盖满取景区域时只更新交集部分，其余像素保持原样。
     /// </summary>
     internal bool TryDraw(nint window, int regionX, int regionY, int regionWidth, int regionHeight,
-        int windowLeft, int windowTop, int windowRight, int windowBottom, byte[] target,long sourceNotBeforeTicks=0)
+        int windowLeft, int windowTop, int windowRight, int windowBottom, byte[] target, long sourceNotBeforeTicks = 0,
+        long minimumReadbackInterval = 0)
     {
+        ReadbackDeferred = false;
         if (_disposed || window == 0 || target.Length < (long)_targetWidth * _targetHeight * 4
             || sourceNotBeforeTicks>Stopwatch.GetTimestamp()) return false;
         var left = Math.Max(regionX, windowLeft);
@@ -145,6 +148,8 @@ internal sealed class LiveWallpaperSurface : IDisposable
             var destinationTop = (int)Math.Floor((top - regionY) * scaleY);
             var destinationRight = (int)Math.Ceiling((right - regionX) * scaleX);
             var destinationBottom = (int)Math.Ceiling((bottom - regionY) * scaleY);
+            var coversTarget = left == regionX && top == regionY
+                && right == regionX + regionWidth && bottom == regionY + regionHeight;
             var forceFresh=false;
             for (var attempt = 0; attempt < 3; attempt++)
             {
@@ -156,6 +161,15 @@ internal sealed class LiveWallpaperSurface : IDisposable
                 {
                 SharedWallpaperBuffer.Frame sharedFrame=default;
                 var reused=_shareFrames && !forceFresh && shared!.TryLatest(_lastSharedSequence,sourceNotBeforeTicks,out sharedFrame);
+                // The other bar may still consume this frame. Only defer redundant
+                // readback, and honor fresh geometry/recovery barriers immediately.
+                if (!reused && !forceFresh && minimumReadbackInterval > 0 &&
+                    !SharedWallpaperBuffer.IsReadbackDue(sharedFrame, Stopwatch.GetTimestamp(),
+                        sourceNotBeforeTicks, minimumReadbackInterval))
+                {
+                    ReadbackDeferred = true;
+                    return false;
+                }
                 var started=sharedFrame.StartedTicks;
                 var sparseSource = false;
                 if(!reused)
@@ -179,7 +193,10 @@ internal sealed class LiveWallpaperSurface : IDisposable
                 // A peer on another display may have validated a different part
                 // of this same spanning source. Check our display on reuse too.
                 sparseSource = HasLargeBlackSourceRegion(regionX, regionY, regionWidth, regionHeight, windowLeft, windowTop);
-                Marshal.Copy(target, 0, _targetBits, _targetWidth * _targetHeight * 4);
+                // An exact full-coverage blit overwrites every target pixel. A
+                // partial blit still needs the caller's pixels outside the overlap.
+                if (!coversTarget)
+                    Marshal.Copy(target, 0, _targetBits, _targetWidth * _targetHeight * 4);
                 if (!StretchBlt(_targetDc, destinationLeft, destinationTop,
                         Math.Max(1, destinationRight - destinationLeft), Math.Max(1, destinationBottom - destinationTop),
                         _sourceDc, left - windowLeft, top - windowTop, right - left, bottom - top, SourceCopy))

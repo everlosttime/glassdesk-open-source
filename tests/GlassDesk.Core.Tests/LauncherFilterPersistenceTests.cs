@@ -58,6 +58,26 @@ public sealed class LauncherFilterPersistenceTests
     }
 
     [Fact]
+    public void LoadingAnExistingLayoutResolvesDuplicatesWithoutDroppingLauncherIcons()
+    {
+        using var temp = new TempDataDirectory();
+        File.WriteAllText(temp.Paths.LauncherLayoutFile, """
+            {"schemaVersion":2,"pages":[{"id":"p","slots":[{"itemId":"a"},{"itemId":"b"},{"itemId":"c"}]}],
+             "filterGroups":[{"id":"auto","name":"自动","categoryId":"development","itemIds":["a","b"]},
+                             {"id":"first","name":"工作","itemIds":["a","c"]},
+                             {"id":"second","name":"其他","itemIds":["a","c"]}],
+             "autoClassifications":[{"itemId":"a","categoryId":"development","automaticGroupId":"auto"}]}
+            """);
+        var data = new GlassDeskDataStore(temp.Paths); data.LoadAll();
+        var layout = data.Layouts.Launcher;
+        Assert.Equal(["b"], layout.FilterGroups[0].ItemIds);
+        Assert.Equal(["a", "c"], layout.FilterGroups[1].ItemIds);
+        Assert.Empty(layout.FilterGroups[2].ItemIds);
+        Assert.Equal(["a", "b", "c"], LauncherLayoutRules.AppIds(layout));
+        Assert.Null(Assert.Single(layout.AutoClassifications).AutomaticGroupId);
+    }
+
+    [Fact]
     public void FailedSaveRestoresGroupNamesAndFlatOrderInMemoryAndOnDisk()
     {
         using var temp = new TempDataDirectory();

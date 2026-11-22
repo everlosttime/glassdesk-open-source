@@ -21,6 +21,7 @@ internal sealed class DocumentedDesktopSceneCapture : IDesktopSceneCapture
     private readonly WallpaperBackdrop _wallpaper = new();
     private readonly bool _requireVerifiedWallpaper;
     private readonly bool _desktopOnly;
+    private static readonly long MovingWindowReadbackInterval = Stopwatch.Frequency / 12;
     private IWindowCapture? _capture;
     private DesktopBackgroundComposer? _backgroundComposer;
     private byte[]? _backgroundPixels;
@@ -343,8 +344,9 @@ internal sealed class DocumentedDesktopSceneCapture : IDesktopSceneCapture
     /// PrintWindow(载体) 会把它一并读回来，于是玻璃背后的底图就是实时壁纸，
     /// 其它窗口的 DWM 缩略图仍然盖在它上面。
     /// </summary>
-    private bool DrawLiveWallpaper(long sourceNotBeforeTicks=0)
+    private bool DrawLiveWallpaper(long sourceNotBeforeTicks, out bool readbackDeferred)
     {
+        readbackDeferred = false;
         if (_requireVerifiedWallpaper && _wallpaper.Pixels is { } desktopPixels)
             _backgroundPixels = desktopPixels;
         if (_liveWallpaper == 0) return true;
@@ -378,7 +380,12 @@ internal sealed class DocumentedDesktopSceneCapture : IDesktopSceneCapture
         if (_wallpaper.Pixels is { } fallback && fallback.Length == _livePixels.Length)
             Buffer.BlockCopy(fallback, 0, _livePixels, 0, fallback.Length);
         if (!_liveSurface.TryDraw(_liveWallpaper, _region.X, _region.Y, _region.Width, _region.Height,
-                source.Left, source.Top, source.Right, source.Bottom, _livePixels,sourceNotBeforeTicks)) return false;
+                source.Left, source.Top, source.Right, source.Bottom, _livePixels, sourceNotBeforeTicks,
+                _desktopOnly && IsDraggingExternalWindow() ? MovingWindowReadbackInterval : 0))
+        {
+            readbackDeferred = _liveSurface.ReadbackDeferred;
+            return false;
+        }
         _backgroundPixels = _livePixels;
         // With no foreign coverage the final composer would overwrite the entire
         // carrier read with these same pixels. Avoid its upload, flush and readback.
@@ -405,12 +412,13 @@ internal sealed class DocumentedDesktopSceneCapture : IDesktopSceneCapture
             || sourceNotBeforeTicks > Stopwatch.GetTimestamp()) return null;
         UpdateExclusions();
         // 每帧把动态壁纸画进载体背景：这一层没有别的办法拿到实时画面。
-        if (!DrawLiveWallpaper(Math.Max(_barrier,sourceNotBeforeTicks)))
+        if (!DrawLiveWallpaper(Math.Max(_barrier, sourceNotBeforeTicks), out var readbackDeferred))
         {
             // A failed live acquisition is unavailable, not a new static/black
             // wallpaper frame. Let the caller retry within its freshness policy.
-            _trace?.Invoke(new("CaptureFailure", "LiveWallpaperReadbackUnavailable", Stopwatch.GetTimestamp(),
-                WindowHandle: _liveWallpaper));
+            if (!readbackDeferred)
+                _trace?.Invoke(new("CaptureFailure", "LiveWallpaperReadbackUnavailable", Stopwatch.GetTimestamp(),
+                    WindowHandle: _liveWallpaper));
             return null;
         }
         if (!_diagnosticOnScreen && _backgroundComposer?.IsBackgroundOnly == true && _backgroundPixels is { } pixels)
@@ -481,6 +489,11 @@ internal sealed class DocumentedDesktopSceneCapture : IDesktopSceneCapture
     }
 
     private readonly record struct SceneWindow(nint Handle, ScreenRect Bounds);
+    private bool IsDraggingExternalWindow()
+    {
+        var process = ExternalWindowMove.ProcessId();
+        return process != 0 && _excludedProcesses?.Invoke().Contains(process) != true;
+    }
     [StructLayout(LayoutKind.Sequential)] private struct Rect(int left, int top, int right, int bottom)
     { public int Left = left, Top = top, Right = right, Bottom = bottom; }
     [StructLayout(LayoutKind.Sequential)] private struct Size { public int Width, Height; }

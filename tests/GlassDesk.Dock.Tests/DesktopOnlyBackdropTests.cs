@@ -11,6 +11,44 @@ namespace GlassDesk.Dock.Tests;
 
 public sealed class DesktopOnlyBackdropTests
 {
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void ForeignWindowRefreshOnlyWakesBarsThatSampleApplicationWindows(bool statusBar, bool pinned)
+    {
+        StaTest.Run(() =>
+        {
+            using var theme = ThemeService.Initialize(Dispatcher.CurrentDispatcher);
+            theme.Update(new AppearanceSettings { PinBarsToDesktop = pinned, ReduceMotion = true });
+            GlassWindow owner = statusBar ? new StatusBarWindow() : new DockWindow();
+            owner.BindPrimaryDisplay(new PrimaryDisplaySession(DisplayService.Primary()!));
+            try
+            {
+                owner.Show();
+                var surface = (LiquidGlassSurface)owner.FindName("GlassSurface");
+                var changedAt = typeof(LiquidGlassSurface).GetField("_contentChangedAt",
+                    BindingFlags.Instance | BindingFlags.NonPublic)!;
+                changedAt.SetValue(surface, -1L);
+                if (owner is StatusBarWindow status)
+                {
+                    // Enable foreground refresh admission without starting device sampling.
+                    typeof(StatusBarWindow).GetField("_started", BindingFlags.Instance | BindingFlags.NonPublic)!
+                        .SetValue(status, true);
+                    status.RequestGlassRefresh();
+                }
+                else
+                {
+                    ((DockWindow)owner).RequestGlassRefresh();
+                }
+
+                Assert.Equal(pinned, (long)changedAt.GetValue(surface)! == -1L);
+            }
+            finally { owner.Close(); }
+        });
+    }
+
     [Fact]
     public void DesktopOnlyFactoryReadsTheRealDesktopThroughAnIsolatedHelper()
     {

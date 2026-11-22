@@ -78,6 +78,12 @@ internal sealed class GlassBackdropScene : IEquatable<GlassBackdropScene>
     internal bool CanHandoffMaterialFrom(GlassBackdropScene? previous) => previous is not null
         && _recoveryGeneration == previous._recoveryGeneration;
 
+    // A wallpaper refresh invalidates capture even when the windows behind the panel
+    // are unchanged. Only the already displayed material can cross that boundary.
+    internal bool CanHandoffWallpaperFrom(GlassBackdropScene? previous) => previous is not null
+        && GlassDesk.UI.BackdropRecovery.IsWallpaperRefresh(previous._recoveryGeneration, _recoveryGeneration)
+        && _windows.AsSpan().SequenceEqual(previous._windows);
+
     public bool Equals(GlassBackdropScene? other) => other is not null && _recoveryGeneration == other._recoveryGeneration
         && _windows.AsSpan().SequenceEqual(other._windows);
     public override bool Equals(object? obj) => obj is GlassBackdropScene other && Equals(other);

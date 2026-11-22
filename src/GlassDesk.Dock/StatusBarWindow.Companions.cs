@@ -53,7 +53,7 @@ public partial class StatusBarWindow
 
     public void RequestGlassRefresh()
     {
-        if (IsVisible && CanRun) GlassSurface.RequestBackdropRefresh();
+        if (!IsFixedDesktopLayer && IsVisible && CanRun) GlassSurface.RequestBackdropRefresh();
         _controlCenter.RequestGlassRefresh();
         _dateNotifications.RequestGlassRefresh();
     }

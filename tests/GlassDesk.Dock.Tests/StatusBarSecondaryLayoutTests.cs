@@ -89,6 +89,60 @@ public sealed class StatusBarSecondaryLayoutTests
         });
     }
 
+    [Theory]
+    [InlineData(.75)]
+    [InlineData(1)]
+    [InlineData(1.5)]
+    public void LongerRatesFitTheReadableNetworkColumnsWithoutMovingTheVolume(double scale)
+    {
+        StaTest.Run(() =>
+        {
+            var host = new DockSettingsHost(Dispatcher.CurrentDispatcher);
+            var bar = new StatusBarWindow();
+            try
+            {
+                bar.AttachSettings(host);
+                bar.ConfigureSizeScale(() => scale);
+                host.Update(new DockSettings { ShowStatusBarNetworkSpeed = true });
+                var layout = (FrameworkElement)bar.Content;
+                var rate = Assert.IsType<TextBlock>(bar.FindName("DownloadSpeedText"));
+                var upload = Assert.IsType<TextBlock>(bar.FindName("UploadSpeedText"));
+                var volume = Assert.IsType<TextBlock>(bar.FindName("VolumeText"));
+                var date = Assert.IsType<TextBlock>(bar.FindName("DateText"));
+                date.Text = "11月19日 星期四";
+                ((TextBlock)bar.FindName("BatteryText")).Text = "100% ⚡";
+                ((FrameworkElement)bar.FindName("BatteryButton")).Visibility = Visibility.Visible;
+                ((TextBlock)bar.FindName("NetworkText")).Text = "联网";
+                volume.Text = "100%";
+
+                void Arrange()
+                {
+                    layout.Measure(new Size(bar.Width, bar.Height));
+                    layout.Arrange(new Rect(0, 0, bar.Width, bar.Height));
+                    layout.UpdateLayout();
+                }
+
+                rate.Text = "0 B/s";
+                upload.Text = "9.9 KB/s";
+                Arrange();
+                var originalVolumeX = volume.TranslatePoint(new Point(), layout).X;
+                rate.Text = "1023.9 MB/s";
+                upload.Text = "1023.9 GB/s";
+                Arrange();
+                Assert.Equal(originalVolumeX, volume.TranslatePoint(new Point(), layout).X, 3);
+                Assert.True(date.FontSize >= 10);
+                foreach (var text in new[] { rate, upload })
+                {
+                    Assert.True(text.FontSize >= 9.5);
+                    Assert.Equal(TextAlignment.Right, text.TextAlignment);
+                    text.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                    Assert.InRange(text.DesiredSize.Width, 1, text.ActualWidth + .01);
+                }
+            }
+            finally { bar.Close(); }
+        });
+    }
+
     private static IEnumerable<TextBlock> TextChildren(DependencyObject parent)
     {
         for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); ++i)

@@ -18,6 +18,7 @@ internal sealed class GlassFrameWorker
     private long _generation;
     private byte[]? _pixels;
     private byte[]? _scratch;
+    private FrostedGlassRenderer.ClipCache? _frostedClip;
 
     internal bool IsBusy => Volatile.Read(ref _busy) != 0;
     internal void Invalidate() => Interlocked.Increment(ref _generation);
@@ -26,6 +27,15 @@ internal sealed class GlassFrameWorker
     {
         Interlocked.Exchange(ref _pixels, null);
         Interlocked.Exchange(ref _scratch, null);
+        Interlocked.Exchange(ref _frostedClip, null);
+    }
+
+    internal Task<GlassFrameResult?> RenderFrostedAsync(byte[] source, int width, int height, System.Windows.Size size,
+        System.Windows.Rect bounds, double radius, bool squircle, bool dark, double strength, double clarity)
+    {
+        var clip = _frostedClip ??= new();
+        return RenderBufferedAsync(source.Length, (pixels, scratch) =>
+            FrostedGlassRenderer.RenderInto(source, pixels, scratch, width, height, size, bounds, radius, squircle, dark, strength, clarity, clip));
     }
 
     // The consumer releases the lease after WPF has copied the pixels. Until then,

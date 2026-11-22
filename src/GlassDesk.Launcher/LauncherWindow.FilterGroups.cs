@@ -96,10 +96,10 @@ public partial class LauncherWindow
             if (submenu is not null) menu.Items.Remove(submenu);
             submenu = null;
             if (!_settings.GroupModeEnabled || _workspace is null) return;
+            if (_workspace.Layout.FilterGroups.Any(group => group.ItemIds.Contains(itemId))) return;
 
             foreach (var group in _workspace.Layout.FilterGroups)
             {
-                if (group.ItemIds.Contains(itemId)) continue;
                 submenu ??= new MenuItem { Header = "添加到已有分组" };
                 AddMenu(submenu, group.Name.Replace("_", "__", StringComparison.Ordinal),
                     () => AddIconToFilterGroup(group.Id, itemId));
@@ -116,9 +116,7 @@ public partial class LauncherWindow
                 ?? throw new InvalidOperationException("分组已不存在，请重试。");
             if (!LauncherLayoutRules.AppIds(layout).Contains(itemId))
                 throw new InvalidOperationException("图标已不在启动台中，请重试。");
-            if (!group.ItemIds.Contains(itemId))
-                group.ItemIds.Add(itemId);
-            return layout;
+            return LauncherFilterRules.UpdateGroupMembers(layout, groupId, group.ItemIds.Append(itemId));
         });
     }
 
@@ -154,8 +152,8 @@ public partial class LauncherWindow
         if (values is null) return;
         var name = values[0].Trim();
         if (name.Length is < 1 or > 60) { ShowNotice("分组名称应为 1–60 个字符。"); return; }
-        var ids = LauncherLayoutRules.AppIds(_workspace.Layout).Distinct(StringComparer.Ordinal).ToList();
-        if (ids.Count == 0) { ShowNotice("请先向启动台添加图标，再创建分组。"); return; }
+        var ids = LauncherFilterRules.AvailableGroupMemberIds(_workspace.Layout);
+        if (ids.Count == 0) { ShowNotice("没有可分组的图标。请添加图标，或从现有分组移除图标。"); return; }
         var selection = SelectFilterMembers(name, ids);
         if (selection is not null)
             CommitFilterEdit(layout => LauncherFilterRules.AddGroup(layout, "filter-" + Guid.NewGuid().ToString("N"), name, selection));
@@ -166,7 +164,7 @@ public partial class LauncherWindow
         var group = _workspace?.Layout.FilterGroups.FirstOrDefault(group => group.Id == id);
         if (group is null || _services is null) return;
         var version = (_services.Layouts.LauncherVersion, _services.Library.Version);
-        var ids = LauncherLayoutRules.AppIds(_workspace!.Layout).Distinct(StringComparer.Ordinal).ToList();
+        var ids = LauncherFilterRules.AvailableGroupMemberIds(_workspace!.Layout, id);
         var selection = SelectFilterMembers(group.Name, ids, group.ItemIds);
         if (selection is null) return;
         if (version != (_services.Layouts.LauncherVersion, _services.Library.Version))
@@ -191,7 +189,7 @@ public partial class LauncherWindow
         var title = new TextBlock { Text = name, FontSize = 20, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis };
         root.Children.Add(title);
         var search = new TextBox { MinHeight = 32, Padding = new Thickness(8, 4, 8, 4), Background = Brushes.Transparent,
-            BorderThickness = new Thickness(0), ToolTip = "筛选已添加到启动台的图标" };
+            BorderThickness = new Thickness(0), ToolTip = "筛选可选图标" };
         search.SetBinding(Control.ForegroundProperty, new Binding(nameof(ForegroundBrush)) { Source = dialog });
         search.SetBinding(TextBox.CaretBrushProperty, new Binding(nameof(ForegroundBrush)) { Source = dialog });
         var searchBorder = new PhoneBorder { Child = search, CornerRadius = new CornerRadius(16),

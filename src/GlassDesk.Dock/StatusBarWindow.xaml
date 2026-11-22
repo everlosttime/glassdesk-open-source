@@ -61,7 +61,7 @@
         <StackPanel Width="92">
           <TextBlock x:Name="TimeText" FontSize="18" FontWeight="SemiBold"
                      Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
-          <TextBlock x:Name="DateText" FontSize="9.5" Margin="0,-1,0,0"
+          <TextBlock x:Name="DateText" FontSize="10.5" Margin="0,-1,0,0"
                      Foreground="{Binding SecondaryForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
         </StackPanel>
       </Button>
@@ -70,8 +70,8 @@
 
       <Grid x:Name="StatusMetrics" Width="255" Height="42">
         <Grid.RowDefinitions>
-          <RowDefinition Height="23" />
-          <RowDefinition Height="19" />
+          <RowDefinition Height="25" />
+          <RowDefinition Height="17" />
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0">
@@ -94,7 +94,7 @@
             </StackPanel>
           </Button>
 
-          <Border Padding="7,1">
+          <Border Padding="4,0">
             <StackPanel Orientation="Horizontal">
               <TextBlock x:Name="NetworkWifiGlyph" Text="&#xE701;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15" Margin="0,0,5,0"
                          Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
@@ -105,17 +105,28 @@
               </Viewbox>
               <TextBlock x:Name="NetworkText" Text="--" FontSize="11.5" VerticalAlignment="Center"
                          Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
-              <StackPanel x:Name="NetworkSpeedPanel" Width="54" Height="21" Margin="4,0,0,0"
-                          VerticalAlignment="Center" ToolTip="实时网速：正在采样">
-                <TextBlock x:Name="DownloadSpeedText" Text="↓ --" FontSize="8.5" Height="10.5"
-                           Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
-                <TextBlock x:Name="UploadSpeedText" Text="↑ --" FontSize="8.5" Height="10.5"
-                           Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
-              </StackPanel>
+              <Grid x:Name="NetworkSpeedPanel" Width="70" Margin="4,0,0,0"
+                    TextElement.Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}"
+                    VerticalAlignment="Center" ToolTip="实时网速：正在采样">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="11" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Text="↓" FontSize="9.5" />
+                <TextBlock Text="↑" FontSize="9.5" Grid.Row="1" />
+                <TextBlock x:Name="DownloadSpeedText" Grid.Column="1" Text="--" FontSize="9.5"
+                           TextAlignment="Right" Typography.NumeralAlignment="Tabular" AutomationProperties.Name="下载速度" />
+                <TextBlock x:Name="UploadSpeedText" Grid.Column="1" Grid.Row="1" Text="--" FontSize="9.5"
+                           TextAlignment="Right" Typography.NumeralAlignment="Tabular" AutomationProperties.Name="上传速度" />
+              </Grid>
             </StackPanel>
           </Border>
 
-          <Border Padding="7,3" IsHitTestVisible="False">
+          <Border Padding="4,3" IsHitTestVisible="False">
             <StackPanel Orientation="Horizontal">
               <TextBlock x:Name="VolumeGlyph" Text="&#xE767;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                          FontSize="15" Margin="0,0,5,0"

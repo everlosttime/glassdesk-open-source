@@ -17,6 +17,7 @@ param(
     [string]$FileVersion,
     [string]$AcceptanceDataRoot,
     [switch]$IncludeNaiwa,
+    [switch]$NaiwaRuntimeOnly,
     [string]$EvidenceDirectory = ('docs/evidence/' + [char]0x9636 + [char]0x6BB5 + '7')
 )
 
@@ -266,7 +267,12 @@ try {
             throw 'Naiwa companion build failed.'
         }
         Copy-Item -LiteralPath (Join-Path $repoRoot 'contrib/Naiwa/LICENSE') -Destination (Join-Path $naiwaOutput 'LICENSE.txt')
-        & (Join-Path $PSScriptRoot 'Copy-NaiwaAssets.ps1') -OutputDirectory $naiwaOutput
+        if ($NaiwaRuntimeOnly) {
+            Copy-Item -LiteralPath (Join-Path $repoRoot 'contrib/Naiwa/NOTICE.txt') -Destination $naiwaOutput
+        }
+        else {
+            & (Join-Path $PSScriptRoot 'Copy-NaiwaAssets.ps1') -OutputDirectory $naiwaOutput
+        }
     }
 
     & (Join-Path $PSScriptRoot 'Copy-HeadsetControl.ps1') -OutputDirectory $OutputDirectory

@@ -5,6 +5,9 @@ using Windows.Graphics.DirectX.Direct3D11;
 
 internal sealed class PersistentWindowCapture : IWindowCapture
 {
+    private readonly TimeSpan? _preferredUpdateInterval;
+    private TimeSpan? _defaultUpdateInterval;
+    private bool _motionThrottled;
     private nint _device,_context,_dxgi,_inspectable;
     private IDirect3DDevice? _projected;
     private Direct3D11CaptureFramePool? _pool;
@@ -17,9 +20,11 @@ internal sealed class PersistentWindowCapture : IWindowCapture
     private readonly object _notificationGate=new();
     private readonly AutoResetEvent _arrival=new(false);
     private bool _disposed,_notificationsRegistered;
-    internal PersistentWindowCapture(nint hwnd,Action<CaptureTrace>? trace=null,nint sharedDevice=0,nint sharedContext=0)
+    internal PersistentWindowCapture(nint hwnd,Action<CaptureTrace>? trace=null,nint sharedDevice=0,nint sharedContext=0,
+        TimeSpan? preferredUpdateInterval = null)
     {
         _trace=trace;
+        _preferredUpdateInterval = preferredUpdateInterval;
         if((sharedDevice==0)!=(sharedContext==0))
             throw new ArgumentException("A shared capture device requires its immediate context.");
         var stage="D3D11CreateDevice";
@@ -56,7 +61,7 @@ internal sealed class PersistentWindowCapture : IWindowCapture
             stage="GraphicsCaptureSession.IsCursorCaptureEnabled";
             _session.IsCursorCaptureEnabled=false;
             stage="GraphicsCaptureSession.StartCapture";
-            _session.StartCapture();
+            StartSession(_session);
         }
         catch(Exception error)
         {
@@ -176,8 +181,50 @@ internal sealed class PersistentWindowCapture : IWindowCapture
         _pool=Direct3D11CaptureFramePool.CreateFreeThreaded(_projected!,DirectXPixelFormat.B8G8R8A8UIntNormalized,2,_captureSize);
         _pool.FrameArrived+=OnFrameArrived; _notificationsRegistered=true;
         _session=_pool.CreateCaptureSession(_item!); _session.IsCursorCaptureEnabled=false;
-        _session.StartCapture();
+        StartSession(_session);
         _trace?.Invoke(new("CaptureSession","SceneBoundaryRestarted",System.Diagnostics.Stopwatch.GetTimestamp()));
+    }
+    private void StartSession(GraphicsCaptureSession session)
+    {
+        _defaultUpdateInterval = null;
+        if (_preferredUpdateInterval.HasValue &&
+            Windows.Foundation.Metadata.ApiInformation.IsPropertyPresent("Windows.Graphics.Capture.GraphicsCaptureSession", "MinUpdateInterval"))
+        {
+            try
+            {
+                _defaultUpdateInterval = session.MinUpdateInterval;
+                ApplyUpdateInterval();
+            }
+            catch (Exception error) when (error is COMException or ArgumentException or NotSupportedException)
+            {
+                RecordIntervalFailure(error);
+            }
+        }
+        session.StartCapture();
+    }
+
+    internal void SetMotionThrottled(bool throttled)
+    {
+        if (_motionThrottled == throttled) return;
+        _motionThrottled = throttled;
+        try { ApplyUpdateInterval(); }
+        catch (Exception error) when (error is COMException or ArgumentException or NotSupportedException)
+        {
+            RecordIntervalFailure(error);
+        }
+    }
+
+    private void ApplyUpdateInterval()
+    {
+        if (_defaultUpdateInterval is { } interval)
+            _session!.MinUpdateInterval = _motionThrottled ? interval : _preferredUpdateInterval!.Value;
+    }
+
+    private void RecordIntervalFailure(Exception error)
+    {
+        _defaultUpdateInterval = null;
+        _trace?.Invoke(new("CaptureSession", "MinUpdateIntervalUnavailable", System.Diagnostics.Stopwatch.GetTimestamp(),
+            ErrorCode: error.HResult));
     }
     public void RetireQueuedFramesAtSceneBoundary(long barrierTicks)
     {

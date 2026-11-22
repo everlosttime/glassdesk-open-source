@@ -56,6 +56,8 @@ internal sealed class SharedWallpaperBuffer : IDisposable
             && frame.EndedTicks>=frame.StartedTicks && frame.EndedTicks>0
             && age>=0 && age<=Stopwatch.Frequency*120/1000;
     }
+    internal static bool IsReadbackDue(Frame frame, long now, long notBeforeTicks, long minimumInterval)
+        => frame.Sequence == 0 || frame.StartedTicks < notBeforeTicks || now - frame.StartedTicks >= minimumInterval;
     internal void InvalidateFrame()=>_control.Write(24,0L);
     internal Frame Publish(long startedTicks,long endedTicks)
     {

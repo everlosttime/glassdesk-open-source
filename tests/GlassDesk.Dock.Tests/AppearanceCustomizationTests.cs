@@ -26,14 +26,15 @@ public sealed class AppearanceCustomizationTests
         {
             using var theme = ThemeService.Initialize(Dispatcher.CurrentDispatcher);
             var window = new SettingsWindow();
-            window.Resources.MergedDictionaries.Add(new ResourceDictionary
+            var resources = new ResourceDictionary
             {
                 Source = new Uri("pack://application:,,,/GlassDesk.UI;component/Theming/LiquidGlassTheme.xaml")
-            });
+            };
             try
             {
-                window.Show(); window.UpdateLayout();
                 var combo = Assert.IsType<ComboBox>(window.FindName("DockPlacementCombo"));
+                combo.Style = Assert.IsType<Style>(resources[typeof(ComboBox)]);
+                window.Show(); window.UpdateLayout();
                 combo.BringIntoView(); window.UpdateLayout();
                 combo.IsDropDownOpen = true;
                 window.UpdateLayout();
@@ -45,6 +46,59 @@ public sealed class AppearanceCustomizationTests
                     $"Menu {body.ActualWidth}, selection {combo.ActualWidth}");
             }
             finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void DraggingSlidersPreviewsBeforeSavingAndCommitsOnlyTheCompletedValue()
+    {
+        StaTest.Run(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "GlassDesk-slider-drag-" + Guid.NewGuid().ToString("N"));
+            using var theme = ThemeService.Initialize(Dispatcher.CurrentDispatcher);
+            var window = new SettingsWindow();
+            try
+            {
+                var data = new GlassDeskDataStore(new AppPaths(root));
+                data.LoadAll();
+                var host = DockSettingsHost.Initialize(Dispatcher.CurrentDispatcher);
+                host.Update(data.Settings.Current.Dock);
+                window.AttachDataStore(data, null);
+                data.Settings.Save();
+                var initial = File.ReadAllBytes(data.Paths.SettingsFile);
+
+                void Drag(string name, double mid, double end, Action assertPreview)
+                {
+                    var slider = Assert.IsType<Slider>(window.FindName(name));
+                    slider.ApplyTemplate();
+                    var track = Assert.IsType<Track>(slider.Template.FindName("PART_Track", slider));
+                    track.Thumb.RaiseEvent(new DragStartedEventArgs(0, 0) { RoutedEvent = Thumb.DragStartedEvent });
+                    slider.Value = mid;
+                    slider.Value = end;
+                    Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.Background);
+                    Assert.Equal(initial, File.ReadAllBytes(data.Paths.SettingsFile));
+                    assertPreview();
+                    track.Thumb.RaiseEvent(new DragCompletedEventArgs(0, 0, false) { RoutedEvent = Thumb.DragCompletedEvent });
+                    var bytes = File.ReadAllBytes(data.Paths.SettingsFile);
+                    Assert.False(bytes.SequenceEqual(initial));
+                    Assert.Equal(initial, File.ReadAllBytes(data.Paths.SettingsFile + ".bak"));
+                    initial = bytes;
+                }
+
+                Drag("StatusBarTextBrightnessSlider", .51, .63,
+                    () => Assert.Equal(.63, theme.Appearance.StatusBarTextBrightness));
+                Drag("DockSpacingSlider", 10, 14,
+                    () => Assert.Equal(14, host.Settings.IconSpacing));
+                var saved = new SettingsStore(data.Paths.SettingsFile);
+                saved.Load();
+                Assert.Equal(.63, saved.Current.Appearance.StatusBarTextBrightness);
+                Assert.Equal(14, saved.Current.Dock.IconSpacing);
+            }
+            finally
+            {
+                window.Close();
+                if (Directory.Exists(root)) Directory.Delete(root, true);
+            }
         });
     }
 

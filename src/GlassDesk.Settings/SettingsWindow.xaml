@@ -393,11 +393,6 @@
               <CheckBox x:Name="LauncherRememberPageCheck" Margin="0,8,0,0" Content="记住当前浏览页"
                         AutomationProperties.Name="记住启动台页码"
                         Checked="OnLauncherControlChanged" Unchecked="OnLauncherControlChanged" />
-              <CheckBox x:Name="LauncherHighRefreshCheck" Margin="0,8,0,0" Content="启动台高刷新模式（120Hz 目标）"
-                        AutomationProperties.Name="启动台高刷新模式"
-                        Checked="OnLauncherControlChanged" Unchecked="OnLauncherControlChanged" />
-              <TextBlock Margin="0,4,0,0" TextWrapping="Wrap"
-                         Text="适合高刷新率屏幕，切换后下次展开生效。可能增加资源占用，实际流畅度取决于设备。" />
               <TextBlock x:Name="LauncherSettingsStatus" Margin="0,10,0,16" TextWrapping="Wrap"
                          Foreground="{Binding SecondaryForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
               <Separator Margin="0,4,0,14" />
@@ -427,8 +422,18 @@
               <Separator Margin="0,4,0,14" />
               <TextBlock x:Name="NaiwaSectionHeading" FontSize="16" FontWeight="SemiBold" Text="回收站"
                          Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
-              <CheckBox x:Name="NaiwaEnabledCheck" Content="启用黄色回收站" Margin="0,10,0,4"
-                        AutomationProperties.Name="启用黄色回收站" Checked="OnNaiwaEnabledChanged" Unchecked="OnNaiwaEnabledChanged" />
+              <WrapPanel Margin="0,10,0,4">
+                <CheckBox x:Name="NaiwaEnabledCheck" Content="启用黄色回收站" Margin="0,0,12,4" VerticalAlignment="Center"
+                          AutomationProperties.Name="启用黄色回收站" IsEnabled="False"
+                          Checked="OnNaiwaEnabledChanged" Unchecked="OnNaiwaEnabledChanged" />
+                <Button x:Name="NaiwaImportButton" Content="导入素材包" Padding="10,6" Margin="0,0,8,4"
+                        ToolTip="直接选择官方 naiwa-pet-v2.5.1-portable.zip，无需解压" Click="OnNaiwaImportClick" />
+                <Button x:Name="NaiwaRemoveButton" Content="移除素材包" Padding="10,6" Margin="0,0,0,4"
+                        ToolTip="移除已导入的素材，保留原 ZIP 和回收站设置"
+                        ToolTipService.ShowOnDisabled="True" IsEnabled="False" Click="OnNaiwaRemoveClick" />
+              </WrapPanel>
+              <TextBlock x:Name="NaiwaStatus" TextWrapping="Wrap" Margin="0,0,0,6"
+                         AutomationProperties.Name="回收站运行状态" />
               <TextBlock Text="随 GlassDesk 启动，游戏休眠期间隐藏。" TextWrapping="Wrap" Margin="0,0,0,8" />
               <TextBlock Margin="0,6,0,4" Text="大小" />
               <DockPanel>
@@ -462,8 +467,6 @@
                 <Button x:Name="NaiwaStopButton" Content="退出本次" Tag="stop" Click="OnNaiwaActionClick" Padding="10,6"
                         IsEnabled="{Binding ElementName=NaiwaEnabledCheck, Path=IsChecked}" />
               </WrapPanel>
-              <TextBlock x:Name="NaiwaStatus" Margin="0,8,0,0" TextWrapping="Wrap"
-                         AutomationProperties.Name="回收站运行状态" />
               <TextBlock x:Name="NaiwaSettingsStatus" Margin="0,4,0,14" TextWrapping="Wrap"
                          AutomationProperties.Name="回收站设置状态" />
               <StackPanel x:Name="NaiwaInteractionGuide" Margin="0,0,0,12">

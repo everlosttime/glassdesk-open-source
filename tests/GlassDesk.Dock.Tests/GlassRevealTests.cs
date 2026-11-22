@@ -219,6 +219,70 @@ public sealed class GlassRevealTests
         });
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void WallpaperRefreshKeepsVisibleMaterialWhileCaptureRestarts(bool launchpad)
+    {
+        StaTest.Run(() =>
+        {
+            var scene = new GlassBackdropScene();
+            using var surface = new LiquidGlassSurface { ReadBackdropScene = () => scene, UseLaunchpadOptics = launchpad };
+            var owner = new RevealWindow { Content = surface, Width = 200, Height = 100, ShowActivated = false };
+            try
+            {
+                owner.Show(); surface.UpdateLayout(); SeedMaterial(surface);
+                var oldScene = scene;
+                var stamp = typeof(LiquidGlassSurface).GetMethod("ReadMaterialStamp", Private)!;
+                var capturedStamp = stamp.Invoke(surface, null)!;
+                Set(surface, "_materialStamp", capturedStamp);
+                Assert.True(RenderCenter(surface) > 100);
+
+                GlassDesk.UI.BackdropRecovery.RefreshDesktopWallpaper();
+                scene = new();
+                surface.RequestBackdropRefresh();
+
+                Assert.NotNull(typeof(LiquidGlassSurface).GetField("_frame", Private)!.GetValue(surface));
+                Assert.True(RenderCenter(surface) > 100, "A wallpaper-only refresh removed the already displayed glass.");
+                var canCommit = typeof(LiquidGlassSurface).GetMethod("CanCommitCapturedScene", Private)!;
+                Assert.False((bool)canCommit.Invoke(surface, [oldScene, capturedStamp, System.Diagnostics.Stopwatch.GetTimestamp()])!);
+                Set(surface, "_materialRetentionUntil", 1L);
+                surface.RequestBackdropRefresh();
+                Assert.True(RenderCenter(surface) < 100, "A failed refresh cannot keep the previous wallpaper indefinitely.");
+            }
+            finally { owner.Close(); }
+        });
+    }
+
+    [Fact]
+    public void VisibleLaunchpadWaitsThroughTheRecordedSceneHandoffGap()
+    {
+        StaTest.Run(() =>
+        {
+            var original = new GlassBackdropScene.SceneWindow((nint)101, 42, 0, 0, 800, 600);
+            var scene = new GlassBackdropScene(original);
+            using var surface = new LiquidGlassSurface { ReadBackdropScene = () => scene, UseLaunchpadOptics = true };
+            var owner = new RevealWindow { Content = surface, Width = 200, Height = 100, ShowActivated = false };
+            try
+            {
+                owner.Show(); surface.UpdateLayout(); SeedMaterial(surface);
+                Assert.True(RenderCenter(surface) > 100);
+                scene = new(original with { Left = 20 });
+                var start = System.Diagnostics.Stopwatch.GetTimestamp();
+                surface.RequestBackdropRefresh();
+                var deadline = (long)typeof(LiquidGlassSurface).GetField("_materialRetentionUntil", Private)!.GetValue(surface)!;
+                Assert.True(System.Diagnostics.Stopwatch.GetElapsedTime(start, deadline) >= TimeSpan.FromMilliseconds(400),
+                    "The handoff expires before the replacement timing observed in the launcher diagnostic.");
+                Assert.True(RenderCenter(surface) > 100);
+
+                Set(surface, "_materialRetentionUntil", 1L);
+                surface.RequestBackdropRefresh();
+                Assert.True(RenderCenter(surface) < 100);
+            }
+            finally { owner.Close(); }
+        });
+    }
+
     [Fact]
     public void VisibleHandoffStillRejectsPixelsAcrossARecoveryBoundary()
     {

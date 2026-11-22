@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('placement','cadence','shadow','scene','paint','grid','combined','native-shadow')][string]$Candidate='placement',
+    [ValidateSet('placement','shadow','scene','paint','grid','combined','native-shadow')][string]$Candidate='placement',
     [string]$OutputDirectory,
     [string]$DotnetPath='D:\dotnet10\dotnet.exe',
     [int]$Cycles=10,
@@ -32,8 +32,7 @@ for ($batch=1; $batch -le $Batches; $batch++) {
             $info.RedirectStandardOutput=$true; $info.RedirectStandardError=$true
             $info.Environment['DOTNET_ROOT']=Split-Path $DotnetPath -Parent
             $info.Environment['DOTNET_ROOT_X64']=Split-Path $DotnetPath -Parent
-            $info.Environment['GLASSDESK_LAUNCHER_PLACEMENT_REUSE']=if ($Candidate -eq 'cadence' -or ($Candidate -eq 'placement' -and $arm -eq 'B')) {'1'} else {'0'}
-            $info.Environment['GLASSDESK_LAUNCHER_DISPLAY_CADENCE']=if ($Candidate -in @('cadence','combined') -and $arm -eq 'B') {'1'} else {'0'}
+            $info.Environment['GLASSDESK_LAUNCHER_PLACEMENT_REUSE']=if ($Candidate -eq 'placement' -and $arm -eq 'B') {'1'} else {'0'}
             $info.Environment['GLASSDESK_LAUNCHER_VISUAL_SHADOW_OPACITY']=if ($Candidate -in @('shadow','combined') -and $arm -eq 'B') {'1'} else {'0'}
             $info.Environment['GLASSDESK_LAUNCHER_SCENE_REUSE']=if ($Candidate -eq 'scene' -and $arm -eq 'B') {'1'} else {'0'}
             $info.Environment['GLASSDESK_LAUNCHER_DEFER_PAINT_SCENE_CHECKS']=if ($Candidate -in @('paint','combined') -and $arm -eq 'B') {'1'} else {'0'}

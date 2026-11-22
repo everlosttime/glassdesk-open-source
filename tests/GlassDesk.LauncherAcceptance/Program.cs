@@ -31,6 +31,7 @@ internal static partial class Program
         if (args.Contains("--launcher-rendering-control")) return ObserveLauncherRenderingControl(args);
         if (args.Contains("--launcher-open-close")) return ObserveLauncherOpenClose(args);
         if (args.Contains("--unified-frames")) return CaptureUnifiedFrames(args);
+        if (args.Contains("--glass-backdrop-cadence")) return ObserveGlassBackdropCadence(args);
         if (args.Contains("--unified-click-peer")) return RunUnifiedClickPeer(args);
         if (args.Contains("--launcher-resource-lifecycle")) return ObserveLauncherResourceLifecycle(args);
         if (args.Contains("--native-material-memory")) return ObserveNativeMaterialMemory(args);
@@ -205,16 +206,6 @@ internal static partial class Program
             {
                 VerifyContinuousBackdrop(window, Argument(args, "--moving-fixture"), evidenceDirectory,
                     args.Contains("--desktop-backdrop"), int.TryParse(Argument(args, "--sample-seconds"), out var seconds) ? Math.Clamp(seconds, 6, 180) : 6);
-                return _failed == 0 ? 0 : 1;
-            }
-            if (args.Contains("--refresh-setting"))
-            {
-                VerifyRefreshSetting(window, data, evidenceDirectory);
-                return _failed == 0 ? 0 : 1;
-            }
-            if (args.Contains("--high-refresh-animation"))
-            {
-                VerifyHighRefreshAnimation(window, evidenceDirectory);
                 return _failed == 0 ? 0 : 1;
             }
             if (args.Contains("--performance-only"))

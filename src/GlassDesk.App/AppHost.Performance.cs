@@ -65,10 +65,8 @@ internal sealed partial class AppHost
             if (observation.IsFullscreen is { } fullscreen)
                 _performance.ObserveForeground(fullscreen, observation.BelongsToCurrentProcess, DateTimeOffset.UtcNow);
             ReconcilePerformance();
-            // The desktop scene can change before the next scheduled surface frame when
-            // a foreign foreground window closes or minimizes. GlassDesk popovers already
-            // refresh their own surface; treating their activation or resize as an external
-            // scene change would needlessly invalidate every visible glass component.
+            // Window-aware glass can change when a foreign foreground window closes or
+            // moves. Pinned bars sample the desktop only, so their regular feed suffices.
             if (!observation.BelongsToCurrentProcess)
             {
                 _dock?.RequestGlassRefresh();

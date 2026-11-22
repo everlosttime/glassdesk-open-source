@@ -10,6 +10,15 @@ public static class LauncherFilterRules
         return (layout.FlatOrder ?? []).Where(valid.Contains).Concat(ids).Distinct(StringComparer.Ordinal).ToList();
     }
 
+    public static IReadOnlyList<string> AvailableGroupMemberIds(LauncherLayout layout, string? groupId = null)
+    {
+        var assignedElsewhere = (layout.FilterGroups ?? [])
+            .Where(group => group.Id != groupId).SelectMany(group => group.ItemIds ?? [])
+            .ToHashSet(StringComparer.Ordinal);
+        return LauncherLayoutRules.AppIds(layout)
+            .Where(id => !assignedElsewhere.Contains(id)).Distinct(StringComparer.Ordinal).ToList();
+    }
+
     public static LauncherLayout Project(LauncherLayout source, string? groupId, int capacity)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
@@ -68,7 +77,7 @@ public static class LauncherFilterRules
         var title = ValidName(name);
         if (string.IsNullOrWhiteSpace(id) || (source.FilterGroups ?? []).Any(group => group.Id == id))
             throw new ArgumentException("分组标识已存在，请重试。", nameof(id));
-        var members = LauncherLayoutRules.AppIds(source).ToHashSet(StringComparer.Ordinal);
+        var members = AvailableGroupMemberIds(source).ToHashSet(StringComparer.Ordinal);
         var selected = itemIds.Where(members.Contains).Distinct(StringComparer.Ordinal).ToList();
         if (selected.Count == 0) throw new ArgumentException("请至少选择一个图标。", nameof(itemIds));
         var result = LauncherLayoutRules.DeepClone(source);
@@ -91,7 +100,7 @@ public static class LauncherFilterRules
         var result = LauncherLayoutRules.DeepClone(source);
         var group = result.FilterGroups.FirstOrDefault(group => group.Id == id)
             ?? throw new InvalidOperationException("分组已不存在，请重试。");
-        var members = LauncherLayoutRules.AppIds(source).ToHashSet(StringComparer.Ordinal);
+        var members = AvailableGroupMemberIds(source, id).ToHashSet(StringComparer.Ordinal);
         var before = group.ItemIds.ToList();
         group.ItemIds = itemIds.Where(members.Contains).Distinct(StringComparer.Ordinal).ToList();
         return LauncherAutoGroupingRules.MarkManualGroupEdit(result, before, group.ItemIds);
@@ -123,8 +132,10 @@ public static class LauncherFilterRules
         var seen = new HashSet<string>(StringComparer.Ordinal);
         layout.FilterGroups = (layout.FilterGroups ?? [])
             .Where(group => !string.IsNullOrWhiteSpace(group.Id) && seen.Add(group.Id)).ToList();
-        foreach (var group in layout.FilterGroups)
-            group.ItemIds = (group.ItemIds ?? []).Where(members.Contains).Distinct(StringComparer.Ordinal).ToList();
+        // Prefer user-created groups when resolving legacy duplicate memberships.
+        var assigned = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var group in layout.FilterGroups.OrderBy(group => group.CategoryId is not null))
+            group.ItemIds = (group.ItemIds ?? []).Where(id => members.Contains(id) && assigned.Add(id)).ToList();
         LauncherAutoGroupingRules.Normalize(layout);
     }
 }

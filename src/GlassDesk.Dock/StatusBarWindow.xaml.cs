@@ -59,7 +59,7 @@ public partial class StatusBarWindow : GlassWindow
         InitializeCompanions();
         ApplySecondaryItems();
         PeripheralBatteryService.Shared.Updated += OnPeripheralBatteryUpdated;
-        PanelCornerRadius = new CornerRadius(25);
+        PanelCornerRadius = new CornerRadius(BaseCornerRadiusDip);
         GlassSurface.IsBackdropActive = () => CanRun && !_preparingReveal && IsVisible
             && (_targetVisible || (double)GetValue(RevealProgressProperty) > 0);
         _clockTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(1) };
@@ -71,7 +71,7 @@ public partial class StatusBarWindow : GlassWindow
         SizeChanged += (_, _) => ApplySlide();
     }
 
-    protected override double ResolveCornerRadius(AppearanceSettings appearance) => 25;
+    protected override double ResolveCornerRadius(AppearanceSettings appearance) => BaseCornerRadiusDip * (_appliedSizeScale ?? 1d);
 
     public void AttachSettings(DockSettingsHost settings)
     {
@@ -169,9 +169,11 @@ public partial class StatusBarWindow : GlassWindow
         UpdateCompanions(!fullscreen || launcherActive);
         var cursor = DisplayService.GetCursorPixelPoint();
         var over = cursor is { } point && IsOverStatusOrRevealZone(point.X, point.Y);
+        var fixedDesktopLayer = IsFixedDesktopLayer;
+        var hasActiveOverlay = launcherActive || IsPopoverVisible;
+        var covered = !fixedDesktopLayer && !hasActiveOverlay && ForegroundCoverage.IsCovered(_restingRect);
         var state = _visibility.Update(Settings, DateTime.UtcNow, over,
-            ForegroundCoverage.IsCovered(_restingRect), fullscreen,
-            launcherActive || IsPopoverVisible, _revealLocked, true, false, IsFixedDesktopLayer);
+            covered, fullscreen, hasActiveOverlay, _revealLocked, true, false, fixedDesktopLayer);
         SetTargetVisible(state != AutoHideState.Hidden);
     }
 
@@ -227,7 +229,7 @@ public partial class StatusBarWindow : GlassWindow
                 {
                     _ = new WindowInteropHelper(this).EnsureHandle();
                     PositionTopRight();
-                    GlassSurface.SetContainerTransitionBounds(new Rect(0, -Height, Width, Height * 2));
+                    GlassSurface.SetContainerTransitionBounds(SlideCaptureBounds(Width, Height, SlideDirection));
                     if (PrimaryDisplaySession is { } session)
                         GlassSurface.PrepareRevealMaterial(_restingRect, _restingRect, session.Display.Dpi);
                 }
@@ -297,14 +299,21 @@ public partial class StatusBarWindow : GlassWindow
     {
         if (GlassSurface is null || ActualWidth <= 0 || ActualHeight <= 0) return;
         var progress = Math.Clamp((double)GetValue(RevealProgressProperty), 0, 1);
-        var offset = -ActualHeight * (1 - progress);
+        var direction = SlideDirection;
+        var offset = direction * ActualHeight * (1 - progress);
+        var radius = PanelCornerRadius.TopLeft;
         StatusSlideTransform.Y = offset;
         var bounds = new Rect(0, offset, ActualWidth, ActualHeight);
-        GlassSurface.SetPanelShape(bounds, 25);
-        GlassSurface.SetContainerTransitionBounds(new Rect(0, -ActualHeight, ActualWidth, ActualHeight * 2));
-        SetSharedPanelClip(bounds, 25);
-        SetTransitionShadowShape(progress >= 1 ? null : bounds, 25, progress);
+        GlassSurface.SetPanelShape(bounds, radius);
+        GlassSurface.SetContainerTransitionBounds(SlideCaptureBounds(ActualWidth, ActualHeight, direction));
+        SetSharedPanelClip(bounds, radius);
+        SetTransitionShadowShape(progress >= 1 ? null : bounds, radius, progress);
     }
+
+    private int SlideDirection => _readPlacement?.Invoke().Edge == StatusBarEdge.Bottom ? 1 : -1;
+
+    private static Rect SlideCaptureBounds(double width, double height, int direction) =>
+        new(0, direction < 0 ? -height : 0, width, height * 2);
 
     private void StopSampling()
     {
@@ -347,8 +356,13 @@ public partial class StatusBarWindow : GlassWindow
         if (!_sampling)
         {
             var readSystem = now - _lastSystemRefresh >= TimeSpan.FromSeconds(5);
-            if (readSystem) _lastSystemRefresh = now;
-            _ = RefreshSystemAsync(_generation, readSystem);
+            var readPerformance = CpuPanel.Visibility == Visibility.Visible || MemoryPanel.Visibility == Visibility.Visible;
+            var readNetworkSpeed = Settings.ShowStatusBarNetworkSpeed;
+            if (readSystem || readPerformance || readNetworkSpeed)
+            {
+                if (readSystem) _lastSystemRefresh = now;
+                _ = RefreshSystemAsync(_generation, readSystem, readPerformance, readNetworkSpeed);
+            }
         }
         if (IsSecondarySelected(StatusBarSecondaryItemCatalog.Fan)
             && !_fanSampling && now - _lastFanRefresh >= TimeSpan.FromSeconds(8))
@@ -360,22 +374,24 @@ public partial class StatusBarWindow : GlassWindow
 
     private bool CanApply(long generation) => generation == _generation && CanRun && _targetVisible;
 
-    private async Task RefreshSystemAsync(long generation, bool readSystem)
+    private async Task RefreshSystemAsync(long generation, bool readSystem, bool readPerformance, bool readNetworkSpeed)
     {
         _sampling = true;
-        var readNetworkSpeed = Settings.ShowStatusBarNetworkSpeed;
         try
         {
-            var result = await Task.Run(() => (Performance: SystemStatusReader.ReadPerformance(),
+            var result = await Task.Run(() => (Performance: readPerformance ? SystemStatusReader.ReadPerformance() : default,
                 NetworkSpeed: readNetworkSpeed ? _networkSpeedReader.Read() : null,
                 Status: readSystem ? SystemStatusReader.Read() : (SystemStatusSnapshot?)null));
             if (!CanApply(generation)) return;
-            CpuText.Text = result.Performance.CpuPercent is { } cpu ? $"{cpu}%" : "--";
-            MemoryText.Text = result.Performance.MemoryPercent is { } memory ? $"{memory}%" : "--";
+            if (readPerformance)
+            {
+                CpuText.Text = result.Performance.CpuPercent is { } cpu ? $"{cpu}%" : "--";
+                MemoryText.Text = result.Performance.MemoryPercent is { } memory ? $"{memory}%" : "--";
+            }
             if (Settings.ShowStatusBarNetworkSpeed && result.NetworkSpeed is { } speed)
             {
-                DownloadSpeedText.Text = "↓ " + (speed.Connected ? NetworkSpeedReader.FormatRate(speed.DownloadBytesPerSecond) : "0 B/s");
-                UploadSpeedText.Text = "↑ " + (speed.Connected ? NetworkSpeedReader.FormatRate(speed.UploadBytesPerSecond) : "0 B/s");
+                DownloadSpeedText.Text = speed.Connected ? NetworkSpeedReader.FormatRate(speed.DownloadBytesPerSecond) : "0 B/s";
+                UploadSpeedText.Text = speed.Connected ? NetworkSpeedReader.FormatRate(speed.UploadBytesPerSecond) : "0 B/s";
                 NetworkSpeedPanel.ToolTip = speed.Connected
                     ? $"当前联网网卡：{speed.AdapterName}{Environment.NewLine}每秒采样实际上下行流量"
                     : "未连接网络";
@@ -387,7 +403,7 @@ public partial class StatusBarWindow : GlassWindow
             // Native devices may disappear mid-read. Preserve the clock and report unavailable data.
             if (CanApply(generation))
             {
-                CpuText.Text = MemoryText.Text = "--";
+                if (readPerformance) CpuText.Text = MemoryText.Text = "--";
                 if (readSystem) ApplySystemStatus(new(null, false, "未知", null, false));
             }
         }

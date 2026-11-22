@@ -30,7 +30,7 @@ public partial class LauncherWindow
             }
             if (_workspace.Layout.FilterGroups.Count > 0)
             {
-                var existing = new MenuItem { Header = "选择已有分组" };
+                var existing = new MenuItem { Header = "移至已有分组" };
                 foreach (var group in _workspace.Layout.FilterGroups)
                 {
                     var groupId = group.Id;

@@ -36,7 +36,4 @@ public sealed class LauncherSettings
     /// 再次打开时恢复上次停留的页面，关闭则总是从第一页开始。
     /// </summary>
     public bool RememberLastPage { get; set; } = true;
-
-    /// <summary>提高启动台形变期间的动态背景更新频率；默认开启，可手动关闭。</summary>
-    public bool HighRefreshAnimationsEnabled { get; set; } = true;
 }

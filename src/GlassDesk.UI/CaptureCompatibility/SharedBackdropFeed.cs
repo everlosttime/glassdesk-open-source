@@ -6,12 +6,12 @@ using GlassDesk.UI;
 // Independent sample; owns all native resources on a single background STA.
 internal sealed class SharedBackdropFeed : IDisposable
 {
-    private double _captureCadenceMilliseconds = 16;
-    private int _interactionActive = 1;
-    internal void SetInteractionActive(bool active) => Volatile.Write(ref _interactionActive, active ? 1 : 0);
-    internal void SetAnimationActive(bool active, double? targetHertz = null) =>
-        Volatile.Write(ref _captureCadenceMilliseconds, active
-            ? 1000d / (targetHertz is >= 1 and <= 1000 ? targetHertz.Value : 120) : 16);
+    internal static readonly TimeSpan ExternalMovePeriod = TimeSpan.FromMilliseconds(1000d / 30);
+    private double _displayPeriodMilliseconds = 16;
+    private double _effectivePeriodMilliseconds = 16;
+    internal Action? ContentChanged { get; set; }
+    internal void SetDisplayCadence(double? targetHertz) =>
+        Volatile.Write(ref _displayPeriodMilliseconds, targetHertz is >= 1 and <= 1000 ? 1000d / targetHertz.Value : 16);
     private readonly TimeSpan _idleBufferRetention=TimeSpan.FromSeconds(10);
     private readonly object _gate=new();
     private LatestBackdropState? _state;
@@ -29,8 +29,8 @@ internal sealed class SharedBackdropFeed : IDisposable
     {
         lock(_gate) return new
         {
-            captureIntervalMilliseconds=Volatile.Read(ref _captureCadenceMilliseconds),
-            interactionActive=Volatile.Read(ref _interactionActive)!=0,
+            captureIntervalMilliseconds=Volatile.Read(ref _displayPeriodMilliseconds),
+            effectiveIntervalMilliseconds=Volatile.Read(ref _effectivePeriodMilliseconds),
             captureAcquisitions=Interlocked.Read(ref _captureAcquisitions),sceneUpdates=Interlocked.Read(ref _sceneUpdates),
             resizes=Interlocked.Read(ref _resizes),publishedFrames=Interlocked.Read(ref _publishedFrames),
             skippedForReaders=Interlocked.Read(ref _skippedForReaders),ownersRetired=Interlocked.Read(ref _ownersRetired),
@@ -92,7 +92,7 @@ internal sealed class SharedBackdropFeed : IDisposable
             if(_state is null)
             {
                 Volatile.Write(ref _failure,null);
-                _state=new() {TraceObserved=TraceObserved};_stop=new();var state=_state;var stop=_stop;
+                _state=new() {TraceObserved=TraceObserved, ContentChanged=ContentChanged};_stop=new();var state=_state;var stop=_stop;
                 _thread=new Thread(()=>RunOwned(state,stop)) {IsBackground=true,Name="Independent compatible glass backdrop"};
                 _thread.SetApartmentState(ApartmentState.STA);_thread.Start();
             }
@@ -138,7 +138,6 @@ internal sealed class SharedBackdropFeed : IDisposable
     }
     internal void SetPerformanceSleeping(bool sleeping)
     {
-        if (sleeping) SetAnimationActive(false);
         lock(_gate) { _performanceSleeping=sleeping;if(sleeping) Suspend(deep:true); }
     }
     private void Run(LatestBackdropState state,CancellationToken stop)
@@ -154,6 +153,8 @@ internal sealed class SharedBackdropFeed : IDisposable
             using var resize=new NativeFrameResize();using var wait=new NativeCadenceWait();
             using var buffers=new SamplePixelPool();
             var signals=new[] {stop.WaitHandle,state.Changed};
+            var cadence = new BackdropCadence();
+            long previousSampleAt = 0;
             while(!stop.IsCancellationRequested)
             {
                 if (signalGeneration != BackdropRecovery.Generation)
@@ -184,12 +185,10 @@ internal sealed class SharedBackdropFeed : IDisposable
                 }
                 idleSince=0;
                 var start=Stopwatch.GetTimestamp();
-                var captureCadenceMilliseconds=Volatile.Read(ref _captureCadenceMilliseconds);
-                if(captureCadenceMilliseconds>=16 && Volatile.Read(ref _interactionActive)==0) captureCadenceMilliseconds=1000d/30;
-                // Static scenes still need bounded scene/pixel checks, but no 60 Hz
-                // pipe traffic or readback. A changed frame immediately restores live
-                // cadence; geometry changes wake the slow wait through state.Changed.
-                if(captureCadenceMilliseconds>=16 && state.IsContentIdle(start)) captureCadenceMilliseconds=100;
+                cadence.SetDisplayPeriod(Volatile.Read(ref _displayPeriodMilliseconds));
+                var externalMove = ExternalWindowMove.ProcessId() != 0;
+                var captureCadenceMilliseconds = GetCapturePeriod(state, cadence, externalMove, start);
+                Volatile.Write(ref _effectivePeriodMilliseconds, captureCadenceMilliseconds);
                 if(capture is null || !Contains(bounds,request.Region))
                 {
                     // Reserve the small gap from resting Dock capture to the physical
@@ -255,7 +254,8 @@ internal sealed class SharedBackdropFeed : IDisposable
                     Interlocked.Increment(ref _resizes);
                     TraceObserved?.Invoke(new("Processing","ResizeCompleted",Stopwatch.GetTimestamp(),frame.SourceQpcTicks,EndTicks:processingStart));
                     CaptureObserved?.Invoke(frame,sampled);
-                    var now=Stopwatch.GetTimestamp();
+                    var processingCompletedAt = Stopwatch.GetTimestamp();
+                    var now=processingCompletedAt;
                     var leadMs=(frame.SourceQpcTicks-now)*1000d/Stopwatch.Frequency;
                     // Keep the previous usable frame until the new compositor time arrives.
                     // This is a clock barrier on the worker, not a fixed settling delay.
@@ -271,17 +271,25 @@ internal sealed class SharedBackdropFeed : IDisposable
                             TraceObserved?.Invoke(new("SourceClock",stop.IsCancellationRequested ? "Cancelled" : "Reached",
                                 Stopwatch.GetTimestamp(),frame.SourceQpcTicks));
                         }
+                        var completedAt = Stopwatch.GetTimestamp();
                         if(!stop.IsCancellationRequested &&
-                            state.Publish(BackdropFrame.FromLease(request,++sequence,start,Stopwatch.GetTimestamp(),lease.Acquire(),
+                            state.Publish(BackdropFrame.FromLease(request,++sequence,start,completedAt,lease.Acquire(),
                                 frame.SourceQpcTicks==0 ? null : frame.SourceQpcTicks, frame.IsStatic, frame.Source)))
+                        {
                             Interlocked.Increment(ref _publishedFrames);
+                            if (!externalMove && !state.IsContentIdle(completedAt))
+                            {
+                                if (previousSampleAt == 0 || Stopwatch.GetElapsedTime(previousSampleAt, completedAt) > TimeSpan.FromMilliseconds(250))
+                                    cadence.ResetObservation();
+                                cadence.Observe(completedAt, Stopwatch.GetElapsedTime(start, processingCompletedAt).TotalMilliseconds);
+                                previousSampleAt = completedAt;
+                            }
+                        }
                     }
                 }
-                Program.Pump(TimeSpan.FromMilliseconds(1));
+                Program.PumpPending();
                 // Publication may have just ended the idle period.
-                captureCadenceMilliseconds=Volatile.Read(ref _captureCadenceMilliseconds);
-                if(captureCadenceMilliseconds>=16 && Volatile.Read(ref _interactionActive)==0) captureCadenceMilliseconds=1000d/30;
-                if(captureCadenceMilliseconds>=16 && state.IsContentIdle(Stopwatch.GetTimestamp())) captureCadenceMilliseconds=100;
+                captureCadenceMilliseconds=GetCapturePeriod(state,cadence,externalMove,Stopwatch.GetTimestamp());
                 var remaining=captureCadenceMilliseconds-Stopwatch.GetElapsedTime(start).TotalMilliseconds;
                 if(remaining>=30) WaitHandle.WaitAny(signals,(int)Math.Ceiling(remaining));
                 else if(remaining>0) wait.Wait(remaining,stop);
@@ -300,6 +308,12 @@ internal sealed class SharedBackdropFeed : IDisposable
             finally {Volatile.Write(ref _activeCaptureOwner,0);if(previousDpi!=0) SetThreadDpiAwarenessContext(previousDpi);}
         }
     }
+    private static double GetCapturePeriod(LatestBackdropState state, BackdropCadence cadence, bool externalMove, long now)
+    {
+        var minimum = state.IsContentIdle(now) ? 100 : externalMove ? ExternalMovePeriod.TotalMilliseconds : 0;
+        return Math.Max(minimum, cadence.PeriodMilliseconds);
+    }
+
     private static bool Contains(PixelBounds outer,PixelBounds inner) =>
         outer.Left<=inner.Left && outer.Top<=inner.Top && outer.Right>=inner.Right && outer.Bottom>=inner.Bottom;
     public void Dispose()

@@ -64,7 +64,7 @@ public sealed class StatusBarNetworkSpeedSettingsTests
             {
                 window.Show();
                 window.UpdateLayout();
-                var speed = Assert.IsType<StackPanel>(window.FindName("NetworkSpeedPanel"));
+                var speed = Assert.IsAssignableFrom<FrameworkElement>(window.FindName("NetworkSpeedPanel"));
                 var volume = Assert.IsType<TextBlock>(window.FindName("VolumeText"));
                 var root = Assert.IsAssignableFrom<FrameworkElement>(window.Content);
                 var before = volume.TransformToAncestor(root).Transform(new Point()).X;

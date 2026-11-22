@@ -120,7 +120,7 @@ public static class BackdropCaptureWorker
                     output.Write(crop.Left);output.Write(crop.Top);output.Write(crop.Right);output.Write(crop.Bottom);
                 }
                 output.Flush();
-                global::Program.Pump(TimeSpan.FromMilliseconds(1));
+                global::Program.PumpPending();
             }
             lifetime.Cancel();
         }

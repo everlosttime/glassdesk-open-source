@@ -35,9 +35,14 @@ internal sealed partial class AppHost
             window.DesktopIconsRead=()=>_interaction?.ReadDesktopIcons();
             window.DesktopIconsSet=visible=>_interaction is { } controller?controller.SetDesktopIcons(visible):"运行服务未连接，未保存更改。";
             window.PrepareNaiwaAsync=PrepareNaiwaAsync;
+            window.CanEnableNaiwa=()=>GetNaiwaSetupIssue() is null;
+            window.ImportNaiwaAssetsAsync=ImportNaiwaAssetsAsync;
+            window.HasImportedNaiwaAssets=()=>NaiwaAssets.HasImportedFiles(NaiwaImportedAssets);
+            window.RemoveNaiwaAssetsAsync=RemoveNaiwaAssetsAsync;
+            window.RefreshNaiwaAssetControls();
             window.RunNaiwaAction=RunNaiwaAction;
             window.NaiwaSettingsChanged+=(_,_)=>ReconcileNaiwa();
-            window.ShowNaiwaStatus(_naiwaStatus);
+            window.ShowNaiwaStatus(_naiwaStatus ?? GetNaiwaSetupIssue());
             window.DataRestored+=OnSettingsDataRestored;
             window.UserDataDeletionRequested+=OnSettingsUserDataDeletionRequested;
             window.UninstallRequested+=OnSettingsUninstallRequested;

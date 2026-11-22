@@ -9,32 +9,52 @@ namespace GlassDesk.UI;
 /// <summary>Recovery signals and bounded metadata; no screen pixels are retained here.</summary>
 public static class BackdropRecovery
 {
-    private static long _generation;
-    private static int _basicRendering;
-    internal static bool RequiresBasicRendering => Volatile.Read(ref _basicRendering) != 0;
+    private sealed record RecoveryState(long Generation, long HardGeneration, bool BasicRendering);
+    private static RecoveryState _state = new(0, 0, false);
+    internal static bool RequiresBasicRendering => Volatile.Read(ref _state).BasicRendering;
     private static readonly CaptureTraceLog Diagnostics = new();
     private static BackdropIncidentRecorder? _incidents;
     private static readonly string? SubmittedPixelTracePath = Environment.GetEnvironmentVariable("GLASSDESK_BACKDROP_TRACE_FILE");
     private static readonly long SubmittedPixelTraceUntil = string.IsNullOrWhiteSpace(SubmittedPixelTracePath) ? 0
         : Stopwatch.GetTimestamp() + Stopwatch.Frequency * 60 * 45;
     internal static bool SubmittedPixelDiagnosticsEnabled => Stopwatch.GetTimestamp() < SubmittedPixelTraceUntil;
-    internal static long Generation => Interlocked.Read(ref _generation);
-    public static void RetryBackground()
+    internal static long Generation => Volatile.Read(ref _state).Generation;
+
+    internal static bool IsWallpaperRefresh(long previous, long current)
     {
-        Volatile.Write(ref _basicRendering, 0);
-        Interlocked.Increment(ref _generation);
-        Record(new("Recovery", "RebuildRequested", Stopwatch.GetTimestamp()));
+        var state = Volatile.Read(ref _state);
+        return current == state.Generation && previous < current && previous >= state.HardGeneration;
+    }
+
+    public static void RetryBackground() => AdvanceRecovery(wallpaperOnly: false);
+
+    public static void RefreshDesktopWallpaper()
+    {
+        Record(new("RecoveryTrigger", "DesktopSettingsChanged", Stopwatch.GetTimestamp()));
+        AdvanceRecovery(wallpaperOnly: true);
     }
     public static void RetryBackground(string trigger)
     {
         Record(new("RecoveryTrigger", trigger, Stopwatch.GetTimestamp()));
         RetryBackground();
     }
-    public static void UseBasicRendering()
+    public static void UseBasicRendering() => AdvanceRecovery(wallpaperOnly: false, basicRendering: true);
+
+    private static void AdvanceRecovery(bool wallpaperOnly, bool basicRendering = false)
     {
-        if (Interlocked.Exchange(ref _basicRendering, 1) != 0) return;
-        Interlocked.Increment(ref _generation);
-        Record(new("Rendering", "BasicBackgroundRequired", Stopwatch.GetTimestamp()));
+        RecoveryState previous, next;
+        do
+        {
+            previous = Volatile.Read(ref _state);
+            if (basicRendering && previous.BasicRendering) return;
+            var generation = previous.Generation + 1;
+            next = new(generation, wallpaperOnly ? previous.HardGeneration : generation, basicRendering);
+        }
+        while (!ReferenceEquals(Interlocked.CompareExchange(ref _state, next, previous), previous));
+
+        Record(basicRendering
+            ? new("Rendering", "BasicBackgroundRequired", Stopwatch.GetTimestamp())
+            : new("Recovery", "RebuildRequested", Stopwatch.GetTimestamp()));
     }
     internal static void Record(CaptureTrace trace)
     {

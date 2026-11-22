@@ -42,7 +42,6 @@ internal static partial class Program
         data.Settings.Current.Appearance.GlassMaterial = material;
         data.Settings.Current.Appearance.UseSystemBackdrop = true;
         data.Settings.Current.Appearance.PinBarsToDesktop = false;
-        data.Settings.Current.Launcher.HighRefreshAnimationsEnabled = !args.Contains("--high-refresh-off");
         data.Settings.Current.Launcher.FocusSearchOnOpen = false;
         theme.Update(data.Settings.Current.Appearance);
         for (var i = 0; i < 36; i++) data.Library.Add(new AppEntry
@@ -162,7 +161,6 @@ internal static partial class Program
                 ablation, qualityChangedForDiagnostic = ablation != "none",
                 material = material.ToString(), cycles, traceEnabled, componentFixture = true,
                 placementReuse = Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_PLACEMENT_REUSE") == "1",
-                displayCadence = Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_DISPLAY_CADENCE") == "1",
                 visualShadowOpacity = Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_VISUAL_SHADOW_OPACITY") == "1",
                 sceneReuse = Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_SCENE_REUSE") == "1",
                 deferredPaintSceneChecks = Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_DEFER_PAINT_SCENE_CHECKS") == "1",
@@ -170,7 +168,6 @@ internal static partial class Program
                 nativeShadow = Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_NATIVE_SHADOW") == "1",
                 nativeDllSha256 = Environment.GetEnvironmentVariable("GLASSDESK_NATIVE_RENDER_DLL") is { } nativeDll && File.Exists(nativeDll)
                     ? Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(nativeDll))) : null,
-                highRefreshEnabled = data.Settings.Current.Launcher.HighRefreshAnimationsEnabled,
                 display, refresh,
                 displayedFrames = "unmeasured: no attributable application/HWND display trace",
                 clickToFirstFrame = "unmeasured: fixture starts at ShowWithTransition, not the product click",

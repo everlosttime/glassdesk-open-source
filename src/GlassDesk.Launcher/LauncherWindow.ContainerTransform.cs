@@ -59,7 +59,6 @@ public partial class LauncherWindow
     private readonly bool _retainRevealGrid = Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_RETAIN_REVEAL_GRID") == "1";
     private readonly MatrixTransform _glyphRenderTransform = new();
     private TimeSpan _lastTransformRenderingTime = TimeSpan.MinValue;
-    private readonly bool _useDisplayAnimationCadence = Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_DISPLAY_CADENCE") == "1";
 
     private DisplayInfo? TransformDisplay => PrimaryDisplaySession is { } session
         ? session.IsAvailable ? session.Display : null
@@ -232,9 +231,7 @@ public partial class LauncherWindow
             ? _transformStartedAt : 0;
         _transformAwaitingFirstFrame = true;
         _transformActive = true;
-        if (_useDisplayAnimationCadence)
-            GlassSurface.SetContainerAnimationCadence(UseHighRefreshCapture, DisplayService.RefreshForWindow(Handle)?.Hertz);
-        else GlassSurface.SetContainerAnimationActive(UseHighRefreshCapture);
+        GlassSurface.SetContainerAnimationActive(true);
         BeginAnimationTrace(_transformEndTimeline >= 1);
         _lastTransformRenderingTime = TimeSpan.MinValue;
         if (!StartUnifiedClock()) CompositionTarget.Rendering += OnContainerTransformRendering;
