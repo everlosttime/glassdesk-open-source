@@ -116,11 +116,22 @@ public sealed class OnboardingWindowTests
                 w.Show(); w.NavigateToPage("快捷操作");
                 System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.SystemIdle);
                 w.UpdateLayout();
-                string[] names = ["ToggleLauncher", "NextPage", "PreviousPage", "ToggleDesktopIcons", "ToggleDockRevealLock", "ToggleGameSleep", "SelectWindowTopmost"];
+                Assert.Contains("台前调度（测试版）", w.PlannedPages);
+                Assert.Equal("台前调度（测试版）", Assert.IsType<TextBlock>(w.FindName("StageManagerSectionHeading")).Text);
+                Assert.Equal("启用台前调度（测试版）", Assert.IsType<CheckBox>(w.FindName("StageManagerCheck")).Content);
+                string[] names = ["ToggleLauncher", "NextPage", "PreviousPage", "ToggleDesktopIcons", "ToggleDockRevealLock", "ToggleGameSleep", "SelectWindowTopmost", "SelectStageWindow"];
                 foreach (var name in names)
                 {
                     var help = Assert.IsAssignableFrom<Button>(w.FindName(name + "Help"));
-                    Assert.False(string.IsNullOrWhiteSpace(System.Windows.Automation.AutomationProperties.GetHelpText(help)));
+                    var helpText = System.Windows.Automation.AutomationProperties.GetHelpText(help);
+                    Assert.False(string.IsNullOrWhiteSpace(helpText));
+                    if (name == "SelectStageWindow")
+                    {
+                        Assert.Equal("选择台前调度窗口（测试版）", Assert.IsType<ShortcutHelpIcon>(help).HelpTitle);
+                        Assert.Contains("加入台前调度", helpText);
+                        Assert.Contains("移出", helpText);
+                        Assert.Contains("Esc", helpText);
+                    }
                     var tooltip = Assert.IsType<ToolTip>(help.ToolTip);
                     Assert.True(ToolTipService.GetShowDuration(help) >= 20000);
                     help.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent)); Assert.True(tooltip.IsOpen);

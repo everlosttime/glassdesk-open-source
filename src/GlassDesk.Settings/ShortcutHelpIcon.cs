@@ -42,7 +42,7 @@ public sealed class ShortcutHelpIcon : Button
         text.Inlines.Add(new Bold(new Run(HelpTitle)));
         text.Inlines.Add(new LineBreak()); text.Inlines.Add(new Run(Description));
         text.Inlines.Add(new LineBreak()); text.Inlines.Add(new LineBreak());
-        text.Inlines.Add(new Run("修改方式：点击右侧快捷键，再按新组合。Esc 取消，Backspace / Delete 清除；录制后自动保存。") { Foreground = new SolidColorBrush(Color.FromRgb(165, 183, 208)) });
+        text.Inlines.Add(new Run("改键时点击右侧当前绑定，再输入新键、鼠标侧键或滚轮方向。按 Esc 取消录制，按 Backspace 或 Delete 清除绑定。录制完成后自动保存。") { Foreground = new SolidColorBrush(Color.FromRgb(165, 183, 208)) });
         _help.Content = text; _help.Background = new SolidColorBrush(Color.FromRgb(30, 40, 58));
         _help.Foreground = Brushes.White; _help.Padding = new Thickness(15); _help.BorderBrush = new SolidColorBrush(Color.FromRgb(90, 118, 153));
         AutomationProperties.SetName(this, HelpTitle + "：功能说明");

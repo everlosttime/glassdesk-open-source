@@ -40,6 +40,8 @@ public sealed class GlassDeskSettings
 
     public DisplaySettings Display { get; set; } = new();
 
+    public bool StageManagerEnabled { get; set; }
+
     public PerformanceSettings Performance { get; set; } = new();
 
     public NearbySettings Nearby { get; set; } = new();

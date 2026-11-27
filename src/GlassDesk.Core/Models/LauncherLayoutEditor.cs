@@ -47,6 +47,18 @@ public static class LauncherLayoutEditor
         throw new InvalidOperationException("The dragged item no longer exists.");
     }
 
+    public static LauncherLayout RemoveAppShortcuts(LauncherLayout source, IReadOnlySet<string> appIds, int capacity)
+    {
+        var draft = LauncherLayoutRules.DeepClone(source);
+        foreach (var page in draft.Pages)
+        {
+            page.Slots.RemoveAll(slot => slot.Kind == LauncherSlotKind.App && slot.ItemId is { } id && appIds.Contains(id));
+            foreach (var slot in page.Slots.Where(slot => slot.Group is not null).ToArray())
+                if (slot.Group!.ItemIds.RemoveAll(appIds.Contains) > 0) CollapseGroup(page, slot);
+        }
+        return Finish(draft, capacity);
+    }
+
     public static LauncherLayout CreateGroup(LauncherLayout source, string movingId, string targetId, string groupId, int capacity)
     {
         if (movingId == targetId) throw new InvalidOperationException("An item cannot be grouped with itself.");

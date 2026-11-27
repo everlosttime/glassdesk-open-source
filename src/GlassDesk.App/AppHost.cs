@@ -181,6 +181,7 @@ internal sealed partial class AppHost : IDisposable
         InitializeDefaultAutostart();
         InitializePerformanceCoordinator();
         InitializeInteractionController();
+        InitializeStageManager();
         InitializeNearby();
         InitializeLauncherAutoOrganization();
         InitializeNativeRenderTest();
@@ -253,6 +254,7 @@ internal sealed partial class AppHost : IDisposable
         DisposeLauncherAutoOrganization();
         _desktopRecoveryTimer?.Stop();
 
+        StopStageManager();
         // Restore the desktop before stopping services that can fail during teardown.
         DisposeInteractionController();
         DisposeOnboarding();
@@ -466,7 +468,7 @@ internal sealed partial class AppHost : IDisposable
                 var key = (uint)((lParam.ToInt64() >> 16) & 0xFFFF);
                 if (_performance?.IsSuppressionRequested == true && _launcher?.IsVisible != true
                     && (key is 5 or 6 or 0x100 or 0x101) && _interaction?.IsGameSleepHotkey(wParam.ToInt32()) != true
-                    && _interaction?.IsWindowTopmostHotkey(wParam.ToInt32()) != true)
+                    && _interaction?.IsWindowSelectionHotkey(wParam.ToInt32()) != true)
                 { handled = true; return 0; }
                 _interaction?.HandleHotkey(wParam.ToInt32());
             }
@@ -512,6 +514,17 @@ internal sealed partial class AppHost : IDisposable
         var gameSleep = new MenuItem { Header = "游戏休眠", IsCheckable = true, IsChecked = RuntimeManualGameSleep };
         gameSleep.Click += (_, _) => SetManualGameSleep(gameSleep.IsChecked);
         menu.Items.Add(gameSleep);
+        var stage = new MenuItem { Header = "台前调度（测试版）", IsCheckable = true, IsChecked = _data?.Settings.Current.StageManagerEnabled == true };
+        stage.Click += (_, _) =>
+        {
+            var status = SetStageManagerEnabled(stage.IsChecked);
+            _settings?.LoadStageManagerControl(status);
+            if (status is not null) ReportInteractionError(status);
+        };
+        menu.Items.Add(stage);
+        var selectStage = CreateMenuItem("选择台前调度窗口（测试版）…", ToggleStageWindowSelection);
+        selectStage.InputGestureText = _data?.Settings.Current.Shortcuts.SelectStageWindow.Describe() ?? "";
+        menu.Items.Add(selectStage);
         menu.Items.Add(new Separator());
         menu.Items.Add(CreateMenuItem("设置…", ShowSettings));
         menu.Items.Add(CreateMenuItem("打开数据文件夹", OpenDataFolder));

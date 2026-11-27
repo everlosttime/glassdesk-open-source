@@ -6,6 +6,32 @@ namespace GlassDesk.Dock.Tests;
 
 public sealed class LiveWallpaperReadbackTests
 {
+    [Fact]
+    public void SteadyReadbackKeepsCompositionWaitForNewSceneAndSparseRetry()
+    {
+        using var source = new PrintSource(0x000000FF, 0x0000FF00, 0x00FF0000)
+        {
+            PartialFrame = read => read == 3
+        };
+        var waits = new List<int>();
+        using var capture = new LiveWallpaperSurface(16, 16, 16, 16, source.Read, null)
+        {
+            FlushComposition = () => { waits.Add(source.Reads); return 0; }
+        };
+        var pixels = new byte[16 * 16 * 4];
+        bool Draw(long barrier = 0) => capture.TryDraw(1, 0, 0, 16, 16, 0, 0, 16, 16, pixels,
+            barrier, allowUnflushedReadback: true);
+
+        Assert.True(Draw());
+        Assert.True(Draw());
+        Assert.Equal(new byte[] { 0, 255, 0, 255 }, pixels[..4]);
+        Assert.Equal(new[] { 0 }, waits);
+        Assert.True(Draw(capture.LastSourceQpcTicks + 1));
+        Assert.True(Draw());
+        Assert.Equal(new byte[] { 255, 0, 0, 255 }, pixels[..4]);
+        Assert.Equal(new[] { 0, 2, 4 }, waits);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

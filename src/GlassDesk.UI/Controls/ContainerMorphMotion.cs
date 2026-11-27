@@ -13,13 +13,13 @@ public sealed class ContainerMorphMotion
     private readonly PixelRect _destination;
     private readonly double _sourceRoundness;
     private readonly double _destinationRadius;
-    private Spring _centerX;
-    private Spring _centerY;
-    private Spring _width;
-    private Spring _height;
-    private Spring _roundness;
-    private Spring _sourceWidthForProgress;
-    private Spring _sourceHeightForProgress;
+    private DampedSpring _centerX;
+    private DampedSpring _centerY;
+    private DampedSpring _width;
+    private DampedSpring _height;
+    private DampedSpring _roundness;
+    private DampedSpring _sourceWidthForProgress;
+    private DampedSpring _sourceHeightForProgress;
     private bool _shapeExpanded;
     private double _shapeAge;
     private double _widthDelay;
@@ -162,13 +162,13 @@ public sealed class ContainerMorphMotion
     public void SnapToTarget()
     {
         var bounds = IsExpandedTarget ? _destination : _source;
-        _centerX = new Spring(bounds.X + bounds.Width / 2d);
-        _centerY = new Spring(bounds.Y + bounds.Height / 2d);
-        _width = new Spring(bounds.Width);
-        _height = new Spring(bounds.Height);
-        _roundness = new Spring(IsExpandedTarget ? RoundnessFor(bounds, _destinationRadius) : _sourceRoundness);
-        _sourceWidthForProgress = new Spring(_source.Width);
-        _sourceHeightForProgress = new Spring(_source.Height);
+        _centerX = new DampedSpring(bounds.X + bounds.Width / 2d);
+        _centerY = new DampedSpring(bounds.Y + bounds.Height / 2d);
+        _width = new DampedSpring(bounds.Width);
+        _height = new DampedSpring(bounds.Height);
+        _roundness = new DampedSpring(IsExpandedTarget ? RoundnessFor(bounds, _destinationRadius) : _sourceRoundness);
+        _sourceWidthForProgress = new DampedSpring(_source.Width);
+        _sourceHeightForProgress = new DampedSpring(_source.Height);
         _shapeExpanded = IsExpandedTarget;
         _widthDelay = 0;
         _closeHold = 0;
@@ -244,38 +244,6 @@ public sealed class ContainerMorphMotion
         return t * t * (3 - 2 * t);
     }
 
-    private struct Spring(double initial)
-    {
-        public double Value = initial;
-        private double _velocity;
-
-        public void Advance(double seconds, double target, double frequency, double damping)
-        {
-            if (seconds <= 0) return;
-            var displacement = Value - target;
-            if (displacement == 0 && _velocity == 0) return;
-            var decay = Math.Exp(-damping * frequency * seconds);
-            if (damping == 1)
-            {
-                var impulse = _velocity + frequency * displacement;
-                Value = target + decay * (displacement + impulse * seconds);
-                _velocity = decay * (_velocity - frequency * impulse * seconds);
-                return;
-            }
-            var dampedFrequency = frequency * Math.Sqrt(1 - damping * damping);
-            var sine = Math.Sin(dampedFrequency * seconds);
-            var cosine = Math.Cos(dampedFrequency * seconds);
-            var coefficient = (_velocity + damping * frequency * displacement) / dampedFrequency;
-            var wave = displacement * cosine + coefficient * sine;
-            Value = target + decay * wave;
-            _velocity = decay * (dampedFrequency * (-displacement * sine + coefficient * cosine) -
-                damping * frequency * wave);
-        }
-
-        public readonly bool AtRest(double target, double span) =>
-            Math.Abs(Value - target) <= Math.Max(.001, Math.Abs(span) * .001) &&
-            Math.Abs(_velocity) <= Math.Max(.01, Math.Abs(span) * .01);
-    }
 }
 
 public readonly record struct ContainerMorphFrame(Rect Bounds, double CornerRadius, double GlassStrength,

@@ -45,6 +45,7 @@ public sealed class AppServiceHost : IDisposable, IImportObserver
         Editor = new AppEntryEditor(data.Library, data.Paths, OnLibraryChanged);
         DockIcons = new DockIconCustomization(data, OnLibraryChanged);
         AutoOrganization = new LauncherAutoOrganizationService(this);
+        ShortcutCleanup = new LauncherShortcutCleanup(this);
         DesktopDiscovery = new DesktopAppDiscoveryService(this, AutoOrganization);
         Import.ManualImported = AutoOrganization.ClearSuppressionForManualImport;
         var identity = new NearbyIdentityStore(Path.Combine(data.Paths.RootDirectory, "runtime", "nearby"));
@@ -70,6 +71,7 @@ public sealed class AppServiceHost : IDisposable, IImportObserver
     public AppEntryEditor Editor { get; }
     public DockIconCustomization DockIcons { get; }
     public LauncherAutoOrganizationService AutoOrganization { get; }
+    public LauncherShortcutCleanup ShortcutCleanup { get; }
     public DesktopAppDiscoveryService DesktopDiscovery { get; }
     public GlassDesk.Core.Models.Settings.LauncherSettings LauncherSettings => _data.Settings.Current.Launcher;
     public INearbyTransferService Nearby { get; }

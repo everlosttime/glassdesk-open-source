@@ -17,6 +17,7 @@ public sealed class WindowTopmostPicker : IDisposable
     private readonly DispatcherTimer _refresh;
     private readonly DispatcherTimer _feedbackDeadline;
     private Action<WindowTopmostTarget>? _selected;
+    private Func<WindowTopmostTarget, string?>? _describeTarget;
     private WindowTopmostTarget? _pressedTarget;
     private nint _previousForeground;
     private Window? _feedback;
@@ -32,23 +33,25 @@ public sealed class WindowTopmostPicker : IDisposable
 
     public bool IsSelecting => _selected is not null;
 
-    public void Begin(Action<WindowTopmostTarget> selected)
+    public void Begin(Action<WindowTopmostTarget> selected, Func<WindowTopmostTarget, string?>? describeTarget = null,
+        string title = "窗口置顶", Func<DisplayInfo, bool>? includeDisplay = null)
     {
         _dispatcher.VerifyAccess();
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(selected);
         if (IsSelecting) { Cancel(); return; }
         CloseFeedback();
-        var displays = DisplayService.Enumerate();
-        if (displays.Count == 0) throw new InvalidOperationException("无法读取显示器，未进入窗口选择。");
+        var displays = DisplayService.Enumerate().Where(display => includeDisplay?.Invoke(display) != false).ToArray();
+        if (displays.Length == 0) throw new InvalidOperationException("无法读取显示器，未进入窗口选择。");
         _previousForeground = WindowControl.GetForegroundWindow();
         _selected = selected;
+        _describeTarget = describeTarget ?? (target => target.IsTopmost ? "点击取消置顶" : "点击置顶");
         _building = true;
         try
         {
             foreach (var display in displays)
             {
-                var overlay = new WindowTopmostPickerOverlay(this, display);
+                var overlay = new WindowTopmostPickerOverlay(this, display, title);
                 _overlays.Add(overlay);
                 overlay.Place();
                 overlay.Show();
@@ -135,7 +138,7 @@ public sealed class WindowTopmostPicker : IDisposable
     private WindowTopmostTarget? TargetUnderPointer()
     {
         var point = DisplayService.GetCursorPixelPoint();
-        return point is { } p ? WindowTopmostWindows.FindAt(p.X, p.Y) : null;
+        return point is { } p ? FindTarget(p.X, p.Y).Target : null;
     }
 
     private void OnRefresh(object? sender, EventArgs e) => RefreshTarget();
@@ -144,9 +147,17 @@ public sealed class WindowTopmostPicker : IDisposable
     {
         if (!IsSelecting) return;
         var point = DisplayService.GetCursorPixelPoint();
-        var target = point is { } p ? WindowTopmostWindows.FindAt(p.X, p.Y) : null;
+        var (target, action) = point is { } p ? FindTarget(p.X, p.Y) : default;
         foreach (var overlay in _overlays)
-            overlay.UpdateTarget(target, point is { } cursor && overlay.Display.Bounds.Contains(cursor.X, cursor.Y));
+            overlay.UpdateTarget(target, action, point is { } cursor && overlay.Display.Bounds.Contains(cursor.X, cursor.Y));
+    }
+
+    private (WindowTopmostTarget? Target, string? Action) FindTarget(int x, int y)
+    {
+        if (!_overlays.Any(overlay => overlay.Display.Bounds.Contains(x, y))) return default;
+        var target = WindowTopmostWindows.FindAt(x, y);
+        var action = target is null ? null : _describeTarget?.Invoke(target);
+        return action is null ? default : (target, action);
     }
 
     private void End(bool restoreFocus)
@@ -157,6 +168,7 @@ public sealed class WindowTopmostPicker : IDisposable
         {
             _refresh.Stop();
             _selected = null;
+            _describeTarget = null;
             _pressedTarget = null;
             var foreground = WindowControl.GetForegroundWindow();
             var restore = restoreFocus && _overlays.Any(w => w.Handle == foreground);
@@ -189,7 +201,7 @@ public sealed class WindowTopmostPicker : IDisposable
         var height = Math.Min(display.WorkArea.Height, display.ToPixels(content.DesiredSize.Height));
         _feedback = new Window
         {
-            Title = "GlassDesk 窗口置顶提示", Content = content, Background = Brushes.Transparent,
+            Title = "GlassDesk 窗口操作提示", Content = content, Background = Brushes.Transparent,
             AllowsTransparency = true, WindowStyle = WindowStyle.None, ResizeMode = ResizeMode.NoResize,
             ShowInTaskbar = false, ShowActivated = false, Topmost = true, Focusable = false, IsHitTestVisible = false,
             Width = display.ToDips(width), Height = display.ToDips(height),

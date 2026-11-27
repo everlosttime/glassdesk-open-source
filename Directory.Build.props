@@ -17,9 +17,9 @@
     <Product>GlassDesk</Product>
     <Company>GlassDesk</Company>
     <!-- Product updates use this version; retain the delivered assembly identity. -->
-    <Version>1.7.7</Version>
+    <Version>1.8.2</Version>
     <AssemblyVersion>0.2.2.0</AssemblyVersion>
-    <FileVersion>1.7.7.0</FileVersion>
+    <FileVersion>1.8.2.0</FileVersion>
     <NeutralLanguage>zh-Hans</NeutralLanguage>
 
     <EnableNETAnalyzers>true</EnableNETAnalyzers>

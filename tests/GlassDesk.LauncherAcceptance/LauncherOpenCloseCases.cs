@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.ComponentModel;
@@ -11,6 +12,7 @@ using GlassDesk.AppServices;
 using GlassDesk.Core.Models;
 using GlassDesk.Core.Storage;
 using GlassDesk.Launcher;
+using GlassDesk.Platform;
 using GlassDesk.Platform.Displays;
 using GlassDesk.UI.Controls;
 using GlassDesk.UI.Theming;
@@ -28,6 +30,7 @@ internal static partial class Program
         if (File.Exists(report) || Directory.Exists(root)) throw new IOException("Use a fresh run directory.");
         Directory.CreateDirectory(output);
         var traceEnabled = !args.Contains("--trace-off");
+        var desktopLayer = args.Contains("--fixed-desktop");
         Environment.SetEnvironmentVariable("GLASSDESK_ANIMATION_TRACE_DIR", traceEnabled ? Path.Combine(output, "traces") : null);
         var material = Enum.Parse<GlassMaterialMode>(Argument(args, "--material") ?? "FrostedGlass");
         var cycles = int.Parse(Argument(args, "--cycles") ?? "10");
@@ -41,7 +44,7 @@ internal static partial class Program
         var data = new GlassDeskDataStore(new AppPaths(root)); data.LoadAll();
         data.Settings.Current.Appearance.GlassMaterial = material;
         data.Settings.Current.Appearance.UseSystemBackdrop = true;
-        data.Settings.Current.Appearance.PinBarsToDesktop = false;
+        data.Settings.Current.Appearance.PinBarsToDesktop = desktopLayer;
         data.Settings.Current.Launcher.FocusSearchOnOpen = false;
         theme.Update(data.Settings.Current.Appearance);
         for (var i = 0; i < 36; i++) data.Library.Add(new AppEntry
@@ -51,10 +54,15 @@ internal static partial class Program
         data.Library.Save(); data.Settings.Save();
         using var services = new AppServiceHost(data);
         var display = DisplayService.Primary() ?? throw new InvalidOperationException("No primary display");
+        var desktopFixture = desktopLayer ? new Window { Width = 1, Height = 1, ShowInTaskbar = false, ShowActivated = false } : null;
+        var desktopInterop = desktopFixture is null ? null : new WindowInteropHelper(desktopFixture);
+        using var attachment = desktopInterop is null ? null : new DesktopWindowAttachment(desktopInterop.EnsureHandle(), owner => desktopInterop.Owner = owner);
+        if (attachment?.TryAttach() == false) throw new InvalidOperationException("Unable to reproduce desktop ownership.");
         var window = new LauncherWindow();
         window.BindPrimaryDisplay(new PrimaryDisplaySession(display));
         window.AttachServices(services, true); window.ApplySettings(data.Settings.Current.Launcher);
-        typeof(LauncherWindow).GetField("_keepOpenWhileModalCount", fields)!.SetValue(window, 1);
+        var keepOpenCount = typeof(LauncherWindow).GetField("_keepOpenWhileModalCount", fields)!;
+        keepOpenCount.SetValue(window, 1);
         var anchor = new PixelRect(display.WorkArea.X + display.WorkArea.Width / 2 - 24, display.WorkArea.Bottom - 76, 48, 48);
         window.ContainerAnchorProvider = () => anchor;
         var surface = (LiquidGlassSurface)window.FindName("GlassSurface");
@@ -106,11 +114,14 @@ internal static partial class Program
         var background = (GlassBackgroundLayer)typeof(LiquidGlassSurface).GetField("_background", fields)!.GetValue(surface)!;
         var live = (SharedBackdropFeed)typeof(GlassBackgroundLayer).GetField("_compatible", fields)!.GetValue(background)!;
         typeof(SharedBackdropFeed).GetField("_create", fields)!.SetValue(live,
-            (Func<ScreenRect, bool, Action<CaptureTrace>?, IDesktopSceneCapture>)((region, _, trace) => new RecoveringDesktopSceneCapture(region, trace, captureExe)));
+            (Func<ScreenRect, bool, Action<CaptureTrace>?, IDesktopSceneCapture>)((region, diagnostic, trace) => DesktopSceneCaptureFactory.Create(region, diagnostic, trace, captureExe)));
         var wallpaper = (SharedBackdropFeed)typeof(GlassBackgroundLayer).GetField("_wallpaperFeed", fields)!.GetValue(background)!;
         typeof(SharedBackdropFeed).GetField("_create", fields)!.SetValue(wallpaper,
             (Func<ScreenRect, bool, Action<CaptureTrace>?, IDesktopSceneCapture>)((region, _, trace) => new IsolatedDesktopSceneCapture(region, GlassBackdropSource.Wallpaper, trace, captureExe)));
         var observations = new List<object>();
+        var pageGaps = new List<double>();
+        var pageBackdrops = new List<object>();
+        var verifyPageBackdropContinuity = args.Contains("--verify-page-backdrop-continuity");
         if (Argument(args, "--capture-gate") is { } gate)
         {
             Directory.CreateDirectory(gate);
@@ -145,6 +156,7 @@ internal static partial class Program
             window.SetPerformanceSleeping(true); window.SetBackgroundWorkSuspended(true);
             window.SetPerformanceSleeping(false); window.SetBackgroundWorkSuspended(false);
             Measure("sleep-resume", 0, "open", () => window.ShowWithTransition(anchor), OpenSettled);
+            if (args.Contains("--measure-pages")) MeasurePageSlides();
             Measure("sleep-resume", 0, "close", window.CloseWithTransition, () => !window.IsVisible);
             Pump(TimeSpan.FromMilliseconds(500));
         }
@@ -152,14 +164,16 @@ internal static partial class Program
         {
             foreach (var item in removeClips) item.Descriptor.RemoveValueChanged(item.Element, item.Handler);
             window.Close();
+            desktopFixture?.Close();
             surface.Dispose();
+            GlassDesk.UI.BackdropRecovery.ExportDiagnosticReport(Path.Combine(output, "capture.json"));
             var modules = new[] { typeof(LauncherWindow).Assembly, typeof(LiquidGlassSurface).Assembly, Assembly.GetExecutingAssembly() }
                 .Select(a => new { path = a.Location, sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(a.Location))) });
             File.WriteAllText(report, JsonSerializer.Serialize(new
             {
                 schemaVersion = 1, processId = Environment.ProcessId, qpcFrequency = Stopwatch.Frequency,
                 ablation, qualityChangedForDiagnostic = ablation != "none",
-                material = material.ToString(), cycles, traceEnabled, componentFixture = true,
+                material = material.ToString(), cycles, traceEnabled, desktopLayer, componentFixture = true,
                 placementReuse = Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_PLACEMENT_REUSE") == "1",
                 visualShadowOpacity = Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_VISUAL_SHADOW_OPACITY") == "1",
                 sceneReuse = Environment.GetEnvironmentVariable("GLASSDESK_LAUNCHER_SCENE_REUSE") == "1",
@@ -173,11 +187,68 @@ internal static partial class Program
                 clickToFirstFrame = "unmeasured: fixture starts at ShowWithTransition, not the product click",
                 background = "current composed desktop; wallpaper motion and other applications uncontrolled",
                 environment = new { os = Environment.OSVersion.ToString(), SystemParameters.IsRemoteSession, powerStatus = SystemParameters.PowerLineStatus.ToString() },
-                valid, modules, observations, sceneChanges,
+                valid, modules, observations, sceneChanges, pageGaps, pageBackdrops,
             }, new JsonSerializerOptions { WriteIndented = true }));
         }
         Console.WriteLine($"Launcher {material}: {observations.Count} operations, valid={valid}; {report}");
         return valid ? 0 : 1;
+
+        void MeasurePageSlides()
+        {
+            var next = (Button)window.FindName("NextPage");
+            var previous = (Button)window.FindName("PreviousPage");
+            var outgoing = (UIElement)window.FindName("OutgoingPageScroll");
+            var contentRevision = typeof(LiquidGlassSurface).GetField("_lastCaptureSequence", fields)!;
+            var captureGeneration = typeof(LiquidGlassSurface).GetField("_lastCaptureGeneration", fields)!;
+            (long Generation, long Revision) MaterialIdentity() =>
+                ((long)captureGeneration.GetValue(surface)!, (long)contentRevision.GetValue(surface)!);
+            JsonElement CaptureState() => JsonSerializer.SerializeToElement(live.InspectPerformance());
+            var receivedFrames = false;
+            if (verifyPageBackdropContinuity)
+                valid &= PumpUntil(() => surface.BackdropSource == (desktopLayer ? GlassBackdropSource.CompatibleScene
+                    : GlassBackdropSource.LiveDesktop), TimeSpan.FromSeconds(3));
+            for (var cycle = 0; cycle < cycles; cycle++)
+            {
+                var forward = next.IsEnabled;
+                if (!forward && !previous.IsEnabled) throw new InvalidOperationException("The fixture needs two launcher pages.");
+                TimeSpan? previousFrame = null;
+                long previousTimestamp = 0;
+                var previousMaterial = MaterialIdentity();
+                var materialUpdates = 0;
+                void Render(object? sender, EventArgs args)
+                {
+                    if (args is not RenderingEventArgs frame || previousFrame == frame.RenderingTime) return;
+                    var timestamp = Stopwatch.GetTimestamp();
+                    if (previousTimestamp != 0) pageGaps.Add(Stopwatch.GetElapsedTime(previousTimestamp, timestamp).TotalMilliseconds);
+                    previousTimestamp = timestamp;
+                    previousFrame = frame.RenderingTime;
+                    var currentMaterial = MaterialIdentity();
+                    if (outgoing.IsVisible && currentMaterial.Revision > 0 && currentMaterial != previousMaterial)
+                        materialUpdates++;
+                    previousMaterial = currentMaterial;
+                }
+                CompositionTarget.Rendering += Render;
+                try
+                {
+                    // This fixture keeps its launcher open when external focus changes.
+                    // Only release that guard for the synchronous navigation dispatch.
+                    keepOpenCount.SetValue(window, 0);
+                    try { window.NavigatePage(forward ? 1 : -1); }
+                    finally { keepOpenCount.SetValue(window, 1); }
+                    var atStart = CaptureState();
+                    valid &= outgoing.IsVisible && PumpUntil(() => !outgoing.IsVisible, TimeSpan.FromSeconds(3));
+                    var atEnd = CaptureState();
+                    var captureSuspendedAtStart = atStart.GetProperty("suspended").GetBoolean();
+                    var published = atEnd.GetProperty("publishedFrames").GetInt64() - atStart.GetProperty("publishedFrames").GetInt64();
+                    pageBackdrops.Add(new { cycle, captureSuspendedAtStart, published, materialUpdates });
+                    if (verifyPageBackdropContinuity) valid &= !captureSuspendedAtStart;
+                    receivedFrames |= published > 0;
+                }
+                finally { CompositionTarget.Rendering -= Render; }
+                Pump(TimeSpan.FromMilliseconds(60));
+            }
+            if (verifyPageBackdropContinuity) valid &= receivedFrames;
+        }
 
         void Measure(string scenario, int cycle, string direction, Action start, Func<bool> completed)
         {

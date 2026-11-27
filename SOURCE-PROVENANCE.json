@@ -1,8 +1,8 @@
 {
   "product": "GlassDesk",
-  "version": "1.7.7",
+  "version": "1.8.2",
   "variant": "full-product-source",
-  "originalCommit": "3bc1ed2f73224d908c288e7b97fe1d0a180f60af",
+  "originalCommit": "c54c2786c5b68579686373674402ba9f73ea050d",
   "originalRepository": "https://github.com/everlosttime/glassdesk",
   "exportMethod": "Complete product source directories exported without functionality changes; public documentation and licensing provenance maintained separately.",
   "sourceDirectories": [
@@ -24,14 +24,14 @@
   ],
   "excludedProductSourceFiles": [],
   "privateDevelopmentHistoryIncluded": false,
-  "previousPublicBaseline": "935b3620db8b589ac2b702c26257b20442e6d688",
+  "previousPublicBaseline": "d720430f543d9b30bab1dbd1cef73d77eab985cf",
   "license": "Scoped: PolyForm-Noncommercial-1.0.0 for eligible original additions/modifications; existing Apache-2.0 and third-party grants retained",
   "licenseScopeDocument": "docs/LICENSING.md",
   "exportedFileManifest": "docs/licensing/FILE-LICENSES.json",
   "releasePublished": true,
   "adaptationReason": "Only two historical acceptance project TargetFramework values aligned to the existing Windows product SDK target. Product implementation unchanged.",
-  "sourceRelease": "https://github.com/everlosttime/glassdesk-open-source/releases/tag/v1.7.7",
-  "softwareRelease": "https://github.com/everlosttime/glassdesk-updates/releases/tag/v1.7.7",
+  "sourceRelease": "https://github.com/everlosttime/glassdesk-open-source/releases/tag/v1.8.2",
+  "softwareRelease": "https://github.com/everlosttime/glassdesk-updates/releases/tag/v1.8.2",
   "excludedResourceFiles": [
     "contrib/Naiwa/assets-v2.5.1/cry.wav",
     "contrib/Naiwa/assets-v2.5.1/dance.mp3",
@@ -53,5 +53,5 @@
     "contrib/Naiwa/assets-v2.5.1/素材.nwp"
   ],
   "excludedResourceReason": "Optional Naiwa animation and audio are imported from the official ZIP. Companion source and upstream MIT license are retained. The default package builds the runtime-only companion.",
-  "installerSourceCommit": "fc9dfa465b67d275fb0645dbfe42cf8c41758a97"
+  "installerSourceCommit": "c54c2786c5b68579686373674402ba9f73ea050d"
 }

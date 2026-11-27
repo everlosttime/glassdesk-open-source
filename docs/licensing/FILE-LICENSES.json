@@ -1,7 +1,7 @@
 {
-  "version": "1.7.7",
-  "originalCommit": "3bc1ed2f73224d908c288e7b97fe1d0a180f60af",
-  "previousPublicBaseline": "935b3620db8b589ac2b702c26257b20442e6d688",
+  "version": "1.8.2",
+  "originalCommit": "c54c2786c5b68579686373674402ba9f73ea050d",
+  "previousPublicBaseline": "d720430f543d9b30bab1dbd1cef73d77eab985cf",
   "historicalApacheBaseline": "c825c9dad718f22900b24b255f73ddb4989d347d",
   "note": "Scope labels identify eligible ORIGINAL changes only. Existing Apache grants and third-party rights are preserved. A changed file may contain inherited Apache portions; the whole file is not exclusively relicensed. Byte matches do not prove ownership, and third-party notices take precedence. Hashes describe canonical exported bytes before platform-specific Git checkout line endings.",
   "variant": "full-product-source",
@@ -36,17 +36,17 @@
     {
       "path": "CONTRIBUTING.md",
       "sourceGitBlob": null,
-      "publicGitBlob": "205970f5369047cd2d6c201b4367c948941f1498",
-      "sha256": "942f93c4b4461210d10c1d3245a5d15f8ef7f0ded9a34944f90454e1782f43c6",
+      "publicGitBlob": "3e4ee8397dbd3ec02dfd8362d0664683ce9e7aac",
+      "sha256": "c8446b19f2b5ee8d914182300557b5d6471897a69c0c18221cb857818107db2d",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
     },
     {
       "path": "Directory.Build.props",
-      "sourceGitBlob": "bb80d5981f5c21fe26204904596652e8d84b251d",
-      "publicGitBlob": "bb80d5981f5c21fe26204904596652e8d84b251d",
-      "sha256": "0c092d5048a4e0526a572a481439fa5580d0bcdd65fff084c00665e5fe8afdc4",
+      "sourceGitBlob": "648bd325d1e48b11efb7e83232285575f67a9c75",
+      "publicGitBlob": "648bd325d1e48b11efb7e83232285575f67a9c75",
+      "sha256": "195401bad327c5faedeb4fb0acff1e463f25c73daa05bb14051c2714fb80c42b",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
@@ -81,8 +81,8 @@
     {
       "path": "LICENSE",
       "sourceGitBlob": null,
-      "publicGitBlob": "10ffd53b724db1b3d75b22c929604062f4d8ea5f",
-      "sha256": "9bdeae54ef51cb6b9333fcd9b64321a0a88c8a9ba92355b24256d71604dabc37",
+      "publicGitBlob": "42e116df11f7ee3269ae26e7a3a340d012469dd0",
+      "sha256": "8fd8f3cd468d35fd4ce43f3f46810eaecc25ac5bfce3b85105450222f10ff1a8",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
@@ -99,8 +99,8 @@
     {
       "path": "README.md",
       "sourceGitBlob": null,
-      "publicGitBlob": "52ce76d42afb5cb45926375e06915ede97c7e47c",
-      "sha256": "73c635edd0977a2270ee62337a2dc66b84b088f36e82f5afcc6b7c65bfe97aac",
+      "publicGitBlob": "06ef161251ce063467c148d940c8c1b8ec38da6c",
+      "sha256": "0d35e4d5e321fa5b7e0a3569d8beea0635056d3ab6183fddc9c0ebef665fad97",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
@@ -954,8 +954,8 @@
     {
       "path": "docs/LICENSING.md",
       "sourceGitBlob": null,
-      "publicGitBlob": "c8df6bbdeceeebade0de40dc2f7cae02537b28af",
-      "sha256": "00b1a089824fbb5333684dbca4921e4ef94d3dfde3268d602eb53f576239292c",
+      "publicGitBlob": "4573c1743dcbcb28aa6026d62c8cb34554d19345",
+      "sha256": "37094a667a83b71a9dbbe97288bd7aed23916d5f89745e568cdbd2980174d4ca",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
@@ -983,6 +983,15 @@
       "sourceGitBlob": null,
       "publicGitBlob": "09278205687cbc76f67f5e4da40057ef09704746",
       "sha256": "e3106da4a095c4b2d253a2e1cc0bbc6ee40f7722d2b8350c50154a20f1865f85",
+      "licenseScope": "original-addition-noncommercial",
+      "adaptedForPublicEdition": false,
+      "previousPublicScope": "original-addition-noncommercial"
+    },
+    {
+      "path": "docs/Release-notes-v1.8.2-public.md",
+      "sourceGitBlob": null,
+      "publicGitBlob": "64647301cb0dbb27e03d19c189a73af32bdd7a1a",
+      "sha256": "d08882d40556ab185fe839089052491a33f1647c6b0912d9a31216882c95066e",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": null
@@ -1358,9 +1367,9 @@
     },
     {
       "path": "packaging/RELEASE-NOTES.md",
-      "sourceGitBlob": "2a0c71c302bc019c5f248bf4de25cb72bdf754e5",
-      "publicGitBlob": "2a0c71c302bc019c5f248bf4de25cb72bdf754e5",
-      "sha256": "68e809a54e44a8544576f8ebb422dc2f797cc9287b2d5bcf58fe2a00471403e8",
+      "sourceGitBlob": "e505ca33d04e166ef1d1af026dae516b8f548569",
+      "publicGitBlob": "e505ca33d04e166ef1d1af026dae516b8f548569",
+      "sha256": "125d460f13e8c156720c279b269bdcbcedacea0471e9ec6cdc5249b50887f4a1",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
@@ -1439,9 +1448,9 @@
     },
     {
       "path": "packaging/release.json",
-      "sourceGitBlob": "90d9faa790882c6f4f8a695ce9da8f8f534600a2",
-      "publicGitBlob": "90d9faa790882c6f4f8a695ce9da8f8f534600a2",
-      "sha256": "9cae5540072a9d29b0ef9334c60084369afb670ea371c1b6c4b518829770f88f",
+      "sourceGitBlob": "5f57fe1c84ece959f7909331e609a996665189f3",
+      "publicGitBlob": "5f57fe1c84ece959f7909331e609a996665189f3",
+      "sha256": "8735916e889769f0ee2b91d25fec6128249c0c53876d947f9b7a0ab35a49e88e",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
@@ -1502,18 +1511,18 @@
     },
     {
       "path": "src/GlassDesk.App/AppHost.Interaction.cs",
-      "sourceGitBlob": "553d9a73a2d2d06b743e5aba30301879b5ae1be8",
-      "publicGitBlob": "553d9a73a2d2d06b743e5aba30301879b5ae1be8",
-      "sha256": "a93c4e69365027d4017c212699fe2ebdff4ac825e126dddde6f7755cfb246889",
+      "sourceGitBlob": "f01fce2b9eecb9541fb3078191715e38a9d7fd8a",
+      "publicGitBlob": "f01fce2b9eecb9541fb3078191715e38a9d7fd8a",
+      "sha256": "5fcfb698393ccb6744b0ff0b19d771278c34aaaf3976489ba3b25702c34c23a6",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
     },
     {
       "path": "src/GlassDesk.App/AppHost.LauncherOrganization.cs",
-      "sourceGitBlob": "1baa16f8e254c4252792618f81e20d06e4aa5550",
-      "publicGitBlob": "1baa16f8e254c4252792618f81e20d06e4aa5550",
-      "sha256": "76271d37476ad3e68fd3e7dc6a60e3ca4a8cd2d6b90014733ed7dc2e1c120e5b",
+      "sourceGitBlob": "f86a0c7bb830ab4027d7ccc8de008ddd5b3d824d",
+      "publicGitBlob": "f86a0c7bb830ab4027d7ccc8de008ddd5b3d824d",
+      "sha256": "9f805e552530e98f526adbd35b3bf78dde4e0e098991463e76bc2e564ce491e0",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
@@ -1574,21 +1583,30 @@
     },
     {
       "path": "src/GlassDesk.App/AppHost.Performance.cs",
-      "sourceGitBlob": "805d4de78e7101b74030a163ce98894b3d51598e",
-      "publicGitBlob": "805d4de78e7101b74030a163ce98894b3d51598e",
-      "sha256": "bb105806abafc7de2b768fa1c1282e0044743939eda0c4747645d5e43c7ce90b",
+      "sourceGitBlob": "9118c1401a86c7c411554f46d669f62d55c84a66",
+      "publicGitBlob": "9118c1401a86c7c411554f46d669f62d55c84a66",
+      "sha256": "4678d7e83bd15f4e87732bc211e47e309b0f3d319c6d87d3afe066f5e05d1a97",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
     },
     {
       "path": "src/GlassDesk.App/AppHost.Settings.cs",
-      "sourceGitBlob": "b970001cb8300bbfca381b94db265b8b693cf9b6",
-      "publicGitBlob": "b970001cb8300bbfca381b94db265b8b693cf9b6",
-      "sha256": "4a768b1c8a2816092917fc6dd5491e86a6209f602282da42c22c4073e0046a55",
+      "sourceGitBlob": "df62890169fd4a33d5d5119c3587a9490f1b992b",
+      "publicGitBlob": "df62890169fd4a33d5d5119c3587a9490f1b992b",
+      "sha256": "6558110f69958df3babeda49c4e36adfd95fe5fe901b40c254da4ba73006770c",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
+    },
+    {
+      "path": "src/GlassDesk.App/AppHost.StageManager.cs",
+      "sourceGitBlob": "ffde4f288e9bd717e210a50c9eff4f6617f1b27b",
+      "publicGitBlob": "ffde4f288e9bd717e210a50c9eff4f6617f1b27b",
+      "sha256": "8abc532145618a5ef47f394a9d3e1039c34b774a10d43f001867fa08b190bc85",
+      "licenseScope": "original-addition-noncommercial",
+      "adaptedForPublicEdition": false,
+      "previousPublicScope": null
     },
     {
       "path": "src/GlassDesk.App/AppHost.TrayRecovery.cs",
@@ -1610,18 +1628,18 @@
     },
     {
       "path": "src/GlassDesk.App/AppHost.WindowTopmost.cs",
-      "sourceGitBlob": "842e94811e5f341c6db94821360526ce14773961",
-      "publicGitBlob": "842e94811e5f341c6db94821360526ce14773961",
-      "sha256": "3ee6001c5f199375c94b1be53400464658ba395783983b8db8e4dfc1f9b0a06e",
+      "sourceGitBlob": "6f910c150bf31d6a6b210cdbaa24fee661463dbd",
+      "publicGitBlob": "6f910c150bf31d6a6b210cdbaa24fee661463dbd",
+      "sha256": "1b8b8048f23a793cf1785456710042ae2212e5d22ced89f3ac8f284894b82c47",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
     },
     {
       "path": "src/GlassDesk.App/AppHost.cs",
-      "sourceGitBlob": "58546d43c130c5f490f90a329f5967fe9ab749da",
-      "publicGitBlob": "58546d43c130c5f490f90a329f5967fe9ab749da",
-      "sha256": "d0d78c900a7d9d84621750bc3bf1782e248e2fd34f44f848be48340c07c6d853",
+      "sourceGitBlob": "deb5885d1079b3402e37b8452dd70b971c4cbed0",
+      "publicGitBlob": "deb5885d1079b3402e37b8452dd70b971c4cbed0",
+      "sha256": "573f7a346c431abdb23e73783704e7bb83c8af250997f76b0cd437c99a88b388",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
@@ -1673,9 +1691,9 @@
     },
     {
       "path": "src/GlassDesk.App/InteractionController.cs",
-      "sourceGitBlob": "cf4380b6b964c051001afb52f72dcf74fdf9b9cc",
-      "publicGitBlob": "cf4380b6b964c051001afb52f72dcf74fdf9b9cc",
-      "sha256": "35e443f1fa6571feef51f61e09ec3f5da1ca7d543979a4f283164bf11a732ddb",
+      "sourceGitBlob": "72449b178cbf06447c4f62c81c56b9c550203508",
+      "publicGitBlob": "72449b178cbf06447c4f62c81c56b9c550203508",
+      "sha256": "0247b6c08e214a04f62dfcad1bc3560738868e0a9c6a8a5785ab470b02f9cd1c",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
@@ -1715,6 +1733,42 @@
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
+    },
+    {
+      "path": "src/GlassDesk.App/StageManager.cs",
+      "sourceGitBlob": "389f37bc1536982d42bbabb685653f5106a9cd49",
+      "publicGitBlob": "389f37bc1536982d42bbabb685653f5106a9cd49",
+      "sha256": "0e9d29e92b37b9305c906aafd5fb8dda6f4053eda05fab7fa91156b49632623f",
+      "licenseScope": "original-addition-noncommercial",
+      "adaptedForPublicEdition": false,
+      "previousPublicScope": null
+    },
+    {
+      "path": "src/GlassDesk.App/StageMotion.cs",
+      "sourceGitBlob": "11affb96c66f608352f2e887b1259137115d497a",
+      "publicGitBlob": "11affb96c66f608352f2e887b1259137115d497a",
+      "sha256": "68382104a1abda0911262226d4f2ac98da343d1784af883240976038abb9b66f",
+      "licenseScope": "original-addition-noncommercial",
+      "adaptedForPublicEdition": false,
+      "previousPublicScope": null
+    },
+    {
+      "path": "src/GlassDesk.App/StageOverlay.cs",
+      "sourceGitBlob": "6575abe1bc88ad45301427134ae97842bfbef5b3",
+      "publicGitBlob": "6575abe1bc88ad45301427134ae97842bfbef5b3",
+      "sha256": "ca348809f3585843b59e2cff85b55d09318ebac8aefc521637ec660f94164b85",
+      "licenseScope": "original-addition-noncommercial",
+      "adaptedForPublicEdition": false,
+      "previousPublicScope": null
+    },
+    {
+      "path": "src/GlassDesk.App/StageParking.cs",
+      "sourceGitBlob": "f13909eb368830423eb0705c7bf96cd94acf87b7",
+      "publicGitBlob": "f13909eb368830423eb0705c7bf96cd94acf87b7",
+      "sha256": "1603dc4c16b163e085fda7e382f74b7defbd2ce5d565c8b7ef7d6114638e37ad",
+      "licenseScope": "original-addition-noncommercial",
+      "adaptedForPublicEdition": false,
+      "previousPublicScope": null
     },
     {
       "path": "src/GlassDesk.App/Startup/AcceptanceCheck.cs",
@@ -1979,9 +2033,9 @@
     },
     {
       "path": "src/GlassDesk.AppServices/AppServiceHost.cs",
-      "sourceGitBlob": "8ab19d08105bf5918836663b47fd6b0b4742ae59",
-      "publicGitBlob": "8ab19d08105bf5918836663b47fd6b0b4742ae59",
-      "sha256": "a0c7188a7b69d2cd74f320bef080d3d452055cbaf33701a2017ab5a4d18d5968",
+      "sourceGitBlob": "065100a9f2f2bc03553be7353322e8f0df5bfd7f",
+      "publicGitBlob": "065100a9f2f2bc03553be7353322e8f0df5bfd7f",
+      "sha256": "8cb25af8389f8d2dac7397ffc8e62356759eaec082f5199a0b55572565dcda5e",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
@@ -2078,9 +2132,9 @@
     },
     {
       "path": "src/GlassDesk.AppServices/InteractionSettingsService.cs",
-      "sourceGitBlob": "b894e1caf77b599b4bcd936a4f901fbc7da4176c",
-      "publicGitBlob": "b894e1caf77b599b4bcd936a4f901fbc7da4176c",
-      "sha256": "89cf42278cddcb041d3ffcf5f786cd2143d1d5f76749ab324bb41e76cdb142cc",
+      "sourceGitBlob": "23f0eb037888cbc3fae6baffd663cefc4e921c2b",
+      "publicGitBlob": "23f0eb037888cbc3fae6baffd663cefc4e921c2b",
+      "sha256": "039f2823081bab11a6ca16289c0a5797ec8f213c2dee18080a3e49981fc79b15",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
@@ -2120,6 +2174,15 @@
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
+    },
+    {
+      "path": "src/GlassDesk.AppServices/LauncherShortcutCleanup.cs",
+      "sourceGitBlob": "b053328411dff10557c3347a8edde2c0cb27eeec",
+      "publicGitBlob": "b053328411dff10557c3347a8edde2c0cb27eeec",
+      "sha256": "8a1be012f80613e1b23ec699fa030d4f3658068b387ab52ed086fadf747b47e8",
+      "licenseScope": "original-addition-noncommercial",
+      "adaptedForPublicEdition": false,
+      "previousPublicScope": null
     },
     {
       "path": "src/GlassDesk.AppServices/LauncherWorkspace.cs",
@@ -2192,6 +2255,15 @@
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
+    },
+    {
+      "path": "src/GlassDesk.AppServices/StageWorkspace.cs",
+      "sourceGitBlob": "572ff5952c26d5a250a1e9f5082f7892fdfae48b",
+      "publicGitBlob": "572ff5952c26d5a250a1e9f5082f7892fdfae48b",
+      "sha256": "2745b79d649f3bb81159446f6fcc063161266e2cf565f274b0eb6e62c3acb56f",
+      "licenseScope": "original-addition-noncommercial",
+      "adaptedForPublicEdition": false,
+      "previousPublicScope": null
     },
     {
       "path": "src/GlassDesk.AppServices/Updates/UpdateClient.cs",
@@ -2321,9 +2393,9 @@
     },
     {
       "path": "src/GlassDesk.Core/Input/HotkeyText.cs",
-      "sourceGitBlob": "4432cc3089530ffe6bfc2da73019a8cf12fb66f1",
-      "publicGitBlob": "4432cc3089530ffe6bfc2da73019a8cf12fb66f1",
-      "sha256": "6a2e98f9a16a1c6c8214e192a13e5059a9bf383467adfdd7b1f9c527bb2cb5fe",
+      "sourceGitBlob": "a1456fd5a5b8a73e6c8e79718df2facacab422d5",
+      "publicGitBlob": "a1456fd5a5b8a73e6c8e79718df2facacab422d5",
+      "sha256": "76103197c399e82d3b2a46d0e6531915391a1f94e6e1d1e7f6720b7a41995dde",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
@@ -2447,9 +2519,9 @@
     },
     {
       "path": "src/GlassDesk.Core/Models/LauncherLayoutEditor.cs",
-      "sourceGitBlob": "acb26e4e50f4c298a7c8bf6bac65efb3e45a406f",
-      "publicGitBlob": "acb26e4e50f4c298a7c8bf6bac65efb3e45a406f",
-      "sha256": "3ee7cae5079c932a70f9ca7d4121ad6ba602cf5e20c49ef2326fbd87ba5ecda2",
+      "sourceGitBlob": "92f9d6f1b08c007ce8993bdf59cc2110b5d17089",
+      "publicGitBlob": "92f9d6f1b08c007ce8993bdf59cc2110b5d17089",
+      "sha256": "d5a7fc4c847451c1906e118805088ab543ab523c9ba196e48e5c05e591dd7552",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
@@ -2501,18 +2573,18 @@
     },
     {
       "path": "src/GlassDesk.Core/Models/Settings/GlassDeskSettings.cs",
-      "sourceGitBlob": "4822f88d880aaccf1dfe990e35d0a415ffe4c7f0",
-      "publicGitBlob": "4822f88d880aaccf1dfe990e35d0a415ffe4c7f0",
-      "sha256": "7037c76c37e1457fd5c63a1f7a180e72bf27984d052fe9194ccc6ada4e4518f5",
+      "sourceGitBlob": "f306dec24d35d5114c3a7f1e1a06db8a4ccbd7fd",
+      "publicGitBlob": "f306dec24d35d5114c3a7f1e1a06db8a4ccbd7fd",
+      "sha256": "196ca68bf6bba7430d4f71290e4b22363d909a0d2f5a441f7aa5a31323ab0574",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
     },
     {
       "path": "src/GlassDesk.Core/Models/Settings/LauncherSettings.cs",
-      "sourceGitBlob": "e2bceda72bd23fafa762c6223196b00508b0cf59",
-      "publicGitBlob": "e2bceda72bd23fafa762c6223196b00508b0cf59",
-      "sha256": "e43a5b0be6a218198d579fe4617c748b96ec0d40c39c504f1c2860b127143947",
+      "sourceGitBlob": "886adfb90a1126f867532600a5e2747f69ab7c64",
+      "publicGitBlob": "886adfb90a1126f867532600a5e2747f69ab7c64",
+      "sha256": "c07c4f68fcca7ffa089786a4dd642d237c99256a4e7119ee46e484df65450247",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
@@ -2555,9 +2627,9 @@
     },
     {
       "path": "src/GlassDesk.Core/Models/Settings/ShortcutSettings.cs",
-      "sourceGitBlob": "d8731ce3406df7cee31b423d73f10c6096707836",
-      "publicGitBlob": "d8731ce3406df7cee31b423d73f10c6096707836",
-      "sha256": "12e9656f94896e70ed3f9b2517df084da637f0640538772c9aff7757f30fefd7",
+      "sourceGitBlob": "db8be75db3deab52b243e819a1b4b525c9c341f6",
+      "publicGitBlob": "db8be75db3deab52b243e819a1b4b525c9c341f6",
+      "sha256": "3bfd6fe34f6a4a933f38e9dbb0dbc2b1222acc7615f5fb900e9f416699038508",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
@@ -3869,9 +3941,9 @@
     },
     {
       "path": "src/GlassDesk.Platform/Interop/User32.cs",
-      "sourceGitBlob": "12bd63f5a29b99c8f4ca56b82ff8b65b22b7c04f",
-      "publicGitBlob": "12bd63f5a29b99c8f4ca56b82ff8b65b22b7c04f",
-      "sha256": "7cd12e890e7ba11092a63bc3d4e6f7125b3146ef2aa896e21d17f19bef15a5f6",
+      "sourceGitBlob": "9c145f9d0d884bc16e517a1bac80c23a055475e0",
+      "publicGitBlob": "9c145f9d0d884bc16e517a1bac80c23a055475e0",
+      "sha256": "fe1a327a497dd57495135a7bb222425b0eb11d34813ce5e881b4cdc00090af78",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
@@ -3932,9 +4004,9 @@
     },
     {
       "path": "src/GlassDesk.Platform/Shell/DesktopIntegration.cs",
-      "sourceGitBlob": "1fc677b27bfe6eae21da492065fa13a6565bda6e",
-      "publicGitBlob": "1fc677b27bfe6eae21da492065fa13a6565bda6e",
-      "sha256": "82b4917bdc2ec79f0eac424edf6806cbe46f651c23e30f4f3b40454c9faf19ce",
+      "sourceGitBlob": "f36a8707b76e7e06247f79a7afe165b8fc7ce7e2",
+      "publicGitBlob": "f36a8707b76e7e06247f79a7afe165b8fc7ce7e2",
+      "sha256": "8ee1fc0ab504b2dfde19e232ae54fab2408c93add329cb18f3e6fb4b21463f0d",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
@@ -4067,10 +4139,10 @@
     },
     {
       "path": "src/GlassDesk.Platform/Shell/WindowEventWatcher.cs",
-      "sourceGitBlob": "ec1eab50ea8765f50c891ce953918734c36c61a5",
-      "publicGitBlob": "ec1eab50ea8765f50c891ce953918734c36c61a5",
-      "sha256": "7bcd5d2b21e7b0e830dffbf5e6b2a8a5fae79c68f2e4052cbec920bb76656cfa",
-      "licenseScope": "historical-apache",
+      "sourceGitBlob": "19506a851d53b8eb6cb5caad8d1b5b46aacca0a8",
+      "publicGitBlob": "19506a851d53b8eb6cb5caad8d1b5b46aacca0a8",
+      "sha256": "d059ec297f65938ad941be33aaac2cbca44d6e262c24677f3e9d3fc722b1bef2",
+      "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "historical-apache"
     },
@@ -4100,6 +4172,15 @@
       "licenseScope": "historical-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "historical-apache"
+    },
+    {
+      "path": "src/GlassDesk.Platform/StageWindows.cs",
+      "sourceGitBlob": "fe6a53285723df0d331529b3c703635b9d1fb969",
+      "publicGitBlob": "fe6a53285723df0d331529b3c703635b9d1fb969",
+      "sha256": "3b0b8a760ebfbc19476d7f2cb99d084c1caf7e2315efc821c92394e7d9d5020a",
+      "licenseScope": "original-addition-noncommercial",
+      "adaptedForPublicEdition": false,
+      "previousPublicScope": null
     },
     {
       "path": "src/GlassDesk.Platform/Startup/ScheduledStartupRegistration.cs",
@@ -4697,9 +4778,9 @@
     },
     {
       "path": "src/GlassDesk.Settings/SettingsWindow.Interaction.cs",
-      "sourceGitBlob": "2624c5436abe491078e53ab2f67530f81d4325e8",
-      "publicGitBlob": "2624c5436abe491078e53ab2f67530f81d4325e8",
-      "sha256": "8e2f29c99993c3d2a6e0677b6095eb88ce811734729d985276681747118cfd26",
+      "sourceGitBlob": "da90704b9fcce0078de95d970f2dcff3c96770bf",
+      "publicGitBlob": "da90704b9fcce0078de95d970f2dcff3c96770bf",
+      "sha256": "845cc5e2de9c51d325d0c6bf98697c801d05c3ff2a5e1eda11e0a8a54e7ce931",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
@@ -4756,7 +4837,7 @@
       "sha256": "cfcbd0e34d5bf5c81dd1c30c19280b6dfa8b01d82340bb0829612912e27d0e96",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
-      "previousPublicScope": null
+      "previousPublicScope": "original-addition-noncommercial"
     },
     {
       "path": "src/GlassDesk.Settings/SettingsWindow.Sponsorship.cs",
@@ -4766,6 +4847,15 @@
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
+    },
+    {
+      "path": "src/GlassDesk.Settings/SettingsWindow.StageManager.cs",
+      "sourceGitBlob": "a1d208e655d12998c86103ad39b1bf75b910c317",
+      "publicGitBlob": "a1d208e655d12998c86103ad39b1bf75b910c317",
+      "sha256": "4d87c68b39e8c72bd4e450e7039a8be41135a0295f1bf4be112e13701c5e8036",
+      "licenseScope": "original-addition-noncommercial",
+      "adaptedForPublicEdition": false,
+      "previousPublicScope": null
     },
     {
       "path": "src/GlassDesk.Settings/SettingsWindow.StatusBarSecondary.cs",
@@ -4787,27 +4877,27 @@
     },
     {
       "path": "src/GlassDesk.Settings/SettingsWindow.xaml",
-      "sourceGitBlob": "ba2771641506ad97632b3c0a62d5916dabedb3f7",
-      "publicGitBlob": "ba2771641506ad97632b3c0a62d5916dabedb3f7",
-      "sha256": "c1e861085589ed18551e086c28d7b2b2b3db1e597c0ae183ea5ae3ded09c2fbc",
+      "sourceGitBlob": "d01191258da802bd2c8c11ca3c59ee6267de93a7",
+      "publicGitBlob": "d01191258da802bd2c8c11ca3c59ee6267de93a7",
+      "sha256": "281c3ce726c1a1fadcff4655e35a596e55b99db679c1924a238f6462a19b66b6",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
     },
     {
       "path": "src/GlassDesk.Settings/SettingsWindow.xaml.cs",
-      "sourceGitBlob": "b3f0afdfb3fdaa9286c0f1e5ae140458456c4cb0",
-      "publicGitBlob": "b3f0afdfb3fdaa9286c0f1e5ae140458456c4cb0",
-      "sha256": "197522eed06b6209dd35f1a09e5cf13bfc7b1243f35f30ca23c2d616f2c45746",
+      "sourceGitBlob": "9511f30991b55030898cb6ec6d1a793fe6ca92aa",
+      "publicGitBlob": "9511f30991b55030898cb6ec6d1a793fe6ca92aa",
+      "sha256": "8d0d6baf3bbf6b19b5e4f35538868e70579aeb0bdc0901b8e865bbb166e8e255",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
     },
     {
       "path": "src/GlassDesk.Settings/ShortcutHelpIcon.cs",
-      "sourceGitBlob": "eef7d779d5cb1adb8dbc43950f694059d68b3805",
-      "publicGitBlob": "eef7d779d5cb1adb8dbc43950f694059d68b3805",
-      "sha256": "31a8ee4fbe111ae5d20f363b922c364757eb7160f0593143ba60e6dbc455339b",
+      "sourceGitBlob": "7f884fa4d51ea47764f3da40d774afd42b80b48a",
+      "publicGitBlob": "7f884fa4d51ea47764f3da40d774afd42b80b48a",
+      "sha256": "bee7f15295f95cfa288c4a7c5e9d93dcae18a42faec63c0c4bf502695b03ebcf",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
@@ -4873,7 +4963,7 @@
       "sha256": "aef308eb24133a59c31dac17cc0de9498294ef5fca2c9b79e2af7b587cb0db6e",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
-      "previousPublicScope": null
+      "previousPublicScope": "original-addition-noncommercial"
     },
     {
       "path": "src/GlassDesk.UI/CaptureCompatibility/BackdropCaptureWorker.cs",
@@ -4967,9 +5057,9 @@
     },
     {
       "path": "src/GlassDesk.UI/CaptureCompatibility/DocumentedDesktopSceneCapture.cs",
-      "sourceGitBlob": "dbacadc1bb2ce8af3fb96c16194de4536d9b295c",
-      "publicGitBlob": "dbacadc1bb2ce8af3fb96c16194de4536d9b295c",
-      "sha256": "231b5e6e0f74ed23208cf7c64ca273ee77c48bcdf0a8fd1aa08ac83bbfbfc24b",
+      "sourceGitBlob": "eb08f3295caae9c07b50480662f5ecfdeb1f6e36",
+      "publicGitBlob": "eb08f3295caae9c07b50480662f5ecfdeb1f6e36",
+      "sha256": "0b8c950617e74f242daf49e236d65903436d74a6eb59d91b29f4985b97872cff",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
@@ -4981,7 +5071,7 @@
       "sha256": "345676b4e4b8d040ddb57a738e6908171d7a69deee302e7ed0bf07375c1b552e",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
-      "previousPublicScope": null
+      "previousPublicScope": "original-addition-noncommercial"
     },
     {
       "path": "src/GlassDesk.UI/CaptureCompatibility/IDesktopSceneCapture.cs",
@@ -5021,9 +5111,9 @@
     },
     {
       "path": "src/GlassDesk.UI/CaptureCompatibility/LiveWallpaperSurface.cs",
-      "sourceGitBlob": "e60a1469326641bb98472b9d333f4cb020049150",
-      "publicGitBlob": "e60a1469326641bb98472b9d333f4cb020049150",
-      "sha256": "6679871c565f40f4adc9b1b245a95a044f0c996d2d2981bc273635fb0f06b871",
+      "sourceGitBlob": "c5f3874659d5c415c3f317027045140c273007f5",
+      "publicGitBlob": "c5f3874659d5c415c3f317027045140c273007f5",
+      "sha256": "80c4784698fa9cd456b038154d394d4f1df1cbda9a9dc42687d3ee978bfe6310",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
@@ -5048,9 +5138,9 @@
     },
     {
       "path": "src/GlassDesk.UI/CaptureCompatibility/NativeWallpaperSurface.cs",
-      "sourceGitBlob": "7d2d594e9f6a766d0ac61798c7e29329b38e9130",
-      "publicGitBlob": "7d2d594e9f6a766d0ac61798c7e29329b38e9130",
-      "sha256": "0fd9b066084a6d6b2bb8922c3c602b8e96b8c6bb6f6e0e73234a60c799c1a8ee",
+      "sourceGitBlob": "9460e023f2684bbc974d20c840e0b65685068d0d",
+      "publicGitBlob": "9460e023f2684bbc974d20c840e0b65685068d0d",
+      "sha256": "ffe7b5dd15a0652b04580b8b13f5794ff0318df4fe2dd9b898d5bb180bd86a0c",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
@@ -5075,9 +5165,9 @@
     },
     {
       "path": "src/GlassDesk.UI/CaptureCompatibility/PrintWindowWindowCapture.cs",
-      "sourceGitBlob": "e2c16d93c08c7675a18808da13bc45c58643bf83",
-      "publicGitBlob": "e2c16d93c08c7675a18808da13bc45c58643bf83",
-      "sha256": "97741921167682400bd26152f5769b1cb530854e73fe1a579310658881fc4a75",
+      "sourceGitBlob": "a2614646d2623964074ebd995ead4728813565b6",
+      "publicGitBlob": "a2614646d2623964074ebd995ead4728813565b6",
+      "sha256": "1084d8aa574977d18fbdc8cb6ae5a5b2d0057a3de6f01c0c12b3265b174975b6",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
@@ -5143,7 +5233,7 @@
       "sha256": "ad74836c7ba89c0694cd659e687481d9f012d102eae6e149110999f27ca7202d",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
-      "previousPublicScope": "historical-apache"
+      "previousPublicScope": "original-changes-noncommercial-inherited-apache"
     },
     {
       "path": "src/GlassDesk.UI/CaptureCompatibility/WallpaperReadbackExtent.cs",
@@ -5183,10 +5273,10 @@
     },
     {
       "path": "src/GlassDesk.UI/Controls/ContainerMorphMotion.cs",
-      "sourceGitBlob": "92da3d29a1ac8ace2f59ccdc3a6e9e777391dc4d",
-      "publicGitBlob": "92da3d29a1ac8ace2f59ccdc3a6e9e777391dc4d",
-      "sha256": "ce4a97a47819ae644d10d36e2505fdf4e7a8418655147ae1951a9a6eb24a0f4a",
-      "licenseScope": "historical-apache",
+      "sourceGitBlob": "857432255a342840b295180021e5915e22ae8892",
+      "publicGitBlob": "857432255a342840b295180021e5915e22ae8892",
+      "sha256": "c1b6ed2b03a9b1485b98fadc4b9c931f6d592e395087054eda437a5a950a61f7",
+      "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "historical-apache"
     },
@@ -5209,13 +5299,22 @@
       "previousPublicScope": "historical-apache"
     },
     {
+      "path": "src/GlassDesk.UI/Controls/DampedSpring.cs",
+      "sourceGitBlob": "67542d41ca4b8ffc56cbfc90c51d3df5e2395085",
+      "publicGitBlob": "67542d41ca4b8ffc56cbfc90c51d3df5e2395085",
+      "sha256": "053f2865cdb475a2f3ccdf37188c64e99b68fc3ac66549984fd00d0099280acb",
+      "licenseScope": "original-addition-noncommercial",
+      "adaptedForPublicEdition": false,
+      "previousPublicScope": null
+    },
+    {
       "path": "src/GlassDesk.UI/Controls/FrostedGlassRenderer.cs",
       "sourceGitBlob": "01f9787539babe6167e05fe26ce5104e2d16ab1d",
       "publicGitBlob": "01f9787539babe6167e05fe26ce5104e2d16ab1d",
       "sha256": "0f05900f5abd93537bef39b55b22da67a6d57ca5770b7d5ff14123e4badf6700",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
-      "previousPublicScope": "historical-apache"
+      "previousPublicScope": "original-changes-noncommercial-inherited-apache"
     },
     {
       "path": "src/GlassDesk.UI/Controls/GlassBackdropScene.cs",
@@ -5251,7 +5350,7 @@
       "sha256": "896fbfa9459b7ffe8e806795869ed68c3443a99c38421d7d37c1c92dfb8b338a",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
-      "previousPublicScope": "historical-apache"
+      "previousPublicScope": "original-changes-noncommercial-inherited-apache"
     },
     {
       "path": "src/GlassDesk.UI/Controls/GlassHeightField.cs",
@@ -5605,6 +5704,15 @@
       "previousPublicScope": "historical-apache"
     },
     {
+      "path": "src/GlassDesk.UI/StagePreviewCapture.cs",
+      "sourceGitBlob": "2dff3043e4713a9c8ca1023f3757c422b19d8a89",
+      "publicGitBlob": "2dff3043e4713a9c8ca1023f3757c422b19d8a89",
+      "sha256": "a02f9e10293712c36caad4bff6f57a65fab306f36a1fdac56a3b0d25c41d4480",
+      "licenseScope": "original-addition-noncommercial",
+      "adaptedForPublicEdition": false,
+      "previousPublicScope": null
+    },
+    {
       "path": "src/GlassDesk.UI/Theming/GlassPalette.cs",
       "sourceGitBlob": "ae5c41f4d48d9ed242c4eee2644e57e0e3e41245",
       "publicGitBlob": "ae5c41f4d48d9ed242c4eee2644e57e0e3e41245",
@@ -5633,18 +5741,18 @@
     },
     {
       "path": "src/GlassDesk.UI/WindowTopmostPicker.cs",
-      "sourceGitBlob": "936c2f6816ba8794f3b62df137474ce88d62ae2a",
-      "publicGitBlob": "936c2f6816ba8794f3b62df137474ce88d62ae2a",
-      "sha256": "343f7abed7fe98abe20fe7c6df846d976794f8d87ffed9f430cfddade10ba0b4",
+      "sourceGitBlob": "2a7b39e05a264f7de6f4f24bfb95d947b2f21f79",
+      "publicGitBlob": "2a7b39e05a264f7de6f4f24bfb95d947b2f21f79",
+      "sha256": "571b7dadf6715e37b92e2c3ce7daa1f43773f036ba4c1f10ac6d4214c5d10ff9",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
     },
     {
       "path": "src/GlassDesk.UI/WindowTopmostPickerOverlay.cs",
-      "sourceGitBlob": "7e83f892e2a22bfc3b9f3ebba679e99919256233",
-      "publicGitBlob": "7e83f892e2a22bfc3b9f3ebba679e99919256233",
-      "sha256": "dd709b27866c87fa7b1d959dced172d3d8a07f7ae972fe0d3eabc0a84af7f57c",
+      "sourceGitBlob": "218fce28cbebb4c162fbda07088e3e5033ca75e6",
+      "publicGitBlob": "218fce28cbebb4c162fbda07088e3e5033ca75e6",
+      "sha256": "f84056475be303133f9d5146d4130c08c0fe1aaf61b596cb73d5ad2d8a75fe1e",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
@@ -5876,9 +5984,9 @@
     },
     {
       "path": "tests/GlassDesk.AppServices.Tests/InteractionSettingsTests.cs",
-      "sourceGitBlob": "db60a307f322a22c205967a4d7a0466e5a86f8aa",
-      "publicGitBlob": "db60a307f322a22c205967a4d7a0466e5a86f8aa",
-      "sha256": "8acd227a3329af0447ca2e615ffb2f557b9b75b615ab8aa1ebdac74866f99240",
+      "sourceGitBlob": "9bee8f42a6ec7d293e0e252438d98eaf6894fa4f",
+      "publicGitBlob": "9bee8f42a6ec7d293e0e252438d98eaf6894fa4f",
+      "sha256": "a204434548d177f6d20b1203b2bc67206d799096ac97de554a46ea81866cb49e",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
@@ -5918,6 +6026,15 @@
       "licenseScope": "historical-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "historical-apache"
+    },
+    {
+      "path": "tests/GlassDesk.AppServices.Tests/LauncherShortcutCleanupTests.cs",
+      "sourceGitBlob": "abbf865b259c66caa056545cae1c7b77024e82a3",
+      "publicGitBlob": "abbf865b259c66caa056545cae1c7b77024e82a3",
+      "sha256": "628ab48eb954e52dc0990abcdc927f43efb60f0b8608d376b2b09805e6c02d18",
+      "licenseScope": "original-addition-noncommercial",
+      "adaptedForPublicEdition": false,
+      "previousPublicScope": null
     },
     {
       "path": "tests/GlassDesk.AppServices.Tests/LauncherWorkspaceTests.cs",
@@ -6145,6 +6262,24 @@
       "previousPublicScope": "historical-apache"
     },
     {
+      "path": "tests/GlassDesk.AppServices.Tests/StageMotionTests.cs",
+      "sourceGitBlob": "ce6589dc6b40b19c7b21cb90b25d18e5243a020a",
+      "publicGitBlob": "ce6589dc6b40b19c7b21cb90b25d18e5243a020a",
+      "sha256": "3c2a90f910f1d3782e46b2e60b1819c6dfc47de785174fb3832188ed3b71738b",
+      "licenseScope": "original-addition-noncommercial",
+      "adaptedForPublicEdition": false,
+      "previousPublicScope": null
+    },
+    {
+      "path": "tests/GlassDesk.AppServices.Tests/StageWorkspaceTests.cs",
+      "sourceGitBlob": "71ec1653c4594a993db9f1c2c221e4d3af83da35",
+      "publicGitBlob": "71ec1653c4594a993db9f1c2c221e4d3af83da35",
+      "sha256": "4786afb6f467d1162e212aa8ffc042f473de1c831026197b6c2fca4c03586331",
+      "licenseScope": "original-addition-noncommercial",
+      "adaptedForPublicEdition": false,
+      "previousPublicScope": null
+    },
+    {
       "path": "tests/GlassDesk.AppServices.Tests/StartupRegistrationBoundaryTests.cs",
       "sourceGitBlob": "8111c3f3286375afbc97e989485c99c90e626d1d",
       "publicGitBlob": "8111c3f3286375afbc97e989485c99c90e626d1d",
@@ -6254,9 +6389,9 @@
     },
     {
       "path": "tests/GlassDesk.AppServices.Tests/WindowTopmostHotkeyRegistrationTests.cs",
-      "sourceGitBlob": "4afc14627b753c962f8aeb17ef4b47dd7f6fa317",
-      "publicGitBlob": "4afc14627b753c962f8aeb17ef4b47dd7f6fa317",
-      "sha256": "cf3727cac71f5385166efb8ee5bce4ffc5a91d4d6ac83b94b972cb61a2b6fe94",
+      "sourceGitBlob": "9eed0772a02f328b7849577b87dc1c4b75d0e8fe",
+      "publicGitBlob": "9eed0772a02f328b7849577b87dc1c4b75d0e8fe",
+      "sha256": "92fe236da8a61133b83d33c120b360ee30dcb89595bb4123902ac03f893b0c10",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
@@ -6340,7 +6475,7 @@
       "sha256": "2e4b5cee8d64ec6e1ebc0f95f6773843cb6e86d793fc78319954b5a68bafa619",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
-      "previousPublicScope": "historical-apache"
+      "previousPublicScope": "original-changes-noncommercial-inherited-apache"
     },
     {
       "path": "tests/GlassDesk.CompatibilityProbe/Program.cs",
@@ -6628,7 +6763,7 @@
       "sha256": "d91cf996dde510e42f88f908381a7e477abe4757e4d4b8786ea4e36723f79ee7",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
-      "previousPublicScope": null
+      "previousPublicScope": "original-addition-noncommercial"
     },
     {
       "path": "tests/GlassDesk.Core.Tests/MonochromeAppearanceTests.cs",
@@ -6728,6 +6863,15 @@
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
+    },
+    {
+      "path": "tests/GlassDesk.Core.Tests/StageWindowShortcutTests.cs",
+      "sourceGitBlob": "750f410bf14c774e0b8441836a515b33f2ec1a81",
+      "publicGitBlob": "750f410bf14c774e0b8441836a515b33f2ec1a81",
+      "sha256": "b20ab80c3ed60344e827d61eea342ed4b4430c445793a38754dbb1c06e5bfea6",
+      "licenseScope": "original-addition-noncommercial",
+      "adaptedForPublicEdition": false,
+      "previousPublicScope": null
     },
     {
       "path": "tests/GlassDesk.Core.Tests/StatusBarSecondaryItemsSettingsTests.cs",
@@ -7024,7 +7168,7 @@
       "sha256": "b481489e9b9f05fdbd6cc5202409543d95909239ac04193a75b10ec01bd4b2cf",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
-      "previousPublicScope": null
+      "previousPublicScope": "original-addition-noncommercial"
     },
     {
       "path": "tests/GlassDesk.Dock.Tests/BackdropIncidentTests.cs",
@@ -7073,9 +7217,9 @@
     },
     {
       "path": "tests/GlassDesk.Dock.Tests/BackgroundOnlyCaptureTests.cs",
-      "sourceGitBlob": "24f1609da5700386ab35016e141a2667e83b888c",
-      "publicGitBlob": "24f1609da5700386ab35016e141a2667e83b888c",
-      "sha256": "0e7dba3193e3f5aa0323daac75365c9bfd4dbf7a96c8a6df214cd9f130b20e58",
+      "sourceGitBlob": "a69b90e66e3306cce49463f09d0f02915ba04926",
+      "publicGitBlob": "a69b90e66e3306cce49463f09d0f02915ba04926",
+      "sha256": "64bf1c5d6f702d275a8da0f718c843f5c4768d5673c26776236ea88962e8653a",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
@@ -7609,7 +7753,7 @@
       "sha256": "1d3b50801979ddb9150445c4f9e44a0b2c4feb28d5be43582e1bb3eea5e29ecb",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
-      "previousPublicScope": "historical-apache"
+      "previousPublicScope": "original-changes-noncommercial-inherited-apache"
     },
     {
       "path": "tests/GlassDesk.Dock.Tests/GlassCompositionOrderTests.cs",
@@ -7654,7 +7798,7 @@
       "sha256": "fe64a684d011cdee59f298c078dd85c0992612fa0e596e900748f2537a667811",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
-      "previousPublicScope": "historical-apache"
+      "previousPublicScope": "original-changes-noncommercial-inherited-apache"
     },
     {
       "path": "tests/GlassDesk.Dock.Tests/GlassFrameWorkerTests.cs",
@@ -7834,7 +7978,7 @@
       "sha256": "a750a785553f57aa3319f18307e22b86916e7875315d0e11be6dd61701b17345",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
-      "previousPublicScope": null
+      "previousPublicScope": "original-addition-noncommercial"
     },
     {
       "path": "tests/GlassDesk.Dock.Tests/LauncherAnimationTraceTests.cs",
@@ -8000,12 +8144,12 @@
     },
     {
       "path": "tests/GlassDesk.Dock.Tests/LauncherSettingsViewTests.cs",
-      "sourceGitBlob": "c04f119345277e792bbb99fff95dc550d431b78b",
-      "publicGitBlob": "c04f119345277e792bbb99fff95dc550d431b78b",
-      "sha256": "9cbeb52de54d53193f93929d15166c9fbac03aa3a9e1188cbca8b991751c5820",
+      "sourceGitBlob": "3443c7c2171e2905c571c56e5fae992040c907c0",
+      "publicGitBlob": "3443c7c2171e2905c571c56e5fae992040c907c0",
+      "sha256": "f4303f593ca8cc846152ca35c30374d4826c39bf81fe1a45db22fa69fd84ed1a",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
-      "previousPublicScope": null
+      "previousPublicScope": "original-addition-noncommercial"
     },
     {
       "path": "tests/GlassDesk.Dock.Tests/LauncherTransparentLoadingTests.cs",
@@ -8059,7 +8203,7 @@
       "sha256": "b57ba7731b5429492b4db8b05ece9a8f3f22f919527a66df727f61685a99b340",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
-      "previousPublicScope": null
+      "previousPublicScope": "original-addition-noncommercial"
     },
     {
       "path": "tests/GlassDesk.Dock.Tests/LiquidGlassDispersionTests.cs",
@@ -8108,9 +8252,9 @@
     },
     {
       "path": "tests/GlassDesk.Dock.Tests/LiveWallpaperReadbackTests.cs",
-      "sourceGitBlob": "52f0af57e751ad5b50426ab8d20f67a27e298c9a",
-      "publicGitBlob": "52f0af57e751ad5b50426ab8d20f67a27e298c9a",
-      "sha256": "2dd5a74e81a04401dd621cc376631acbb912f4696bb9441b0a5956e8b90de84b",
+      "sourceGitBlob": "ad23e76e74fe37a4f521986d76ba4089730cbdce",
+      "publicGitBlob": "ad23e76e74fe37a4f521986d76ba4089730cbdce",
+      "sha256": "0ac476ea95d87477c4327f0a5797ec4d1772f9cc8fe3a14dd4806bfc3aeb56d7",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
@@ -8216,9 +8360,9 @@
     },
     {
       "path": "tests/GlassDesk.Dock.Tests/OnboardingWindowTests.cs",
-      "sourceGitBlob": "ab85efe7e5a403c942fdc1981905c37d34168817",
-      "publicGitBlob": "ab85efe7e5a403c942fdc1981905c37d34168817",
-      "sha256": "913ee1d392aaa2e696e3666dd56eb9ed409eb012bac1caf87884808a7a26ecc5",
+      "sourceGitBlob": "04ba824ab9b4ddf517d7d7c22110989d4cb4f7e6",
+      "publicGitBlob": "04ba824ab9b4ddf517d7d7c22110989d4cb4f7e6",
+      "sha256": "dc96219a919506bbadbc4fe263a535c06f85cb2f25f25e4885a701c81233cb3f",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"
@@ -8666,12 +8810,21 @@
     },
     {
       "path": "tests/GlassDesk.InteractionAcceptance/Program.cs",
-      "sourceGitBlob": "d5a07dce407f00c36dc21da042d5f4bf1123caa7",
-      "publicGitBlob": "d5a07dce407f00c36dc21da042d5f4bf1123caa7",
-      "sha256": "082d088a263b1b5d004b39fb001a1df5d6df52df460455cb95f80950229cb2e6",
+      "sourceGitBlob": "f2ec4a26a807f3bec25ff7b3124098171b98673e",
+      "publicGitBlob": "f2ec4a26a807f3bec25ff7b3124098171b98673e",
+      "sha256": "abadae33b31d4ee824441a60d5ca5f24c31706408e450c3a3f03a7c8af10300e",
       "licenseScope": "original-changes-noncommercial-inherited-apache",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-changes-noncommercial-inherited-apache"
+    },
+    {
+      "path": "tests/GlassDesk.InteractionAcceptance/StageManagerProbe.cs",
+      "sourceGitBlob": "2e4398999460d5eb098a532a36b08655a762ea09",
+      "publicGitBlob": "2e4398999460d5eb098a532a36b08655a762ea09",
+      "sha256": "2889e99d4d11caa7a02fedb500f0fa9ad1a23876e6ae632b9b9f047ff31e6ebc",
+      "licenseScope": "original-addition-noncommercial",
+      "adaptedForPublicEdition": false,
+      "previousPublicScope": null
     },
     {
       "path": "tests/GlassDesk.InteractionAcceptance/WindowTopmostHostProbe.cs",
@@ -8698,7 +8851,7 @@
       "sha256": "07deb441a182fd76aa33454f71d3aecb22f4c415f96662ce20c0bd1799e859f5",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
-      "previousPublicScope": null
+      "previousPublicScope": "original-addition-noncommercial"
     },
     {
       "path": "tests/GlassDesk.LauncherAcceptance/CaptureDragCases.cs",
@@ -8891,9 +9044,9 @@
     },
     {
       "path": "tests/GlassDesk.LauncherAcceptance/LauncherOpenCloseCases.cs",
-      "sourceGitBlob": "c6c9035c7a1779ba84b3cfce3f7e8a792a956c47",
-      "publicGitBlob": "c6c9035c7a1779ba84b3cfce3f7e8a792a956c47",
-      "sha256": "401801281ba2deed6584e2b0fe56a5d17f07d6cd142a08620d93dae5b1b4aaee",
+      "sourceGitBlob": "6fbe5a5ee6513120d0542dde2f35b4a7aa32ad18",
+      "publicGitBlob": "6fbe5a5ee6513120d0542dde2f35b4a7aa32ad18",
+      "sha256": "97cab8b22f4f2e6ec9ef4e2aff262ee7056b77a0010d4a9d5947b6d393842197",
       "licenseScope": "original-addition-noncommercial",
       "adaptedForPublicEdition": false,
       "previousPublicScope": "original-addition-noncommercial"

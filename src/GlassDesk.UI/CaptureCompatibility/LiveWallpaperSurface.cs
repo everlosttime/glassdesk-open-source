@@ -23,6 +23,7 @@ internal sealed class LiveWallpaperSurface : IDisposable
     private const uint RenderFullContent = 2;
     private const uint SourceCopy = 0x00CC0020;
     private const int HalfTone = 3;
+    private static readonly TimeSpan CompositionWaitInterval = TimeSpan.FromMilliseconds(250);
 
     private readonly int _sourceWidth;
     private readonly int _sourceHeight;
@@ -35,8 +36,11 @@ internal sealed class LiveWallpaperSurface : IDisposable
     private readonly bool _shareFrames;
     private readonly ScreenRect[] _displays;
     private long _lastSharedSequence;
+    private long _lastCompositionWait;
+    private (nint Window, int Left, int Top, int Right, int Bottom) _previousReadback;
     internal long LastSourceQpcTicks {get;private set;}
     internal bool ReadbackDeferred { get; private set; }
+    internal Func<int> FlushComposition { get; init; } = DwmFlush;
 
     private nint _sourceDc, _sourceBitmap, _sourceOld, _sourceBits;
     private nint _targetDc, _targetBitmap, _targetOld, _targetBits;
@@ -128,7 +132,7 @@ internal sealed class LiveWallpaperSurface : IDisposable
     /// </summary>
     internal bool TryDraw(nint window, int regionX, int regionY, int regionWidth, int regionHeight,
         int windowLeft, int windowTop, int windowRight, int windowBottom, byte[] target, long sourceNotBeforeTicks = 0,
-        long minimumReadbackInterval = 0)
+        long minimumReadbackInterval = 0, bool allowUnflushedReadback = false)
     {
         ReadbackDeferred = false;
         if (_disposed || window == 0 || target.Length < (long)_targetWidth * _targetHeight * 4
@@ -150,10 +154,18 @@ internal sealed class LiveWallpaperSurface : IDisposable
             var destinationBottom = (int)Math.Ceiling((bottom - regionY) * scaleY);
             var coversTarget = left == regionX && top == regionY
                 && right == regionX + regionWidth && bottom == regionY + regionHeight;
+            // An unchanged Win11 wallpaper host can supply its current redirected
+            // pixels without blocking for a new desktop-wide composition first.
+            var geometry = (window, windowLeft, windowTop, windowRight, windowBottom);
+            var waitForComposition = !allowUnflushedReadback || !coversTarget
+                || _previousReadback != geometry || _lastCompositionWait < sourceNotBeforeTicks
+                || Stopwatch.GetElapsedTime(_lastCompositionWait) >= CompositionWaitInterval;
+            _previousReadback = default;
             var forceFresh=false;
             for (var attempt = 0; attempt < 3; attempt++)
             {
-                if(!_shareFrames)Marshal.ThrowExceptionForHR(DwmFlush());
+                var waitForThisRead = waitForComposition || forceFresh;
+                if (!_shareFrames && waitForThisRead) WaitForComposition();
                 var shared=_sharedSource;
                 if(shared is not null && !shared.Enter())return false;
                 var sharedFlushed=false;
@@ -177,7 +189,7 @@ internal sealed class LiveWallpaperSurface : IDisposable
                     // Invalidate before any write, including a failed/partial PrintWindow.
                     // A published identity must never describe overwritten source pixels.
                     shared?.InvalidateFrame();
-                    if(_shareFrames)Marshal.ThrowExceptionForHR(DwmFlush());
+                    if (_shareFrames && waitForThisRead) WaitForComposition();
                     started=Stopwatch.GetTimestamp();
                     if (!_readback(window, _sourceDc))
                     {
@@ -229,6 +241,7 @@ internal sealed class LiveWallpaperSurface : IDisposable
                         SourceTicks:ended,Generation:sharedFrame.Sequence));
                 }
                 LastSourceQpcTicks=ended;
+                _previousReadback = geometry;
                 break; // Persistent real black content is delivered normally.
                 }
                 finally{if(shared is not null){if(!sharedFlushed)GdiFlush();shared.Exit();}}
@@ -242,6 +255,12 @@ internal sealed class LiveWallpaperSurface : IDisposable
             Trace.WriteLine("Live wallpaper frame failed: " + error.Message);
             return false;
         }
+    }
+
+    private void WaitForComposition()
+    {
+        Marshal.ThrowExceptionForHR(FlushComposition());
+        _lastCompositionWait = Stopwatch.GetTimestamp();
     }
 
     private bool HasLargeBlackRegion(byte[] pixels)

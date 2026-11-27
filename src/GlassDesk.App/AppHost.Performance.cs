@@ -137,6 +137,7 @@ internal sealed partial class AppHost
                 var state = _performance.State;
                 var sleeping = state == PerformanceState.Sleeping;
                 var suppressed = _performance.IsSuppressionRequested;
+                _stageManager?.SetPaused(suppressed || _windowTopmostSessionSuspended);
                 var temporary = _performance.IsTemporaryActivation;
 
                 ReconcileNaiwa();

@@ -22,7 +22,8 @@ internal sealed class DocumentedDesktopSceneCapture : IDesktopSceneCapture
     private readonly bool _requireVerifiedWallpaper;
     private readonly bool _desktopOnly;
     private static readonly long MovingWindowReadbackInterval = Stopwatch.Frequency / 12;
-    private IWindowCapture? _capture;
+    private static readonly TimeSpan CompositeWallpaperReuseWindow = TimeSpan.FromMilliseconds(50);
+    private PrintWindowWindowCapture? _capture;
     private DesktopBackgroundComposer? _backgroundComposer;
     private byte[]? _backgroundPixels;
     private long _nextBackgroundTraceTicks;
@@ -37,6 +38,9 @@ internal sealed class DocumentedDesktopSceneCapture : IDesktopSceneCapture
     private LiveWallpaperSurface? _liveSurface;
     private byte[]? _livePixels;
     private int _liveWidth, _liveHeight;
+    private (nint Window, int Left, int Top, int Right, int Bottom) _uploadedWallpaper;
+    private long _uploadedWallpaperTicks;
+    private bool _compositedWithReusedWallpaper;
     internal nint CarrierHandle => _carrier;
     nint IDesktopSceneCapture.CarrierHandle => CarrierHandle;
     public long SceneRevision => _barrier;
@@ -172,7 +176,7 @@ internal sealed class DocumentedDesktopSceneCapture : IDesktopSceneCapture
         finally { foreach (var thumbnail in next) DwmUnregisterThumbnail(thumbnail); }
     }
 
-    private IWindowCapture StartWindowCapture()
+    private PrintWindowWindowCapture StartWindowCapture()
     {
         // This is our own native wallpaper/thumbnail composite. Read its existing
         // redirected pixels without creating a WGC session or capture indicator.
@@ -233,6 +237,7 @@ internal sealed class DocumentedDesktopSceneCapture : IDesktopSceneCapture
             {
                 _liveWallpaper = scanned; _liveHost = liveHost;
                 _liveSurface?.Dispose(); _liveSurface = null; _livePixels = null;
+                _uploadedWallpaperTicks = 0;
                 var name = new System.Text.StringBuilder(64);
                 if (scanned != 0) GetClassNameW(scanned, name, name.Capacity);
                 _trace?.Invoke(new("Wallpaper", scanned == 0 ? "StaticOnly" : "LiveWindow", Stopwatch.GetTimestamp(),
@@ -353,9 +358,22 @@ internal sealed class DocumentedDesktopSceneCapture : IDesktopSceneCapture
         if (_nativeWallpaper is null || !GetWindowRect(_liveWallpaper, out var source)) return false;
         // The foreign window can move after Snapshot/UpdateWallpaper. Base this
         // fallback decision on the very same rectangle passed to TryDraw below.
-        if (source.Left > _region.X || source.Top > _region.Y
-            || source.Right < (long)_region.X + _region.Width || source.Bottom < (long)_region.Y + _region.Height)
-            UpdateWallpaper(requireStaticPixels: true);
+        var fullCoverage = source.Left <= _region.X && source.Top <= _region.Y
+            && source.Right >= (long)_region.X + _region.Width && source.Bottom >= (long)_region.Y + _region.Height;
+        var geometry = (_liveWallpaper, source.Left, source.Top, source.Right, source.Bottom);
+        // Let one foreground frame reuse the recent wallpaper without deferring
+        // consecutive wallpaper reads. Preserve the timestamp and source barrier.
+        if (!_desktopOnly && !_diagnosticOnScreen && fullCoverage && _nativeWallpaper.HasBitmap
+            && _backgroundComposer is { IsBackgroundOnly: false } && geometry == _uploadedWallpaper
+            && !_compositedWithReusedWallpaper && _uploadedWallpaperTicks > 0 && _uploadedWallpaperTicks >= sourceNotBeforeTicks
+            && Stopwatch.GetElapsedTime(_uploadedWallpaperTicks) < CompositeWallpaperReuseWindow)
+        {
+            _compositedWithReusedWallpaper = true;
+            _trace?.Invoke(new("WallpaperFrame", "ReusedForComposition", Stopwatch.GetTimestamp(), SourceTicks: _uploadedWallpaperTicks));
+            return true;
+        }
+        _uploadedWallpaperTicks = 0;
+        if (!fullCoverage) UpdateWallpaper(requireStaticPixels: true);
         var sourceWidth = source.Right - source.Left;
         var sourceHeight = source.Bottom - source.Top;
         if (sourceWidth <= 0 || sourceHeight <= 0) return false;
@@ -381,7 +399,9 @@ internal sealed class DocumentedDesktopSceneCapture : IDesktopSceneCapture
             Buffer.BlockCopy(fallback, 0, _livePixels, 0, fallback.Length);
         if (!_liveSurface.TryDraw(_liveWallpaper, _region.X, _region.Y, _region.Width, _region.Height,
                 source.Left, source.Top, source.Right, source.Bottom, _livePixels, sourceNotBeforeTicks,
-                _desktopOnly && IsDraggingExternalWindow() ? MovingWindowReadbackInterval : 0))
+                _desktopOnly && IsDraggingExternalWindow() ? MovingWindowReadbackInterval : 0,
+                allowUnflushedReadback: !_requireVerifiedWallpaper && !_desktopOnly && !_diagnosticOnScreen
+                    && fullCoverage && IsDesktopHost(_liveWallpaper)))
         {
             readbackDeferred = _liveSurface.ReadbackDeferred;
             return false;
@@ -390,7 +410,14 @@ internal sealed class DocumentedDesktopSceneCapture : IDesktopSceneCapture
         // With no foreign coverage the final composer would overwrite the entire
         // carrier read with these same pixels. Avoid its upload, flush and readback.
         if (_diagnosticOnScreen || _backgroundComposer?.IsBackgroundOnly != true)
-            _nativeWallpaper.Update(_livePixels);
+        {
+            // Commit the wallpaper and thumbnails together in the carrier read.
+            _nativeWallpaper.Update(_livePixels, waitForComposition: false);
+            _capture?.MarkCompositionPending();
+            _uploadedWallpaper = geometry;
+            _uploadedWallpaperTicks = _liveSurface.LastSourceQpcTicks;
+            _compositedWithReusedWallpaper = false;
+        }
         return true;
     }
 

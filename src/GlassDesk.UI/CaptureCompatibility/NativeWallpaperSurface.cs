@@ -37,7 +37,7 @@ internal sealed class NativeWallpaperSurface : IDisposable
         }
     }
 
-    internal unsafe void Update(byte[] pixels)
+    internal unsafe void Update(byte[] pixels, bool waitForComposition = true)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(pixels);
@@ -63,7 +63,7 @@ internal sealed class NativeWallpaperSurface : IDisposable
         SendMessageW(_window, 0x0172, 0, _bitmap);
         InvalidateRect(_window, 0, false);
         UpdateWindow(_window);
-        Marshal.ThrowExceptionForHR(DwmFlush());
+        if (waitForComposition) Marshal.ThrowExceptionForHR(DwmFlush());
     }
 
     // Direct-background consumers do not read this carrier. Retain its HWND and

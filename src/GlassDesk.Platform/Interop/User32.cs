@@ -47,6 +47,8 @@ internal static unsafe partial class User32
     /// </remarks>
     internal const uint EventSystemForeground = 0x0003;
 
+    internal const uint EventSystemMoveSizeEnd = 0x000B;
+
     /// <summary>窗口被创建（<c>OBJID_WINDOW</c>）。</summary>
     internal const uint EventObjectCreate = 0x8000;
 

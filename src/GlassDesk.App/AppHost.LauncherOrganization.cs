@@ -1,5 +1,7 @@
 using System.Windows.Threading;
+using GlassDesk.AppServices;
 using GlassDesk.Core.Models;
+using GlassDesk.Core.Storage;
 using Microsoft.Win32;
 using GlassDesk.Settings;
 
@@ -9,6 +11,7 @@ internal sealed partial class AppHost
 {
     private CancellationTokenSource _launcherOrganizationLifetime = new();
     private LauncherOrganizationPreviewWindow? _launcherOrganizationPreview;
+    private DispatcherTimer? _launcherShortcutCleanupTimer;
     private bool _launcherOrganizationInitialized;
     private bool _launcherOrganizationDisposed;
 
@@ -45,6 +48,33 @@ internal sealed partial class AppHost
         if (_loadReport?.LibraryStatus == GlassDesk.Core.Storage.LoadStatus.Unrecoverable) return;
         if (_data.Settings.Current.Launcher.AutoAddDesktopAppsEnabled) _services.DesktopDiscovery.Start();
         else _services.DesktopDiscovery.Stop();
+        if (_data.Settings.Current.Launcher.AutoRemoveBrokenShortcutsEnabled)
+        {
+            if (_launcherShortcutCleanupTimer?.IsEnabled == true) return;
+            _launcherShortcutCleanupTimer ??= new DispatcherTimer(LauncherShortcutCleanup.CheckInterval,
+                DispatcherPriority.Background, OnLauncherShortcutCleanupTick, _application.Dispatcher);
+            _launcherShortcutCleanupTimer.Start();
+            OnLauncherShortcutCleanupTick(this, EventArgs.Empty);
+        }
+        else StopLauncherShortcutCleanup();
+    }
+
+    private async void OnLauncherShortcutCleanupTick(object? sender, EventArgs args)
+    {
+        if (_shuttingDown || _disposed || _services is null || _launcherOrganizationLifetime.IsCancellationRequested) return;
+        try
+        {
+            var removed = await _services.ShortcutCleanup.SweepAsync(_launcherOrganizationLifetime.Token);
+            if (removed > 0) _settings?.UpdateLauncherOrganizationStatus($"已从启动台移除 {removed} 个失效快捷方式。");
+        }
+        catch (OperationCanceledException) { }
+        catch (StorageException error) { _settings?.UpdateLauncherOrganizationStatus("暂未清理失效快捷方式：" + error.Message); }
+    }
+
+    private void StopLauncherShortcutCleanup()
+    {
+        _launcherShortcutCleanupTimer?.Stop();
+        _services?.ShortcutCleanup.Reset();
     }
 
     private async Task<DesktopAutoAddEnableResult> EnableDesktopAutoAddAsync()
@@ -162,6 +192,7 @@ internal sealed partial class AppHost
         _launcherOrganizationLifetime.Cancel();
         _launcherOrganizationPreview?.Close();
         _launcherOrganizationPreview = null;
+        StopLauncherShortcutCleanup();
         _services?.DesktopDiscovery.Stop();
     }
 

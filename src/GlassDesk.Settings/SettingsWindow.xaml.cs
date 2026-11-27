@@ -62,7 +62,7 @@ public partial class SettingsWindow : GlassWindow
         }
 
         _sectionHeadings = [AppearanceSectionHeading, DockSectionHeading, InformationBarSectionHeading, LauncherSectionHeading,
-            ShortcutsSectionHeading, PerformanceSectionHeading, NaiwaSectionHeading, NearbySectionHeading, BackupSectionHeading,
+            ShortcutsSectionHeading, StageManagerSectionHeading, PerformanceSectionHeading, NaiwaSectionHeading, NearbySectionHeading, BackupSectionHeading,
             SponsorshipSectionHeading, AboutSectionHeading];
         PlannedPages =
         [
@@ -71,6 +71,7 @@ public partial class SettingsWindow : GlassWindow
             "信息栏",
             "启动台",
             "快捷操作",
+            StageManagerSectionHeading.Text,
             "性能",
             "回收站",
             "附近传输",
@@ -115,6 +116,7 @@ public partial class SettingsWindow : GlassWindow
         LoadAppearanceControls();
         LoadInteractionControls();
         LoadPerformanceControls();
+        LoadStageManagerControl();
         LoadNaiwaControls();
         LoadNearbyControls();
         RefreshDiagnostics(loadReport);
@@ -274,6 +276,7 @@ public partial class SettingsWindow : GlassWindow
             LauncherRememberPageCheck.IsChecked = settings.RememberLastPage;
             LauncherModeCombo.SelectedIndex = settings.GroupModeEnabled ? 1 : 0;
             LauncherAutoAddDesktopCheck.IsChecked = settings.AutoAddDesktopAppsEnabled;
+            LauncherAutoRemoveBrokenShortcutsCheck.IsChecked = settings.AutoRemoveBrokenShortcutsEnabled;
             LauncherSmartGroupingCheck.IsChecked = settings.SmartGroupingEnabled;
             UpdateLauncherOrganizationControls();
             LauncherSettingsStatus.Text = _launcherValuesOutOfRange
@@ -299,6 +302,7 @@ public partial class SettingsWindow : GlassWindow
             RememberLastPage = LauncherRememberPageCheck.IsChecked == true,
             GroupModeEnabled = LauncherModeCombo.SelectedIndex == 1,
             AutoAddDesktopAppsEnabled = old.AutoAddDesktopAppsEnabled,
+            AutoRemoveBrokenShortcutsEnabled = LauncherAutoRemoveBrokenShortcutsCheck.IsChecked == true,
             SmartGroupingEnabled = LauncherSmartGroupingCheck.IsChecked == true,
         };
         var candidate = SettingsPageEditor.Clone(current);
@@ -314,6 +318,7 @@ public partial class SettingsWindow : GlassWindow
             && old.FocusSearchOnOpen == next.FocusSearchOnOpen && old.RememberLastPage == next.RememberLastPage
             && old.GroupModeEnabled == next.GroupModeEnabled
             && old.AutoAddDesktopAppsEnabled == next.AutoAddDesktopAppsEnabled
+            && old.AutoRemoveBrokenShortcutsEnabled == next.AutoRemoveBrokenShortcutsEnabled
             && old.SmartGroupingEnabled == next.SmartGroupingEnabled) return;
         try
         {
@@ -321,7 +326,9 @@ public partial class SettingsWindow : GlassWindow
             _dataStore.Settings.Save();
             LauncherSettingsChanged?.Invoke(this, next);
             UpdateLauncherOrganizationControls();
-            LauncherSettingsStatus.Text = $"已保存：{next.Rows} 行 × {next.Columns} 列。";
+            LauncherSettingsStatus.Text = old.AutoRemoveBrokenShortcutsEnabled != next.AutoRemoveBrokenShortcutsEnabled
+                ? next.AutoRemoveBrokenShortcutsEnabled ? "已开启自动清理失效快捷方式。" : "已关闭自动清理失效快捷方式。"
+                : $"已保存：{next.Rows} 行 × {next.Columns} 列。";
         }
         catch (Exception ex)
         {

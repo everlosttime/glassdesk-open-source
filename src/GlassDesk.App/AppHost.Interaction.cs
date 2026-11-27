@@ -88,7 +88,8 @@ internal sealed partial class AppHost
 
     private bool CanExecuteInteraction(InputAction action) => _interaction?.CanExecute(action) == true
         && (action == InputAction.ToggleGameSleep
-            || (action == InputAction.SelectWindowTopmost ? CanSelectWindowTopmost : !_performancePointerInputSuppressed));
+            || (action is InputAction.SelectWindowTopmost or InputAction.SelectStageWindow
+                ? CanSelectWindowTopmost : !_performancePointerInputSuppressed));
 
     private void ExecuteInteraction(InputAction action)
     {
@@ -118,6 +119,9 @@ internal sealed partial class AppHost
                 break;
             case InputAction.SelectWindowTopmost:
                 ToggleWindowTopmostSelection();
+                break;
+            case InputAction.SelectStageWindow:
+                ToggleStageWindowSelection();
                 break;
         }
     }
@@ -182,6 +186,7 @@ internal sealed partial class AppHost
             Interlocked.Exchange(ref _displayRefreshPending, 0);
             if (_disposed) return;
             _windowTopmostPicker?.Cancel();
+            _stageManager?.TopologyChanged();
             var currentPrimary = DisplayService.Primary();
             var rebound = false;
             if (_primaryDisplaySession is { } primary && !primary.TryRefreshPrimary(currentPrimary))

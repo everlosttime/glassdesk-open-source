@@ -13,11 +13,11 @@ internal sealed class WindowTopmostPickerOverlay : Window
     private readonly WindowTopmostPicker _picker;
     private readonly PickerDrawing _drawing;
 
-    public WindowTopmostPickerOverlay(WindowTopmostPicker picker, DisplayInfo display)
+    public WindowTopmostPickerOverlay(WindowTopmostPicker picker, DisplayInfo display, string title)
     {
         _picker = picker;
         Display = display;
-        Title = "GlassDesk 窗口置顶选择";
+        Title = $"GlassDesk {title}选择";
         WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;
         AllowsTransparency = true;
@@ -28,7 +28,7 @@ internal sealed class WindowTopmostPickerOverlay : Window
         Cursor = Cursors.Cross;
         Width = display.ToDips(display.Bounds.Width);
         Height = display.ToDips(display.Bounds.Height);
-        _drawing = new PickerDrawing(display);
+        _drawing = new PickerDrawing(display, title);
         Content = _drawing;
         PreviewMouseDown += (_, e) => _picker.PointerPressed(this, e);
         PreviewMouseUp += (_, e) => _picker.PointerReleased(e);
@@ -49,9 +49,9 @@ internal sealed class WindowTopmostPickerOverlay : Window
             throw new InvalidOperationException("无法显示窗口选择区域，请重试。");
     }
 
-    public void UpdateTarget(WindowTopmostTarget? target, bool showLabel) => _drawing.Update(target, showLabel);
+    public void UpdateTarget(WindowTopmostTarget? target, string? action, bool showLabel) => _drawing.Update(target, action, showLabel);
 
-    private sealed class PickerDrawing(DisplayInfo display) : FrameworkElement
+    private sealed class PickerDrawing(DisplayInfo display, string pickerTitle) : FrameworkElement
     {
         private static readonly Brush Shade = FrozenBrush(Color.FromArgb(62, 9, 15, 25));
         private static readonly Brush Panel = FrozenBrush(Color.FromArgb(242, 25, 31, 43));
@@ -59,12 +59,14 @@ internal sealed class WindowTopmostPickerOverlay : Window
         private static readonly Brush Muted = FrozenBrush(Color.FromRgb(203, 215, 231));
         private static readonly Typeface Face = new("Microsoft YaHei UI");
         private WindowTopmostTarget? _target;
+        private string? _action;
         private bool _showLabel;
 
-        public void Update(WindowTopmostTarget? target, bool showLabel)
+        public void Update(WindowTopmostTarget? target, string? action, bool showLabel)
         {
-            if (_target == target && _showLabel == showLabel) return;
+            if (_target == target && _action == action && _showLabel == showLabel) return;
             _target = target;
+            _action = action;
             _showLabel = showLabel;
             InvalidateVisual();
         }
@@ -81,13 +83,13 @@ internal sealed class WindowTopmostPickerOverlay : Window
                 dc.DrawGeometry(Shade, null, new CombinedGeometry(GeometryCombineMode.Exclude,
                     new RectangleGeometry(screen), new RectangleGeometry(rect)));
                 dc.DrawRectangle(FrozenBrush(Color.FromArgb(12, 99, 181, 255)), new Pen(Accent, 2), rect);
-                if (_showLabel)
+                if (_showLabel && _action is not null)
                 {
                     var title = Text(string.IsNullOrWhiteSpace(target.Title) ? "应用窗口" : target.Title, 14, Brushes.White);
                     title.MaxTextWidth = Math.Max(40, Math.Min(380, ActualWidth - 60));
                     title.MaxTextHeight = 24;
                     title.Trimming = TextTrimming.CharacterEllipsis;
-                    var action = Text(target.IsTopmost ? "点击取消置顶" : "点击置顶", 12, Accent);
+                    var action = Text(_action, 12, Accent);
                     var width = Math.Min(ActualWidth - 24, Math.Max(title.Width, action.Width) + 30);
                     var x = Math.Clamp(rect.Left + 12, 12, Math.Max(12, ActualWidth - width - 12));
                     var y = rect.Top >= 100 ? rect.Top - 74 : Math.Max(76, rect.Top + 14);
@@ -98,7 +100,7 @@ internal sealed class WindowTopmostPickerOverlay : Window
                 }
             }
             else dc.DrawRectangle(Shade, null, screen);
-            var instruction = Text("选择窗口置顶  ·  Esc / 右键取消", 12, Muted);
+            var instruction = Text($"选择窗口 · {pickerTitle}  ·  Esc / 右键取消", 12, Muted);
             var instructionWidth = Math.Min(ActualWidth - 24, instruction.Width + 32);
             var instructionX = (ActualWidth - instructionWidth) / 2;
             dc.DrawRoundedRectangle(Panel, new Pen(FrozenBrush(Color.FromArgb(70, 203, 220, 239)), 1),

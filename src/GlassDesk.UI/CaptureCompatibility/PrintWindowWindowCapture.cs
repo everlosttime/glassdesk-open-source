@@ -66,6 +66,7 @@ internal sealed class PrintWindowWindowCapture : IWindowCapture
     private long _lastFlushTicks;
     private long _lastSignature;
     private int _idleFrames;
+    private bool _compositionPending;
     private bool _disposed;
 
     internal PrintWindowWindowCapture(nint window, int width, int height, Action<CaptureTrace>? trace = null)
@@ -88,6 +89,8 @@ internal sealed class PrintWindowWindowCapture : IWindowCapture
         }
     }
 
+    internal void MarkCompositionPending() => _compositionPending = true;
+
     public CapturePixels? TryRead(long notBeforeQpcTicks = 0, TimeSpan waitForFrame = default,
         CancellationToken cancellation = default, bool reusePixels = false)
     {
@@ -107,10 +110,11 @@ internal sealed class PrintWindowWindowCapture : IWindowCapture
                 // 不刷新的话读到的可能是上一轮的画面。实时模式下每帧都等一次合成，
                 // 否则视频窗口在玻璃上最多只有 10 fps；省电模式仍然按 10 Hz 提交。
                 var live = LiveBackdropMode.Enabled;
-                if (live || Stopwatch.GetElapsedTime(_lastFlushTicks) >= MinimumFlushInterval)
+                if (_compositionPending || live || Stopwatch.GetElapsedTime(_lastFlushTicks) >= MinimumFlushInterval)
                 {
                     Marshal.ThrowExceptionForHR(DwmFlush());
                     _lastFlushTicks = Stopwatch.GetTimestamp();
+                    _compositionPending = false;
                 }
                 if (!PrintWindow(_window, _memoryContext, RenderFullContent))
                     throw new Win32Exception(Marshal.GetLastWin32Error(), "PrintWindow(PW_RENDERFULLCONTENT) failed.");

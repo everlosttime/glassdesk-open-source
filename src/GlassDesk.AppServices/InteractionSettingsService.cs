@@ -96,7 +96,7 @@ public sealed class InteractionSettingsService(SettingsStore store, IHotkeyRegis
 
     public InputAction ResolveAction(int id) => active.Values.FirstOrDefault(value => value.Id == id).Action;
 
-    /// <summary>启动时若新增的窗口置顶快捷键冲突，只跳过该动作；配置仍保留，供用户重新录制。</summary>
+    /// <summary>启动时若窗口选择快捷键冲突，只跳过该动作；配置仍保留，供用户重新录制。</summary>
     public string? Initialize(ShortcutSettings shortcuts, DisplaySettings display, out string? warning) =>
         ApplyCore(shortcuts, display, persist: false, allowWindowSelectionConflict: true, out warning);
 
@@ -121,32 +121,40 @@ public sealed class InteractionSettingsService(SettingsStore store, IHotkeyRegis
         {
             validation = SettingsPageEditor.Clone(next);
             validation.Shortcuts.SelectWindowTopmost = new();
+            validation.Shortcuts.SelectStageWindow = new();
         }
         var invalid = SettingsPageEditor.Validate(validation);
         if (invalid is not null) return invalid;
-        var skipWindowSelection = false;
-        if (allowWindowSelectionConflict && next.Shortcuts.SelectWindowTopmost.Enabled)
-        {
-            if (!HotkeyText.TryGetChord(next.Shortcuts.SelectWindowTopmost, out var selectionChord, out var error)) return error;
-            skipWindowSelection = HotkeyText.Bindings(validation.Shortcuts).Any(binding => binding.Definition.Enabled
-                && HotkeyText.TryGetChord(binding.Definition, out var chord, out _) && chord == selectionChord);
-            if (skipWindowSelection)
-                warning = $"窗口置顶快捷键 {next.Shortcuts.SelectWindowTopmost.Describe()} 与其他快捷操作冲突，暂未启用；其他快捷键正常，原配置已保留。";
-        }
+        var warnings = new List<string>();
         var desired = new Dictionary<HotkeyChord, (int Id, InputAction Action)>();
         var added = new List<int>();
         foreach (var (action, definition) in HotkeyText.Bindings(next.Shortcuts))
         {
             if (!definition.Enabled) continue;
-            if (skipWindowSelection && action == InputAction.SelectWindowTopmost) continue;
-            _ = HotkeyText.TryGetChord(definition, out var chord, out _);
+            var selectionName = action switch
+            {
+                InputAction.SelectWindowTopmost => "窗口置顶",
+                InputAction.SelectStageWindow => "台前调度",
+                _ => null
+            };
+            if (!HotkeyText.TryGetChord(definition, out var chord, out var invalidBinding)
+                && allowWindowSelectionConflict && selectionName is not null)
+            {
+                warnings.Add($"{selectionName}快捷键无效，暂未启用：{invalidBinding}");
+                continue;
+            }
+            if (allowWindowSelectionConflict && selectionName is not null && desired.ContainsKey(chord))
+            {
+                warnings.Add($"{selectionName}快捷键 {definition.Describe()} 与其他快捷操作冲突，暂未启用；原配置已保留。");
+                continue;
+            }
             if (active.TryGetValue(chord, out var old)) { desired.Add(chord, (old.Id, action)); continue; }
             var id = nextId++;
             if (!registry.TryRegister(id, chord, out var error))
             {
-                if (allowWindowSelectionConflict && action == InputAction.SelectWindowTopmost)
+                if (allowWindowSelectionConflict && selectionName is not null)
                 {
-                    warning = $"窗口置顶快捷键 {definition.Describe()} 注册失败（错误 {error}），暂未启用；其他快捷键正常，原配置已保留。";
+                    warnings.Add($"{selectionName}快捷键 {definition.Describe()} 注册失败（错误 {error}），暂未启用；原配置已保留。");
                     continue;
                 }
                 foreach (var registered in added) registry.Unregister(registered);
@@ -171,6 +179,7 @@ public sealed class InteractionSettingsService(SettingsStore store, IHotkeyRegis
 
         foreach (var removed in active.Where(pair => !desired.ContainsKey(pair.Key))) registry.Unregister(removed.Value.Id);
         active = desired;
+        warning = warnings.Count == 0 ? null : string.Join(" ", warnings);
         return null;
     }
 

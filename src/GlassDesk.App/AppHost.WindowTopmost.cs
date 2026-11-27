@@ -10,24 +10,29 @@ internal sealed partial class AppHost
     private WindowTopmostPicker? _windowTopmostPicker;
     private WindowTopmostSession? _windowTopmostSession;
     private volatile bool _windowTopmostSessionSuspended;
+    private bool _pickingStageWindow;
 
     private bool CanSelectWindowTopmost => !_disposed && !_shuttingDown
         && !_windowTopmostSessionSuspended && Volatile.Read(ref _displayRefreshPending) == 0
         && _performance?.AllowsWindowSelection != false;
 
-    private void ToggleWindowTopmostSelection()
+    private void ToggleWindowTopmostSelection() => ToggleWindowSelection(stage: false);
+
+    private void ToggleWindowSelection(bool stage)
     {
         if (_windowTopmostPicker?.IsSelecting == true)
         {
             _windowTopmostPicker.Cancel();
-            return;
+            if (_pickingStageWindow == stage) return;
         }
         if (!CanSelectWindowTopmost) return;
         try
         {
             if (_launcher?.IsVisible == true) HideLauncher();
             _windowTopmostPicker ??= new WindowTopmostPicker();
-            _windowTopmostPicker.Begin(OnWindowTopmostSelected);
+            _pickingStageWindow = stage;
+            if (stage) _windowTopmostPicker.Begin(OnStageWindowSelected, DescribeStageTarget, "台前调度（测试版）");
+            else _windowTopmostPicker.Begin(OnWindowTopmostSelected);
         }
         catch (Exception error) when (error is Win32Exception or InvalidOperationException or ExternalException)
         {

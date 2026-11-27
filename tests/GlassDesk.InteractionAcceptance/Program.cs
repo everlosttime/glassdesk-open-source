@@ -39,6 +39,20 @@ internal static class Program
             return WindowTopmostHostProbe.Run(topmostReport);
         if (args is ["--window-topmost-target", var topmostMarker])
             return WindowTopmostHostProbe.RunTarget(topmostMarker);
+        if (args is ["--stage-manager-probe", var stageReport])
+            return StageManagerProbe.Run(stageReport);
+        if (args is ["--stage-manager-hover-probe", var stageHoverReport])
+            return StageManagerProbe.Run(stageHoverReport, hoverOnly: true);
+        if (args is ["--stage-manager-capture-probe", var stageCaptureReport])
+            return StageManagerProbe.Run(stageCaptureReport, captureOnly: true);
+        if (args is ["--stage-manager-focus-probe", var stageFocusReport])
+            return StageManagerProbe.Run(stageFocusReport, focusOnly: true);
+        if (args is ["--stage-manager-delayed-recall-probe", var stageRecallReport])
+            return StageManagerProbe.Run(stageRecallReport, delayedRecallOnly: true);
+        if (args is ["--stage-manager-compatibility-probe", var stageCompatibilityReport])
+            return StageManagerProbe.Run(stageCompatibilityReport, compatibilityOnly: true);
+        if (args is ["--stage-manager-target", var stageMarker, var stageIndex])
+            return StageManagerProbe.RunTarget(stageMarker, int.Parse(stageIndex, System.Globalization.CultureInfo.InvariantCulture));
         Cases.Clear();
         Screenshots.Clear();
         _failed = 0;

@@ -379,6 +379,11 @@
               <Button x:Name="LauncherScanDesktopButton" Content="扫描桌面项目…" HorizontalAlignment="Left"
                       Margin="0,8,0,0" Padding="12,5" Click="OnScanDesktopLauncherApps"
                       AutomationProperties.Name="扫描桌面项目" />
+              <CheckBox x:Name="LauncherAutoRemoveBrokenShortcutsCheck" Margin="0,8,0,0" Content="自动移除失效的快捷方式"
+                        AutomationProperties.Name="自动移除失效的快捷方式"
+                        Checked="OnLauncherControlChanged" Unchecked="OnLauncherControlChanged" />
+              <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Opacity="0.65"
+                         Text="本地目标连续两次找不到时，从启动台移除对应入口。原文件和 Dock 固定项保留。" />
               <CheckBox x:Name="LauncherSmartGroupingCheck" Margin="0,8,0,0" Content="新项目按文件类型自动分组"
                         AutomationProperties.Name="新项目按文件类型自动分组"
                         Checked="OnLauncherControlChanged" Unchecked="OnLauncherControlChanged" />
@@ -400,16 +405,33 @@
                          Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
               <TextBlock Margin="0,6,0,10" TextWrapping="Wrap" Text="点击当前快捷键即可录制键盘组合、标点键、鼠标侧键或滚轮方向，录制后自动保存。Esc 取消，Backspace / Delete 清除绑定。" />
               <UniformGrid Columns="2">
-                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="打开/关闭启动台" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleLauncherHelp" HelpTitle="打开/关闭启动台" Description="切换启动台的显示与收起。打开后可搜索、浏览和启动应用；再次按同一快捷键收起，也可以点击启动台外面关闭。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleLauncherHotkeyBox" AutomationProperties.Name="打开/关闭启动台快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
-                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="下一页" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="NextPageHelp" HelpTitle="下一页" Description="启动台打开时切换到下一页，也适用于搜索结果分页。到最后一页后停止；启动台关闭、打开文件夹、正在中文输入或展开动画期间，不执行翻页。"/></StackPanel><settings:ShortcutRecorder x:Name="NextPageHotkeyBox" AutomationProperties.Name="下一页快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
-                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="上一页" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="PreviousPageHelp" HelpTitle="上一页" Description="启动台打开时切换到上一页，也适用于搜索结果分页。到第一页后停止；启动台关闭、打开文件夹、正在中文输入或展开动画期间，不执行翻页。"/></StackPanel><settings:ShortcutRecorder x:Name="PreviousPageHotkeyBox" AutomationProperties.Name="上一页快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
-                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="切换桌面图标" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleDesktopIconsHelp" HelpTitle="切换桌面图标" Description="显示或隐藏 Windows 桌面上的图标。只改变图标可见性，不会删除文件，也不会移除 Dock 或启动台入口；再次按下即可切换回来。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleDesktopIconsHotkeyBox" AutomationProperties.Name="切换桌面图标快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
-                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="阻止Dock+信息栏遮挡唤出" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleDockRevealLockHelp" HelpTitle="阻止 Dock 与信息栏遮挡唤出" Description="同时切换 Dock 和信息栏的遮挡唤出锁。锁定后，被窗口覆盖或全屏遮挡时，鼠标靠近边缘也不会将它们唤出；再次按下解除。未被遮挡时仍按原显示设置工作，仅本次运行有效。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleDockRevealLockHotkeyBox" AutomationProperties.Name="阻止Dock+信息栏遮挡唤出快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
-                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="开关游戏休眠模式" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleGameSleepHelp" HelpTitle="开关游戏休眠模式" Description="手动开启或关闭游戏休眠。开启后隐藏桌面组件并暂停部分背景处理，减少游戏时的干扰；程序仍在运行。再次按下同一快捷键可解除手动休眠，托盘菜单也可切换；若仍有全屏应用，自动休眠可能继续生效。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleGameSleepHotkeyBox" AutomationProperties.Name="开关游戏休眠模式快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
-                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="选择窗口置顶/取消置顶" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="SelectWindowTopmostHelp" HelpTitle="选择窗口置顶/取消置顶" Description="按下后移动鼠标，高亮需要保留在前方的窗口，左键点击即可切换置顶。可分别置顶多个窗口；再次选择同一窗口取消置顶。Esc、右键或再次按快捷键取消选择，退出 GlassDesk 后恢复本次修改的窗口状态。"/></StackPanel><settings:ShortcutRecorder x:Name="SelectWindowTopmostHotkeyBox" AutomationProperties.Name="选择窗口置顶或取消置顶快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
+                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="打开/关闭启动台" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleLauncherHelp" HelpTitle="打开/关闭启动台" Description="按下打开启动台，可以搜索、浏览和启动应用。启动台已打开时，再按一次或点击启动台外面即可收起。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleLauncherHotkeyBox" AutomationProperties.Name="打开/关闭启动台快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
+                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="下一页" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="NextPageHelp" HelpTitle="下一页" Description="仅在启动台打开时生效。向后翻一页，搜索结果也可以翻页，到最后一页就停止。打开文件夹、正在输入中文或启动台正在展开时，快捷键暂不生效。"/></StackPanel><settings:ShortcutRecorder x:Name="NextPageHotkeyBox" AutomationProperties.Name="下一页快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
+                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="上一页" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="PreviousPageHelp" HelpTitle="上一页" Description="仅在启动台打开时生效。向前翻一页，搜索结果也可以翻页，到第一页就停止。打开文件夹、正在输入中文或启动台正在展开时，快捷键暂不生效。"/></StackPanel><settings:ShortcutRecorder x:Name="PreviousPageHotkeyBox" AutomationProperties.Name="上一页快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
+                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="切换桌面图标" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleDesktopIconsHelp" HelpTitle="切换桌面图标" Description="切换 Windows 桌面图标的显示状态，再按一次可切回。桌面文件和 Dock、启动台里的入口仍可照常使用。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleDesktopIconsHotkeyBox" AutomationProperties.Name="切换桌面图标快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
+                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="阻止Dock+信息栏遮挡唤出" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleDockRevealLockHelp" HelpTitle="阻止 Dock 与信息栏遮挡唤出" Description="按下后锁定 Dock 和信息栏。窗口或全屏应用挡住它们时，鼠标靠近屏幕边缘也不会唤出。未被遮挡时仍按原设置显示。再按一次可解除，锁定只在本次运行有效。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleDockRevealLockHotkeyBox" AutomationProperties.Name="阻止Dock+信息栏遮挡唤出快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
+                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="开关游戏休眠模式" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="ToggleGameSleepHelp" HelpTitle="开关游戏休眠模式" Description="按下后手动进入游戏休眠，收起桌面组件并暂停部分背景处理。再按一次或通过托盘菜单解除手动休眠。如果全屏应用仍触发自动休眠，桌面组件会继续休眠。"/></StackPanel><settings:ShortcutRecorder x:Name="ToggleGameSleepHotkeyBox" AutomationProperties.Name="开关游戏休眠模式快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
+                <StackPanel Orientation="Horizontal" Margin="0,7"><TextBlock Text="选择窗口置顶/取消置顶" VerticalAlignment="Center"/><settings:ShortcutHelpIcon x:Name="SelectWindowTopmostHelp" HelpTitle="选择窗口置顶/取消置顶" Description="按下快捷键后，将鼠标移到目标窗口，看到高亮后左键点击即可置顶。可逐个置顶多个窗口，再次选择同一窗口可取消置顶。按 Esc、右键单击或再按一次快捷键退出选择。退出 GlassDesk 时会恢复它修改的置顶状态。"/></StackPanel><settings:ShortcutRecorder x:Name="SelectWindowTopmostHotkeyBox" AutomationProperties.Name="选择窗口置顶或取消置顶快捷键" RecordingCompleted="OnShortcutRecordingCompleted" />
+                <StackPanel Orientation="Horizontal" Margin="0,7">
+                  <TextBlock Text="选择台前调度窗口（测试版）" VerticalAlignment="Center" />
+                  <settings:ShortcutHelpIcon x:Name="SelectStageWindowHelp" HelpTitle="选择台前调度窗口（测试版）"
+                                             Description="按下快捷键后，将鼠标移到目标窗口，看到高亮后左键点击即可加入台前调度。再次选择同一窗口即可移出。已收起的窗口可点左侧缩略图切回。按 Esc、右键单击或再按一次快捷键退出选择。" />
+                </StackPanel>
+                <settings:ShortcutRecorder x:Name="SelectStageWindowHotkeyBox" AutomationProperties.Name="选择台前调度窗口（测试版）快捷键"
+                                           RecordingCompleted="OnShortcutRecordingCompleted" />
               </UniformGrid>
               <TextBlock x:Name="InteractionSettingsStatus" Margin="0,8,0,14" TextWrapping="Wrap"
                          AutomationProperties.Name="快捷操作设置状态" />
+              <Separator Margin="0,4,0,14" />
+              <TextBlock x:Name="StageManagerSectionHeading" FontSize="16" FontWeight="SemiBold" Text="台前调度（测试版）" />
+              <CheckBox x:Name="StageManagerCheck" Margin="0,10,0,5" Content="启用台前调度（测试版）"
+                        AutomationProperties.Name="启用台前调度（测试版）" IsEnabled="False"
+                        Checked="OnStageManagerChanged" Unchecked="OnStageManagerChanged" />
+              <TextBlock Margin="0,0,0,9" TextWrapping="Wrap"
+                         Text="点选窗口即可加入，再次点选会移出。从屏幕左侧切换窗口组，左栏被盖住时可从左缘呼出。" />
+              <Button Content="选择窗口…" HorizontalAlignment="Left" Margin="0,0,0,12" Padding="12,5"
+                      Click="OnSelectStageWindowClick" AutomationProperties.Name="选择台前调度窗口" />
+              <TextBlock x:Name="StageManagerStatus" TextWrapping="Wrap" />
               <Separator Margin="0,4,0,14" />
               <TextBlock x:Name="PerformanceSectionHeading" FontSize="16" FontWeight="SemiBold" Text="性能"
                          Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource AncestorType=Window}}" />

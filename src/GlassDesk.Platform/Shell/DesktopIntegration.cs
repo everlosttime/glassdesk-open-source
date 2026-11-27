@@ -8,16 +8,23 @@ public static class ForegroundCoverage
     public static bool IsCovered(PixelRect target)
     {
         if (target.Width <= 0 || target.Height <= 0) return false;
-        nint hwnd = GetForegroundWindow();
-        if (hwnd == 0 || !IsWindowVisible(hwnd) || IsIconic(hwnd)) return false;
-        if (GetWindowThreadProcessId(hwnd,out uint pid) == 0) return false;
-        if (pid == Environment.ProcessId) return false;
-        var name = new char[256]; int length = GetClassName(hwnd,name,name.Length); if(length == 0) return false;
-        if (new string(name,0,length) is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd") return false;
-        if (DwmGetWindowAttribute(hwnd,14,out int cloaked,sizeof(int)) == 0 && cloaked != 0) return false;
+        return GetForegroundBounds() is { } bounds
+            && bounds.X < (long)target.X + target.Width && bounds.Right > target.X
+            && bounds.Y < (long)target.Y + target.Height && bounds.Bottom > target.Y;
+    }
+
+    public static PixelRect? GetForegroundBounds() => GetWindowBounds(GetForegroundWindow());
+
+    public static PixelRect? GetWindowBounds(nint hwnd)
+    {
+        if (hwnd == 0 || !IsWindowVisible(hwnd) || IsIconic(hwnd)) return null;
+        if (GetWindowThreadProcessId(hwnd,out uint pid) == 0 || pid == Environment.ProcessId) return null;
+        var name = new char[256]; int length = GetClassName(hwnd,name,name.Length); if (length == 0) return null;
+        if (new string(name,0,length) is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd") return null;
+        if (DwmGetWindowAttribute(hwnd,14,out int cloaked,sizeof(int)) == 0 && cloaked != 0) return null;
         Rect rect;
-        if (DwmGetWindowAttribute(hwnd,9,out rect,Marshal.SizeOf<Rect>()) != 0 && !GetWindowRect(hwnd,out rect)) return false;
-        return rect.Left < (long)target.X + target.Width && rect.Right > target.X && rect.Top < (long)target.Y + target.Height && rect.Bottom > target.Y;
+        if (DwmGetWindowAttribute(hwnd,9,out rect,Marshal.SizeOf<Rect>()) != 0 && !GetWindowRect(hwnd,out rect)) return null;
+        return rect.Right > rect.Left && rect.Bottom > rect.Top ? new(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top) : null;
     }
     [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left,Top,Right,Bottom; }
     [DllImport("user32.dll")] private static extern nint GetForegroundWindow();

@@ -217,6 +217,7 @@ public partial class SettingsWindow
             ToggleDockRevealLockHotkeyBox.Text = HotkeyText.Format(current.Shortcuts.ToggleDockRevealLock);
             ToggleGameSleepHotkeyBox.Text = HotkeyText.Format(current.Shortcuts.ToggleGameSleep);
             SelectWindowTopmostHotkeyBox.Text = HotkeyText.Format(current.Shortcuts.SelectWindowTopmost);
+            SelectStageWindowHotkeyBox.Text = HotkeyText.Format(current.Shortcuts.SelectStageWindow);
             InteractionSettingsStatus.Text = "快捷键录制完成后自动保存并应用。";
         }
         catch (Exception ex)
@@ -234,12 +235,13 @@ public partial class SettingsWindow
             || !TryReadHotkey(ToggleDesktopIconsHotkeyBox, out var icons)
             || !TryReadHotkey(ToggleDockRevealLockHotkeyBox, out var dockRevealLock)
             || !TryReadHotkey(ToggleGameSleepHotkeyBox, out var gameSleep)
-            || !TryReadHotkey(SelectWindowTopmostHotkeyBox, out var windowTopmost)) return;
+            || !TryReadHotkey(SelectWindowTopmostHotkeyBox, out var windowTopmost)
+            || !TryReadHotkey(SelectStageWindowHotkeyBox, out var stageWindow)) return;
         var shortcuts = new ShortcutSettings
         {
             ToggleLauncher = toggle, HideLauncher = new(), NextPage = next, PreviousPage = previous,
             ToggleDesktopIcons = icons, ToggleDockRevealLock = dockRevealLock, ToggleGameSleep = gameSleep,
-            SelectWindowTopmost = windowTopmost,
+            SelectWindowTopmost = windowTopmost, SelectStageWindow = stageWindow,
         };
         var display = new DisplaySettings
         {
@@ -281,7 +283,8 @@ public partial class SettingsWindow
     public bool TryCaptureRegisteredHotkey(nint packedChord)
     {
         var recorder = new[] { ToggleLauncherHotkeyBox, NextPageHotkeyBox,
-            PreviousPageHotkeyBox, ToggleDesktopIconsHotkeyBox, ToggleDockRevealLockHotkeyBox, ToggleGameSleepHotkeyBox, SelectWindowTopmostHotkeyBox }
+            PreviousPageHotkeyBox, ToggleDesktopIconsHotkeyBox, ToggleDockRevealLockHotkeyBox, ToggleGameSleepHotkeyBox,
+            SelectWindowTopmostHotkeyBox, SelectStageWindowHotkeyBox }
             .FirstOrDefault(control => control.IsRecording && control.IsKeyboardFocusWithin);
         if (recorder is null) return false;
         var packed = unchecked((uint)packedChord.ToInt64());

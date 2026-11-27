@@ -89,6 +89,21 @@ public sealed class WindowTopmostHotkeyRegistrationTests
     }
 
     [Fact]
+    public void LegacyShortcutWinsWhenItUsesTheNewStageSelectionChord()
+    {
+        using var fixture = new Fixture();
+        var shortcuts = Shortcuts();
+        shortcuts.ToggleLauncher = new() { Enabled = true, Control = true, Alt = true, Key = "J" };
+        shortcuts.SelectStageWindow = new() { Enabled = true, Control = true, Alt = true, Key = "J" };
+
+        Assert.Null(Initialize(fixture.Service, shortcuts, out var warning));
+        Assert.Contains("Ctrl+Alt+J", warning);
+        var launcher = Assert.Single(fixture.Registry.Items, item => item.Value == new HotkeyChord(3, 74));
+        Assert.Equal(InputAction.ToggleLauncher, fixture.Service.ResolveAction(launcher.Key));
+        Assert.Equal("Ctrl+Alt+J", fixture.Data.Settings.Current.Shortcuts.SelectStageWindow.Describe());
+    }
+
+    [Fact]
     public void StartupStillRollsBackWhenAnExistingActionCannotRegister()
     {
         using var fixture = new Fixture();
@@ -103,7 +118,7 @@ public sealed class WindowTopmostHotkeyRegistrationTests
     private static ShortcutSettings Shortcuts() => new()
     {
         ToggleLauncher = new() { Enabled = true, Key = "F4" },
-        NextPage = new(), PreviousPage = new(),
+        NextPage = new(), PreviousPage = new(), SelectStageWindow = new(),
     };
 
     private sealed class Registry : IHotkeyRegistry

@@ -84,6 +84,10 @@ public sealed class ShortcutSettings
 
     private static HotkeyDefinition DefaultWindowTopmostHotkey() => new() { Enabled = true, Control = true, Alt = true, Key = "T" };
 
+    public HotkeyDefinition SelectStageWindow { get; set; } = DefaultStageWindowHotkey();
+
+    private static HotkeyDefinition DefaultStageWindowHotkey() => new() { Enabled = true, Control = true, Alt = true, Key = "J" };
+
     /// <summary>
     /// 热区默认关闭。它很容易被误触发，因此需要用户显式
     /// 开启才会生效。
@@ -115,6 +119,7 @@ public sealed class ShortcutSettings
         ToggleDockRevealLock ??= new HotkeyDefinition();
         ToggleGameSleep ??= DefaultGameSleepHotkey();
         SelectWindowTopmost ??= DefaultWindowTopmostHotkey();
+        SelectStageWindow ??= DefaultStageWindowHotkey();
         MouseBackButton ??= new HotkeyDefinition();
         MouseForwardButton ??= new HotkeyDefinition();
     }

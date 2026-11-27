@@ -19,10 +19,14 @@ public sealed class LauncherSettingsViewTests
             {
                 settings.AttachDataStore(data, null);
                 Assert.Null(settings.FindName("LauncherHighRefreshCheck"));
+                var cleanup = Assert.IsType<CheckBox>(settings.FindName("LauncherAutoRemoveBrokenShortcutsCheck"));
+                Assert.False(cleanup.IsChecked);
+                cleanup.IsChecked = true;
                 Assert.IsType<Slider>(settings.FindName("LauncherRowsSlider")).Value = 6;
                 var reload = new SettingsStore(data.Settings.FilePath);
                 reload.Load();
                 Assert.Equal(6, reload.Current.Launcher.Rows);
+                Assert.True(reload.Current.Launcher.AutoRemoveBrokenShortcutsEnabled);
             }
             finally { settings.Close(); }
         });

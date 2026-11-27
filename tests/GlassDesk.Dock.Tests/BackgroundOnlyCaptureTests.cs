@@ -94,6 +94,24 @@ public sealed class BackgroundOnlyCaptureTests
     });
 
     [Fact]
+    public void CompositeFramesReuseRecentWallpaperButHonorNewSourceBarriers() => StaTest.Run(() =>
+    {
+        using var fixture = new WallpaperFixture(desktopOnly: false);
+        fixture.Read();
+        Set(fixture.Capture, "_backgroundComposer", new DesktopBackgroundComposer(64, 48, [new(0, 0, 64, 48)]));
+        var first = fixture.Read();
+        var second = fixture.Read();
+        Assert.Equal(first.SourceQpcTicks, second.SourceQpcTicks);
+        Assert.Contains(fixture.Traces, trace => trace is { Stage: "WallpaperFrame", Reason: "ReusedForComposition" });
+        Assert.True(fixture.Read().SourceQpcTicks > second.SourceQpcTicks);
+        fixture.Paint(33);
+        var barrier = Stopwatch.GetTimestamp();
+        var refreshed = fixture.Read(barrier);
+        Assert.True(refreshed.SourceQpcTicks >= barrier);
+        Assert.Equal(fixture.Expected, refreshed.Pixels);
+    });
+
+    [Fact]
     public void DirectBackgroundReleasesCarrierBitmapAndRestoresItForForeignCoverage() => StaTest.Run(() =>
     {
         using var fixture = new WallpaperFixture();
@@ -134,7 +152,7 @@ public sealed class BackgroundOnlyCaptureTests
         internal DocumentedDesktopSceneCapture Capture { get; }
         internal List<CaptureTrace> Traces { get; } = [];
         internal byte[] Expected { get; private set; } = [];
-        internal WallpaperFixture()
+        internal WallpaperFixture(bool desktopOnly = true)
         {
             SetThreadDpiAwarenessContext(-4);
             _window = CreateWindowExW(0, "STATIC", "GlassDesk background-only fixture", 0x8000000E,
@@ -143,7 +161,7 @@ public sealed class BackgroundOnlyCaptureTests
             _wallpaper = new NativeWallpaperSurface(_window, 96, 80);
             Paint(0); ShowWindow(_window, 4);
             Capture = new DocumentedDesktopSceneCapture(new(-10000, -10000, 64, 48), false, Traces.Add,
-                null, GetShellWindow, 26100, desktopOnly: true);
+                null, GetShellWindow, 26100, desktopOnly);
             Set(Capture, "_liveWallpaper", _window);
             Set(Capture, "_nextWallpaperScanTicks", long.MaxValue);
             Traces.Clear();

@@ -90,7 +90,7 @@ internal sealed class InteractionController : IDisposable
         InputAction.ToggleDesktopIcons => _desktopAvailable,
         InputAction.ToggleDockRevealLock => true,
         InputAction.ToggleGameSleep => true,
-        InputAction.SelectWindowTopmost => true,
+        InputAction.SelectWindowTopmost or InputAction.SelectStageWindow => true,
         _ => false,
     };
 
@@ -103,7 +103,8 @@ internal sealed class InteractionController : IDisposable
 
     public bool IsGameSleepHotkey(int id) => _settings.ResolveAction(id) == InputAction.ToggleGameSleep;
 
-    public bool IsWindowTopmostHotkey(int id) => _settings.ResolveAction(id) == InputAction.SelectWindowTopmost;
+    public bool IsWindowSelectionHotkey(int id) =>
+        _settings.ResolveAction(id) is InputAction.SelectWindowTopmost or InputAction.SelectStageWindow;
 
     public bool? ReadDesktopIcons()
     {

@@ -31,6 +31,8 @@ internal sealed partial class AppHost
             window.OrganizeLauncherAppsAsync=OrganizeExistingLauncherAppsAsync;
             window.ScanDesktopAppsAsync=ScanDesktopAppsAsync;
             window.PerformanceSettingsChanged+=OnPerformanceSettingsChanged;
+            window.StageManagerApply = SetStageManagerEnabled;
+            window.StageWindowSelectionRequested = ToggleStageWindowSelection;
             window.InteractionSettingsApply=ApplyInteractionSettings;
             window.DesktopIconsRead=()=>_interaction?.ReadDesktopIcons();
             window.DesktopIconsSet=visible=>_interaction is { } controller?controller.SetDesktopIcons(visible):"运行服务未连接，未保存更改。";

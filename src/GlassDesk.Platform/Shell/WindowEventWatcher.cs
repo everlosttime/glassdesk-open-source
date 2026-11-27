@@ -43,6 +43,7 @@ public sealed class WindowEventWatcher : IDisposable
         User32.EventSystemForeground,
     ];
 
+    private readonly bool _watchMoveSizeEnd;
     private readonly Action? _onChanged;
     private readonly Action<uint, nint, int, int>? _onRawEvent;
     private readonly ManualResetEventSlim _ready = new(false);
@@ -58,8 +59,9 @@ public sealed class WindowEventWatcher : IDisposable
     private bool _hooksInstalled;
     private volatile bool _disposed;
 
-    private WindowEventWatcher(Action? onChanged, Action<uint, nint, int, int>? onRawEvent)
+    private WindowEventWatcher(Action? onChanged, Action<uint, nint, int, int>? onRawEvent, bool watchMoveSizeEnd)
     {
+        _watchMoveSizeEnd = watchMoveSizeEnd;
         _onChanged = onChanged;
         _onRawEvent = onRawEvent;
         _callback = OnWinEvent;
@@ -85,9 +87,11 @@ public sealed class WindowEventWatcher : IDisposable
     /// （事件类型、窗口句柄、OBJID、子 id）。在<strong>钩子线程</strong>上触发，
     /// 实现必须轻（记录一条日志的量级），绝不能在这里做查询或碰界面。
     /// </param>
-    public static WindowEventWatcher? TryStart(Action? onChanged, Action<uint, nint, int, int>? onRawEvent = null)
+    /// <param name="watchMoveSizeEnd">在窗口结束拖动或调整大小之后合并刷新。</param>
+    public static WindowEventWatcher? TryStart(Action? onChanged, Action<uint, nint, int, int>? onRawEvent = null,
+        bool watchMoveSizeEnd = false)
     {
-        var watcher = new WindowEventWatcher(onChanged, onRawEvent);
+        var watcher = new WindowEventWatcher(onChanged, onRawEvent, watchMoveSizeEnd);
 
         if (watcher.Start())
         {
@@ -156,7 +160,7 @@ public sealed class WindowEventWatcher : IDisposable
             // 先逼出本线程的消息队列：PostThreadMessage 要求目标线程已有队列。
             _ = User32.PeekMessage(out _, 0, 0, 0, User32.PmNoRemove);
 
-            foreach (var eventType in WatchedEvents)
+            foreach (var eventType in _watchMoveSizeEnd ? WatchedEvents.Append(User32.EventSystemMoveSizeEnd) : WatchedEvents)
             {
                 var hook = User32.SetWinEventHook(
                     eventType,
